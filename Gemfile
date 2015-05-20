@@ -15,8 +15,8 @@ gem 'rmagick'
 
 #gem "core_models", git: "git@bitbucket.org:MoreOnTap/core-models.git", :branch => 'master'
 
-if (ENV["RACK_ENV"] ||= "development") == "development"
-	gem "shotgun"
-else
-	gem "unicorn"
-end
+#f (ENV["RACK_ENV"] ||= "development") == "development"
+gem "shotgun"
+#else
+	#gem "unicorn"
+#end
