@@ -8,13 +8,13 @@ require "json"
 require "yaml"
 require "active_record"
 
-if (ENV["RACK_ENV"] || "development") == 'development'
-  Bundler.require :default, (ENV["RACK_ENV"] || "development").to_sym
-  Dir[File.dirname(__FILE__) + "/models/*.rb"].each { |file| require file }
+# if (ENV["RACK_ENV"] || "development") == 'development'
+#   Bundler.require :default, (ENV["RACK_ENV"] || "development").to_sym
+#   Dir[File.dirname(__FILE__) + "/models/*.rb"].each { |file| require file }
 
-  DB_CONFIG = YAML::load(File.open('config/database.yml'))
-  ActiveRecord::Base.establish_connection( DB_CONFIG[(ENV["RACK_ENV"] || "development")] )
-end
+#   DB_CONFIG = YAML::load(File.open('config/database.yml'))
+#   ActiveRecord::Base.establish_connection( DB_CONFIG[(ENV["RACK_ENV"] || "development")] )
+# end
 
 class Application < Sinatra::Base
   configure :development do
