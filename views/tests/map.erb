@@ -1,7 +1,7 @@
 <div>
-	<div id='drawTime'></div>
 	
 	<canvas id='screen' width='512' height='512' style='transform: translate3d(0,0,0); w'></canvas>
+	<div id='drawTime'></div>
 	
 	<script>
 		var palette = JSON.parse('<%= @map.palette.to_json %>'),
@@ -18,7 +18,7 @@
 			dataObj = ctx.getImageData(0,0,512,512),
 			data = dataObj.data;
 
-			fullscreenify(ctx.canvas);
+			//fullscreenify(ctx.canvas);
 
 			layers = [
 				{ data: tiles[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
