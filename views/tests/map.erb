@@ -1,6 +1,6 @@
 <div>
 	
-	<canvas id='screen' width='512' height='512' style='transform: translate3d(0,0,0); w'></canvas>
+	<canvas id='screen' width='512' height='512' style='transform: translate3d(0,0,0);'></canvas>
 	<div id='drawTime'></div>
 	
 	<script>
@@ -44,12 +44,12 @@
 			var test = document.querySelector("#drawTime");
 			
 			loop();
-			var start = Date.now();
+			//var start = Date.now();
 			function loop() {
 				//if (Date.now() - start > fps){ //24 FPS
 					var fps_counter = Date.now();
 					drawMap();
-					start = Date.now();
+					//start = Date.now();
 					test.innerHTML = (Date.now() - fps_counter) + " milliseconds to draw frame"
 				//}
 
@@ -159,47 +159,42 @@
 			var layers_len = layers.length;
 
 			for (var i=0; i<256; i++){
-				var x_offset = (i % 16) * 16,
-						y_offset = ((i / 16) | 0) * 16
+				var x_offset = (i & 15) << 4,
+						y_offset = (i >> 4) << 4
 				
 				for (var j=0; j<256; j++){
-					var x = (j % 16) + x_offset,
-							y = ((j / 16) | 0) + y_offset;
+					var x = (j & 15) + x_offset,
+							y = (j >> 4) + y_offset;
 
-					var pixel, index = (x * 8) + ((y * 2) * 2048);
+					var pixel, index = (x << 3) + ((y << 1) << 11);
 					
 					for (var z=0; z<layers_len;z++){
 						var layer = layers[z];
 
-						var map_x = (x_offset / 16) + layer.x + scrollPos.x,
-								map_y = (y_offset / 16) + layer.y + scrollPos.y;
+						var map_x = (x_offset >> 4) + layer.x + scrollPos.x,
+								map_y = (y_offset >> 4) + layer.y + scrollPos.y;
 
-						var overflow_x = (j % 16) + layer.x_offset + scrollPos.x_offset > 15,
-								overflow_y = j + ((layer.y_offset + scrollPos.y_offset) * 16) > 255,
-								pixel_offset = j + layer.x_offset + scrollPos.x_offset + ((layer.y_offset + scrollPos.y_offset) * 16);
+						//TODO: Get ride of the greater than checks
+						var overflow_x = ((j & 15) + layer.x_offset + scrollPos.x_offset > 15) | 0,
+								overflow_y = (j + ((layer.y_offset + scrollPos.y_offset) << 4) > 255) | 0,
+								pixel_offset = j + layer.x_offset + scrollPos.x_offset + ((layer.y_offset + scrollPos.y_offset) << 4);
 
 					 		
-					 		map_x += overflow_x ? 1 : 0;
-					 		map_y += overflow_y ? 1 : 0;
+			 			map_x += overflow_x;
+			 		 	map_y += overflow_y;
 
-					 		pixel_offset -= overflow_x ? 16 : 0;
-					 		pixel_offset -= overflow_y ? 256 : 0;
+			 			pixel_offset -= overflow_x << 4;
+			 			pixel_offset -= overflow_y << 8;
 
-					 	var map_index = (map_x % dimensions[layer.index].x) + ((map_y % dimensions[layer.index].y) * dimensions[layer.index].x),
+					 	var map_index = (map_x & (dimensions[layer.index].x - 1)) + ((map_y & (dimensions[layer.index].y - 1)) * dimensions[layer.index].x),
 					 			tile_index = map_data[layer.index][map_index],
 					 			tile_data = layer.data[tile_index];
 
-					 	if (tile_data.length > 256){ 
-					 		var animated_offset = pixel_offset + (256 * animated_frame);
-					 	} else {
-					 		var animated_offset = pixel_offset
-					 	}
-
-					 	var color_index = !tile_data[animated_offset] ? tile_data[pixel_offset] : tile_data[animated_offset];
+					 	var animated_offset = pixel_offset + (256 * animated_frame),
+					 			color_index = !tile_data[animated_offset] ? tile_data[pixel_offset] : tile_data[animated_offset];
 
 				 	 	pixel = palette[color_index];
 						if( pixel[3] === 255 ) break;
-						
 					}
 				
 					drawPixel(data, pixel, index)
