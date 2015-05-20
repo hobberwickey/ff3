@@ -26,7 +26,7 @@ class Application < Sinatra::Base
   end
 
 
-  register Sinatra::R18n
+  #register Sinatra::R18n
   register Sinatra::Partial
   register Sinatra::Flash
   
