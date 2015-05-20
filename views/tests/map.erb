@@ -44,12 +44,12 @@
 			loop();
 			var start = Date.now();
 			function loop() {
-				if (Date.now() - start > fps){ //24 FPS
+				//if (Date.now() - start > fps){ //24 FPS
 					var fps_counter = Date.now();
 					drawMap();
 					start = Date.now();
 					test.innerHTML = (Date.now() - fps_counter) + " milliseconds to draw frame"
-				}
+				//}
 
 				window.requestAnimationFrame(loop);
 			}
