@@ -13,73 +13,73 @@
 		var ctx, dataObj, data, layers, scrollPos, scrollSpeed, animated_frame;
 		var scrollL = scrollR = scrollU = scrollD = false;
 
-		document.addEventListener("polymer-ready", function(){
-		 	ctx = document.querySelector("#screen").getContext("2d"),
-			dataObj = ctx.getImageData(0,0,512,512),
-			data = dataObj.data;
+		// document.addEventListener("polymer-ready", function(){
+	 	ctx = document.querySelector("#screen").getContext("2d"),
+		dataObj = ctx.getImageData(0,0,512,512),
+		data = dataObj.data;
 
-			//fullscreenify(ctx.canvas);
+		//fullscreenify(ctx.canvas);
 
-			layers = [
-				{ data: tiles[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
-				{ data: tiles[1].p, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 },
-				{ data: tiles[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
-				{ data: tiles[1].r, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 }
-			]
+		layers = [
+			{ data: tiles[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
+			{ data: tiles[1].p, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 },
+			{ data: tiles[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
+			{ data: tiles[1].r, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 }
+		]
 
-			scrollPos = {
-				x: 0,
-				y: 0,
-				x_offset: 0,
-				y_offset: 0
+		scrollPos = {
+			x: 0,
+			y: 0,
+			x_offset: 0,
+			y_offset: 0
+		}
+
+		animated_frame = 0;
+
+		setInterval(function(){
+			animated_frame++;
+			if (animated_frame >= 4) animated_frame = 0;
+		}, 100)
+
+		var test = document.querySelector("#drawTime");
+		
+		loop();
+		//var start = Date.now();
+		function loop() {
+			//if (Date.now() - start > fps){ //24 FPS
+				var fps_counter = Date.now();
+				drawMap();
+				//start = Date.now();
+				test.innerHTML = (Date.now() - fps_counter) + " milliseconds to draw frame"
+			//}
+
+			window.requestAnimationFrame(loop);
+		}
+
+		window.addEventListener("keydown", function(e){
+			if (e.keyCode === 37){
+				scrollLeft(); scrollL = true;
+			} else if (e.keyCode === 38) {
+				scrollUp(); scrollU = true;
+			} else if (e.keyCode === 39) {
+				scrollRight(); scrollR = true;
+			} else if (e.keyCode === 40) {
+				scrollDown(); scrollD = true;
 			}
+		}, false)
 
-			animated_frame = 0;
-
-			setInterval(function(){
-				animated_frame++;
-				if (animated_frame >= 4) animated_frame = 0;
-			}, 100)
-
-			var test = document.querySelector("#drawTime");
-			
-			loop();
-			//var start = Date.now();
-			function loop() {
-				//if (Date.now() - start > fps){ //24 FPS
-					var fps_counter = Date.now();
-					drawMap();
-					//start = Date.now();
-					test.innerHTML = (Date.now() - fps_counter) + " milliseconds to draw frame"
-				//}
-
-				window.requestAnimationFrame(loop);
+		window.addEventListener("keyup", function(e){
+			if (e.keyCode === 37){
+				scrollL = false;
+			} else if (e.keyCode === 38) {
+				scrollU = false;
+			} else if (e.keyCode === 39) {
+				scrollR = false;
+			} else if (e.keyCode === 40) {
+				scrollD = false;
 			}
-
-			window.addEventListener("keydown", function(e){
-				if (e.keyCode === 37){
-					scrollLeft(); scrollL = true;
-				} else if (e.keyCode === 38) {
-					scrollUp(); scrollU = true;
-				} else if (e.keyCode === 39) {
-					scrollRight(); scrollR = true;
-				} else if (e.keyCode === 40) {
-					scrollDown(); scrollD = true;
-				}
-			}, false)
-
-			window.addEventListener("keyup", function(e){
-				if (e.keyCode === 37){
-					scrollL = false;
-				} else if (e.keyCode === 38) {
-					scrollU = false;
-				} else if (e.keyCode === 39) {
-					scrollR = false;
-				} else if (e.keyCode === 40) {
-					scrollD = false;
-				}
-			}, false)
-		})
+		}, false)
+		// })
 
 		function scrollLeft(){
 			if (scrollL || scrollR || scrollPos.x === 0) return
