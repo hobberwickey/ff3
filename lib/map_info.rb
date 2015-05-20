@@ -200,10 +200,7 @@ class Map
     v_flip = (tile_info & 128) == 128
 
     frames = tileset == 4 ? 4 : 1
-    t = 0
-    frames.times do |a|
-      puts "THE FRAME IS #{a} OUT OF #{frames}" if index == 1 and test == 25
-           
+    frames.times do |a|           
       tile_offset = tileset == 4 ? tile_data_offsets[4][a][t_index] : tile_offset
 
       8.times do |y|
@@ -219,9 +216,6 @@ class Map
           color += ((byte3 & 1 << shift) >> shift) << 2
           color += ((byte4 & 1 << shift) >> shift) << 3
 
-          puts "#{t}, #{color}" if index == 1 and test == 25
-          t += 1
-
           x_index = h_flip ? 7 - x : x
           y_index = v_flip ? 7 - y : y
           color_index = (x_index + x_offset) + ((y_index + y_offset) * 16) + (a * 256)
@@ -236,8 +230,6 @@ class Map
         end
       end
     end
-
-    #puts test if tileset == 4 && index == 3
 
     return tile_r, tile_p
   end

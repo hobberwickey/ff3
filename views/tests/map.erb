@@ -1,7 +1,7 @@
 <div>
-	<canvas id='screen' width='512' height='512' style='transform: translate3d(0,0,0)'></canvas>
-
 	<div id='drawTime'></div>
+	
+	<canvas id='screen' width='512' height='512' style='transform: translate3d(0,0,0); w'></canvas>
 	
 	<script>
 		var palette = JSON.parse('<%= @map.palette.to_json %>'),
@@ -17,6 +17,8 @@
 		 	ctx = document.querySelector("#screen").getContext("2d"),
 			dataObj = ctx.getImageData(0,0,512,512),
 			data = dataObj.data;
+
+			fullscreenify(ctx.canvas);
 
 			layers = [
 				{ data: tiles[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
@@ -232,6 +234,29 @@
 
 		function palToString(pal){
 			return "rgba(" + pal[0] + "," + pal[1] + "," + pal[2] + "," + pal[3] + ")";
+		}
+
+		function fullscreenify(canvas) {
+		    var style = canvas.getAttribute('style') || '';
+		    
+		    window.addEventListener('resize', function () {resize(canvas);}, false);
+		 
+		    resize(canvas);
+		 
+		    function resize(canvas) {
+		        var scale = {x: 1, y: 1};
+		        scale.x = (window.innerWidth - 10) / canvas.width;
+		        scale.y = (window.innerHeight - 10) / canvas.height;
+		        
+		        
+		        if (scale.x < scale.y) {
+		            scale = scale.x + ', ' + scale.x;
+		        } else {
+		            scale = scale.y + ', ' + scale.y;
+		        }
+		        
+		        canvas.setAttribute('style', style + ' ' + '-ms-transform-origin: center top; -webkit-transform-origin: center top; -moz-transform-origin: center top; -o-transform-origin: center top; transform-origin: center top; -ms-transform: scale(' + scale + '); -webkit-transform: scale3d(' + scale + ', 1); -moz-transform: scale(' + scale + '); -o-transform: scale(' + scale + '); transform: scale3d(' + scale + "," + scale + ',0);');
+		    }
 		}
 	</script>
 </div>
