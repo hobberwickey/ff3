@@ -1,0 +1,10 @@
+<signup-form></signup-form>
+
+<script>
+	window.addEventListener("polymer-ready", function(){
+		var d = JSON.parse('<%= @user.blank? ? {}.to_json : @user.to_json( :only => [:first_name, :last_name, :email] ) %>'),
+			form = document.querySelector("signup-form");
+
+		form.loadData(d);
+	})
+</script>

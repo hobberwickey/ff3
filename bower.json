@@ -1,0 +1,29 @@
+{
+  "name": "inventory-importer",
+  "version": "0.0.0",
+  "directory": "public/components",
+  "authors": [
+    "Joel Weber <hobberwickey@gmail.com>"
+  ],
+  "description": "Mot inventory importer",
+  "main": "application.rb",
+  "moduleType": [
+    "es6"
+  ],
+  "keywords": [
+    "Inventory"
+  ],
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#~0.5.4",
+    "polymer-rails-forms": "~0.1.10"
+  }
+}

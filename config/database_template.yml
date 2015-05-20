@@ -1,0 +1,10 @@
+# copy this and name it database.yml then fill in your DB data
+development:
+    adapter: postgresql
+    encoding: utf8
+    reconnect: false
+    database: mot
+    host: localhost
+    pool: 5
+    username: uname  
+    password: pass

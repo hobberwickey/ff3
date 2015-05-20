@@ -1,0 +1,11 @@
+<user-form userId="<%= params[:id] %>"></user-form>
+
+<script>
+	document.querySelector("user-form").addEventListener('stores-available', function(){
+		var userData = JSON.parse('<%= @user.to_json(:only => [:first_name, :last_name], :include => :user_access) %>'),
+			form = document.querySelector("user-form");
+
+		console.log(userData);
+		form.loadData(userData);
+	}, false)
+</script>

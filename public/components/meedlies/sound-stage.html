@@ -1,0 +1,128 @@
+<polymer-element name="sound-stage">
+<template>
+  <style>
+    canvas {
+      background-color: #ccf;
+      margin: 50px;
+    }
+  </style>
+  <div>
+    <input type='text' value="{{ hz }}" />
+    <paper-button id='test'>Play</paper-button>
+  </div>
+
+  <canvas id='expectedGraph' width='1024' height='64'></canvas>
+  <canvas id='actualGraph' width='1024' height='64'></canvas>
+
+</template>
+<script>
+  Polymer('sound-stage', {
+    ctx: null,
+    expected: null,
+    actual: null,
+
+    expectedCtx: null,
+    actualCtx: null,
+    hz: 440,
+
+    domReady: function(){
+      try {
+        var audioContext = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new audioContext();
+      } catch(e) {
+        //Browser doesn't support Web Audio API
+      } 
+
+      this.expected = this.ctx.createBuffer(1, 44100, 44100)
+      
+      this.$.test.addEventListener('click', function(){
+        this.expectedCtx.clearRect(0, 0, this.expectedCtx.canvas.width, this.expectedCtx.canvas.height)
+        this.produceTone(this.hz, this.expected.getChannelData(0));
+        this.graphOutput();
+      }.bind(this), false)
+
+      this.expectedCtx = this.$.expectedGraph.getContext('2d');
+      this.actualCtx = this.$.actualGraph.getContext('2d');   
+
+      if (!navigator.getUserMedia)
+              navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
+                            navigator.mozGetUserMedia || navigator.msGetUserMedia;
+       
+      if (navigator.getUserMedia){
+          navigator.getUserMedia({audio:true}, this.micData.bind(this), function(e) {
+          alert('Error capturing audio.');
+          });
+      } else alert('getUserMedia not supported in this browser.');           
+    },
+
+    produceTone: function(hz, buffer){
+      var dist = 44100 / hz,
+          change = (Math.PI * 2) / dist;
+
+      var cntr = 0;
+      for (var i=0; i<hz; i++){
+        for (var j=0; j<dist; j++){
+          buffer[cntr] = Math.sin(j * change);
+          cntr++;
+        }
+      }
+    },
+
+    graphPos: 0,
+    graphOutput: function(){
+      var processor = this.ctx.createScriptProcessor(1024, 1, 1);
+          processor.onaudioprocess = function(e){
+            var input = e.inputBuffer.getChannelData(0),
+                output = e.outputBuffer.getChannelData(0),
+                max = this.expectedCtx.canvas.width;
+
+            for (var i=0; i<input.length; i++) {
+              //console.log("what the hell?")
+              if (i < max){
+                this.expectedCtx.fillRect(this.graphPos, (input[i] * 32) + 32, 1, 1);
+                this.graphPos++    
+              }
+
+              output[i] = input[i];
+            }
+          }.bind(this);
+
+      var source = this.ctx.createBufferSource();
+          source.buffer = this.expected;
+          source.connect(processor);
+          processor.connect(this.ctx.destination);
+          //source.connect(this.ctx.destination);
+          source.start();
+
+          source.onended = function() {
+            source.disconnect(processor);
+            processor.disconnect(this.ctx.destination);
+            this.graphPos = 0;
+          }.bind(this);
+    },
+
+    micData: function success(e){
+      volume = this.ctx.createGain();
+      micStream = this.ctx.createMediaStreamSource(e);
+      micStream.connect(volume);
+   
+      var mic = this.ctx.createScriptProcessor(1024, 1, 1)
+      
+
+      mic.onaudioprocess = function(e){
+          var input = e.inputBuffer.getChannelData(0),
+              output = e.outputBuffer.getChannelData(0);
+
+          this.actualCtx.clearRect(0, 0, this.actualCtx.canvas.width, this.actualCtx.canvas.height)
+          for (var i=0; i<input.length; i++) {
+            this.actualCtx.fillRect(i, (input[i] * 32) + 32, 1, 1);
+            output[i] = 0;
+          }
+      }.bind(this)
+   
+      volume.connect (mic);
+      mic.connect(this.ctx.destination); 
+    }
+  })
+</script>
+</polymer-element>

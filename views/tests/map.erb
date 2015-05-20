@@ -1,0 +1,237 @@
+<div>
+	<canvas id='screen' width='512' height='512' style='transform: translate3d(0,0,0)'></canvas>
+
+	<div id='drawTime'></div>
+	
+	<script>
+		var palette = <%= @map.palette.as_json %>,
+		 	tiles = JSON.parse('<%= @map.tiles.to_json %>'),
+		 	map_data = <%= @map.layer_data.as_json %>,
+		 	dimensions = JSON.parse('<%= @map.info.dimensions.to_json %>'),
+		 	fps = 1000 / <%= params[:fps].blank? ? 24 : params[:fps].to_i %>
+
+		var ctx, dataObj, data, layers, scrollPos, scrollSpeed, animated_frame;
+		var scrollL = scrollR = scrollU = scrollD = false;
+
+		document.addEventListener("polymer-ready", function(){
+		 	ctx = document.querySelector("#screen").getContext("2d"),
+			dataObj = ctx.getImageData(0,0,512,512),
+			data = dataObj.data;
+
+			layers = [
+				{ data: tiles[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
+				{ data: tiles[1].p, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 },
+				{ data: tiles[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
+				{ data: tiles[1].r, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 }
+			]
+
+			scrollPos = {
+				x: 0,
+				y: 0,
+				x_offset: 0,
+				y_offset: 0
+			}
+
+			animated_frame = 0;
+
+			setInterval(function(){
+				animated_frame++;
+				if (animated_frame >= 4) animated_frame = 0;
+			}, 100)
+
+			var test = document.querySelector("#drawTime");
+			
+			loop();
+			var start = Date.now();
+			function loop() {
+				if (Date.now() - start > fps){ //24 FPS
+					var fps_counter = Date.now();
+					drawMap();
+					start = Date.now();
+					test.innerHTML = (Date.now() - fps_counter) + " milliseconds to draw frame"
+				}
+
+				window.requestAnimationFrame(loop);
+			}
+
+			window.addEventListener("keydown", function(e){
+				if (e.keyCode === 37){
+					scrollLeft(); scrollL = true;
+				} else if (e.keyCode === 38) {
+					scrollUp(); scrollU = true;
+				} else if (e.keyCode === 39) {
+					scrollRight(); scrollR = true;
+				} else if (e.keyCode === 40) {
+					scrollDown(); scrollD = true;
+				}
+			}, false)
+
+			window.addEventListener("keyup", function(e){
+				if (e.keyCode === 37){
+					scrollL = false;
+				} else if (e.keyCode === 38) {
+					scrollU = false;
+				} else if (e.keyCode === 39) {
+					scrollR = false;
+				} else if (e.keyCode === 40) {
+					scrollD = false;
+				}
+			}, false)
+		})
+
+		function scrollLeft(){
+			if (scrollL || scrollR || scrollPos.x === 0) return
+
+			scrollPos.x_offset = 14;
+			scrollPos.x -= 1;
+
+			var t = setInterval(function(){
+				scrollPos.x_offset -= 2;
+
+				if (scrollPos.x_offset <= 0){
+					if (scrollL === false || scrollPos.x === 0){ 
+						scrollPos.x_offset = 0
+						clearInterval(t);
+					} else {
+						scrollPos.x_offset = 14;
+						scrollPos.x -= 1;
+					}
+				}
+			}, 20);
+		}
+
+		function scrollRight(){
+			if (scrollL || scrollR || scrollPos.x + 16 > dimensions[0].x) return
+
+			scrollPos.x_offset += 2
+			var t = setInterval(function(){
+				scrollPos.x_offset += 2;
+
+				if (scrollPos.x_offset >= 16){
+					scrollPos.x_offset = 0;
+					scrollPos.x += 1;
+					if (scrollR === false || scrollPos.x + 16 > dimensions[0].x) clearInterval(t);
+				}
+			}, 20);
+		}
+
+		function scrollUp(){
+			if (scrollU || scrollD || scrollPos.y === 0) return
+
+			scrollPos.y_offset = 14;
+			scrollPos.y -= 1;
+
+			var t = setInterval(function(){
+				scrollPos.y_offset -= 2;
+
+				if (scrollPos.y_offset <= 0){
+					if (scrollU === false || scrollPos.y === 0){ 
+						scrollPos.y_offset = 0
+						clearInterval(t);
+					} else {
+						scrollPos.y_offset = 14;
+						scrollPos.y -= 1;
+					}
+				}
+			}, 20);
+		}
+
+		function scrollDown(){
+			if (scrollU || scrollD || scrollPos.y + 16 > dimensions[0].y) return
+
+			scrollPos.y_offset += 2
+			var t = setInterval(function(){
+				scrollPos.y_offset += 2;
+
+				if (scrollPos.y_offset >= 16){
+					scrollPos.y_offset = 0;
+					scrollPos.y += 1;
+					if (scrollD === false || scrollPos.y + 16 > dimensions[0].y) clearInterval(t);
+				}
+			}, 20);
+		}
+
+		function drawMap(){
+			//var start = Date.now();
+
+			var layers_len = layers.length;
+
+			for (var i=0; i<256; i++){
+				var x_offset = (i % 16) * 16,
+						y_offset = ((i / 16) | 0) * 16
+				
+				for (var j=0; j<256; j++){
+					var x = (j % 16) + x_offset,
+							y = ((j / 16) | 0) + y_offset;
+
+					var pixel, index = (x * 8) + ((y * 2) * 2048);
+					
+					for (var z=0; z<layers_len;z++){
+						var layer = layers[z];
+
+						var map_x = (x_offset / 16) + layer.x + scrollPos.x,
+								map_y = (y_offset / 16) + layer.y + scrollPos.y;
+
+						var overflow_x = (j % 16) + layer.x_offset + scrollPos.x_offset > 15,
+								overflow_y = j + ((layer.y_offset + scrollPos.y_offset) * 16) > 255,
+								pixel_offset = j + layer.x_offset + scrollPos.x_offset + ((layer.y_offset + scrollPos.y_offset) * 16);
+
+					 		
+					 		map_x += overflow_x ? 1 : 0;
+					 		map_y += overflow_y ? 1 : 0;
+
+					 		pixel_offset -= overflow_x ? 16 : 0;
+					 		pixel_offset -= overflow_y ? 256 : 0;
+
+					 	var map_index = (map_x % dimensions[layer.index].x) + ((map_y % dimensions[layer.index].y) * dimensions[layer.index].x),
+					 			tile_index = map_data[layer.index][map_index],
+					 			tile_data = layer.data[tile_index];
+
+					 	if (tile_data.length > 256){ 
+					 		var animated_offset = pixel_offset + (256 * animated_frame);
+					 	} else {
+					 		var animated_offset = pixel_offset
+					 	}
+
+					 	var color_index = !tile_data[animated_offset] ? tile_data[pixel_offset] : tile_data[animated_offset];
+
+				 	 	pixel = palette[color_index];
+						if( pixel[3] === 255 ) break;
+						
+					}
+				
+					drawPixel(data, pixel, index)
+				}
+			}
+
+			ctx.putImageData(dataObj, 0, 0)
+		}
+
+		//TODO: be able to set width. Needed for mode7
+		function drawPixel(data, pal, index){
+			data[index] = pal[0]
+			data[index + 1] = pal[1]
+			data[index + 2] = pal[2]
+			data[index + 3] = pal[3]
+
+			data[index + 4] = pal[0]
+			data[index + 5] = pal[1]
+			data[index + 6] = pal[2]
+			data[index + 7] = pal[3]
+
+			data[index + 2048] = pal[0]
+			data[index + 2049] = pal[1]
+			data[index + 2050] = pal[2]
+			data[index + 2051] = pal[3]
+
+			data[index + 2052] = pal[0]
+			data[index + 2053] = pal[1]
+			data[index + 2054] = pal[2]
+			data[index + 2055] = pal[3]
+		}
+
+		function palToString(pal){
+			return "rgba(" + pal[0] + "," + pal[1] + "," + pal[2] + "," + pal[3] + ")";
+		}
+	</script>
+</div>

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Meedlies</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <%= stylesheets %>
+    <%= javascripts %>
+    <link rel="icon" type="/image/ico" href="/public/favicon.ico" />
+    <link rel="import" href="/components/import.html" />
+
+    <script>
+      
+    </script>
+  </head>
+  <body fullbleed vertical layout>
+    <%= yield %>
+
+    <% flash.each do |name, msg| %>
+      <% if ["notice", "alert", "error"].include? name.to_s %>
+        <% unless msg.blank? %>
+          <paper-toast text="<%= msg %>" id="paper_toast" class="core-transition core-transition-bottom gc-toast" touch-action="none"></paper-toast>
+        <% end %>
+      <% end %>
+    <% end %>
+  </body>
+</html>
