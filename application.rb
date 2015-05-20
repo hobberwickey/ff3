@@ -27,8 +27,8 @@ class Application < Sinatra::Base
 
 
   #register Sinatra::R18n
-  register Sinatra::Partial
-  register Sinatra::Flash
+  #register Sinatra::Partial
+  #register Sinatra::Flash
   
   get "/" do
     @map_info = MapInfo.new :map_index => params[:map].to_i
