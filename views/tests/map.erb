@@ -4,9 +4,9 @@
 	<div id='drawTime'></div>
 	
 	<script>
-		var palette = <%= @map.palette.as_json %>,
+		var palette = JSON.parse('<%= @map.palette.as_json %>'),
 		 	tiles = JSON.parse('<%= @map.tiles.to_json %>'),
-		 	map_data = <%= @map.layer_data.as_json %>,
+		 	map_data = JSON.parse('<%= @map.layer_data.as_json %>'),
 		 	dimensions = JSON.parse('<%= @map.info.dimensions.to_json %>'),
 		 	fps = 1000 / <%= params[:fps].blank? ? 24 : params[:fps].to_i %>
 
