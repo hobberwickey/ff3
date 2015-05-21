@@ -1,65 +1,14 @@
-module Utils
-  def get_bytes(offset, format)
-    Application::FF3.unpack("@#{offset}#{format}")[0]
-  end
-
-  def get_pointer(offset)
-    get_bytes(offset, "S") + (get_bytes(offset + 2, "C") << 16)
-  end
-
-  def decompress(offset, max=8192)
-    output = []
-    len = get_bytes(offset, "S")
-    pos = offset + 2
-    window = 0
-
-    loop do
-      flag_byte = get_bytes(pos, "C")
-      pos += 1
-
-      8.times do |i|
-        if (flag_byte & (1 << i)) >> i == 1
-          break if pos - offset >= len
-
-          output << get_bytes(pos, "C")
-          pos += 1
-          window += 1
-        else
-          break if pos - offset >= len
-
-          info = get_bytes(pos, "S")
-          bytes_to_fetch = ((info & (31 << 11)) >> 11) + 3
-          fetch_offset = (info & 2047) - 2014
-          
-          loop do
-            break if fetch_offset + 2048 >= window 
-            fetch_offset += 2048
-          end
-
-          bytes_to_fetch.times do |j|
-            break if window > max
-            output << (fetch_offset + j < 0 ? 0 : output[fetch_offset + j])
-
-            window += 1
-          end
-
-          pos += 2
-        end
-      end
-
-      break if pos - offset >= len
-    end
-
-    return output
-  end
-end
-
+require_relative "utils"
+require_relative "sprites"
 
 class Map
   include Utils
 
+  attr_accessor :map_info, :sprite_info
+
   def initialize(args = {})
     @map_info = args[:map_info] || nil
+    @sprite_info = Sprites.new(self)
   end
 
   def info
@@ -103,7 +52,7 @@ class Map
     animated_pointers_2 = []
     4.times do |j|
       frames = []
-      16.times do |i|
+      32.times do |i|
         offset = get_bytes(37889 + (animated_pointer_1) + (i * 10) + (j * 2), "S")
         4.times do |k|
           frames << offset + 2490880 + (k * 32)

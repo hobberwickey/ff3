@@ -1,257 +1,293 @@
 <div>
-	
-	<canvas id='screen' width='512' height='512' style='transform: translate3d(0,0,0);'></canvas>
-	<div id='drawTime'></div>
-	
-	<script>
-		var palette = JSON.parse('<%= @map.palette.to_json %>'),
-		 	tiles = JSON.parse('<%= @map.tiles.to_json %>'),
-		 	map_data = JSON.parse('<%= @map.layer_data.to_json %>'),
-		 	dimensions = JSON.parse('<%= @map.info.dimensions.to_json %>'),
-		 	fps = 1000 / <%= params[:fps].blank? ? 24 : params[:fps].to_i %>
+  
+  <canvas id='screen' width='512' height='512' style='transform: translate3d(0,0,0);'></canvas>
+  <div id='drawTime'></div>
+  
+  <script>
+    var palette = JSON.parse('<%= @map.palette.to_json %>'),
+      tiles = JSON.parse('<%= @map.tiles.to_json %>'),
+      map_data = JSON.parse('<%= @map.layer_data.to_json %>'),
+      dimensions = JSON.parse('<%= @map.info.dimensions.to_json %>'),
+      sprites = JSON.parse('<%= @map.sprite_info.to_json %>'),
+      fps = 1000 / <%= params[:fps].blank? ? 24 : params[:fps].to_i %>
 
-		var ctx, dataObj, data, layers, scrollPos, scrollSpeed, animated_frame;
-		var scrollL = scrollR = scrollU = scrollD = false;
+    console.log(sprites)
+    var ctx, dataObj, data, layers, scrollPos, scrollSpeed, animated_frame;
+    var scrollL = scrollR = scrollU = scrollD = false;
 
-		// document.addEventListener("polymer-ready", function(){
-	 	ctx = document.querySelector("#screen").getContext("2d"),
-		dataObj = ctx.getImageData(0,0,512,512),
-		data = dataObj.data;
+    // document.addEventListener("polymer-ready", function(){
+    ctx = document.querySelector("#screen").getContext("2d"),
+    dataObj = ctx.getImageData(0,0,512,512),
+    data = dataObj.data;
 
-		//fullscreenify(ctx.canvas);
+    //fullscreenify(ctx.canvas);
 
-		layers = [
-			{ data: tiles[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
-			{ data: tiles[1].p, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 },
-			{ data: tiles[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
-			{ data: tiles[1].r, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 }
-		]
+    layers = [
+      { data: tiles[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
+      { data: tiles[1].p, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 },
+      { data: tiles[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
+      { data: tiles[1].r, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 }
+    ]
 
-		scrollPos = {
-			x: 0,
-			y: 0,
-			x_offset: 0,
-			y_offset: 0
-		}
+    scrollPos = {
+      x: 0,
+      y: 0,
+      x_offset: 0,
+      y_offset: 0
+    }
 
-		animated_frame = 0;
+    animated_frame = 0;
 
-		setInterval(function(){
-			animated_frame++;
-			if (animated_frame >= 4) animated_frame = 0;
-		}, 100)
+    setInterval(function(){
+      animated_frame++;
+      if (animated_frame >= 4) animated_frame = 0;
+    }, 100)
 
-		var test = document.querySelector("#drawTime");
-		
-		loop();
-		//var start = Date.now();
-		function loop() {
-			//if (Date.now() - start > fps){ //24 FPS
-				var fps_counter = Date.now();
-				drawMap();
-				//start = Date.now();
-				test.innerHTML = (Date.now() - fps_counter) + " milliseconds to draw frame"
-			//}
+    var test = document.querySelector("#drawTime");
+    
+    loop();
+    
+    //var start = Date.now();
+    function loop() {
+      //if (Date.now() - start > fps){ //24 FPS
+        var fps_counter = Date.now();
+        ctx.putImageData(dataObj, 0, 0)
+        drawMap();
+        drawSprites();
+        //start = Date.now();
+        test.innerHTML = (Date.now() - fps_counter) + " milliseconds to draw frame"
+      //}
 
-			window.requestAnimationFrame(loop);
-		}
+      window.requestAnimationFrame(loop);
+    }
 
-		window.addEventListener("keydown", function(e){
-			if (e.keyCode === 37){
-				scrollLeft(); scrollL = true;
-			} else if (e.keyCode === 38) {
-				scrollUp(); scrollU = true;
-			} else if (e.keyCode === 39) {
-				scrollRight(); scrollR = true;
-			} else if (e.keyCode === 40) {
-				scrollDown(); scrollD = true;
-			}
-		}, false)
+    window.addEventListener("keydown", function(e){
+      if (e.keyCode === 37){
+        scrollLeft(); scrollL = true;
+      } else if (e.keyCode === 38) {
+        scrollUp(); scrollU = true;
+      } else if (e.keyCode === 39) {
+        scrollRight(); scrollR = true;
+      } else if (e.keyCode === 40) {
+        scrollDown(); scrollD = true;
+      }
+    }, false)
 
-		window.addEventListener("keyup", function(e){
-			if (e.keyCode === 37){
-				scrollL = false;
-			} else if (e.keyCode === 38) {
-				scrollU = false;
-			} else if (e.keyCode === 39) {
-				scrollR = false;
-			} else if (e.keyCode === 40) {
-				scrollD = false;
-			}
-		}, false)
-		// })
+    window.addEventListener("keyup", function(e){
+      if (e.keyCode === 37){
+        scrollL = false;
+      } else if (e.keyCode === 38) {
+        scrollU = false;
+      } else if (e.keyCode === 39) {
+        scrollR = false;
+      } else if (e.keyCode === 40) {
+        scrollD = false;
+      }
+    }, false)
+    // })
 
-		function scrollLeft(){
-			if (scrollL || scrollR || scrollPos.x === 0) return
+    function scrollLeft(){
+      if (scrollL || scrollR || scrollPos.x === 0) return
 
-			scrollPos.x_offset = 14;
-			scrollPos.x -= 1;
+      scrollPos.x_offset = 14;
+      scrollPos.x -= 1;
 
-			var t = setInterval(function(){
-				scrollPos.x_offset -= 2;
+      var t = setInterval(function(){
+        scrollPos.x_offset -= 2;
 
-				if (scrollPos.x_offset <= 0){
-					if (scrollL === false || scrollPos.x === 0){ 
-						scrollPos.x_offset = 0
-						clearInterval(t);
-					} else {
-						scrollPos.x_offset = 14;
-						scrollPos.x -= 1;
-					}
-				}
-			}, 20);
-		}
+        if (scrollPos.x_offset <= 0){
+          if (scrollL === false || scrollPos.x === 0){ 
+            scrollPos.x_offset = 0
+            clearInterval(t);
+          } else {
+            scrollPos.x_offset = 14;
+            scrollPos.x -= 1;
+          }
+        }
+      }, 20);
+    }
 
-		function scrollRight(){
-			if (scrollL || scrollR || scrollPos.x + 16 > dimensions[0].x) return
+    function scrollRight(){
+      if (scrollL || scrollR || scrollPos.x + 16 > dimensions[0].x) return
 
-			scrollPos.x_offset += 2
-			var t = setInterval(function(){
-				scrollPos.x_offset += 2;
+      scrollPos.x_offset += 2
+      var t = setInterval(function(){
+        scrollPos.x_offset += 2;
 
-				if (scrollPos.x_offset >= 16){
-					scrollPos.x_offset = 0;
-					scrollPos.x += 1;
-					if (scrollR === false || scrollPos.x + 16 > dimensions[0].x) clearInterval(t);
-				}
-			}, 20);
-		}
+        if (scrollPos.x_offset >= 16){
+          scrollPos.x_offset = 0;
+          scrollPos.x += 1;
+          if (scrollR === false || scrollPos.x + 16 > dimensions[0].x) clearInterval(t);
+        }
+      }, 20);
+    }
 
-		function scrollUp(){
-			if (scrollU || scrollD || scrollPos.y === 0) return
+    function scrollUp(){
+      if (scrollU || scrollD || scrollPos.y === 0) return
 
-			scrollPos.y_offset = 14;
-			scrollPos.y -= 1;
+      scrollPos.y_offset = 14;
+      scrollPos.y -= 1;
 
-			var t = setInterval(function(){
-				scrollPos.y_offset -= 2;
+      var t = setInterval(function(){
+        scrollPos.y_offset -= 2;
 
-				if (scrollPos.y_offset <= 0){
-					if (scrollU === false || scrollPos.y === 0){ 
-						scrollPos.y_offset = 0
-						clearInterval(t);
-					} else {
-						scrollPos.y_offset = 14;
-						scrollPos.y -= 1;
-					}
-				}
-			}, 20);
-		}
+        if (scrollPos.y_offset <= 0){
+          if (scrollU === false || scrollPos.y === 0){ 
+            scrollPos.y_offset = 0
+            clearInterval(t);
+          } else {
+            scrollPos.y_offset = 14;
+            scrollPos.y -= 1;
+          }
+        }
+      }, 20);
+    }
 
-		function scrollDown(){
-			if (scrollU || scrollD || scrollPos.y + 16 > dimensions[0].y) return
+    function scrollDown(){
+      if (scrollU || scrollD || scrollPos.y + 16 > dimensions[0].y) return
 
-			scrollPos.y_offset += 2
-			var t = setInterval(function(){
-				scrollPos.y_offset += 2;
+      scrollPos.y_offset += 2
+      var t = setInterval(function(){
+        scrollPos.y_offset += 2;
 
-				if (scrollPos.y_offset >= 16){
-					scrollPos.y_offset = 0;
-					scrollPos.y += 1;
-					if (scrollD === false || scrollPos.y + 16 > dimensions[0].y) clearInterval(t);
-				}
-			}, 20);
-		}
+        if (scrollPos.y_offset >= 16){
+          scrollPos.y_offset = 0;
+          scrollPos.y += 1;
+          if (scrollD === false || scrollPos.y + 16 > dimensions[0].y) clearInterval(t);
+        }
+      }, 20);
+    }
 
-		function drawMap(){
-			//var start = Date.now();
+    function drawMap(){
+      //var start = Date.now();
 
-			var layers_len = layers.length;
+      var layers_len = layers.length;
 
-			for (var i=0; i<256; i++){
-				var x_offset = (i & 15) << 4,
-						y_offset = (i >> 4) << 4
-				
-				for (var j=0; j<256; j++){
-					var x = (j & 15) + x_offset,
-							y = (j >> 4) + y_offset;
+      for (var i=0; i<256; i++){
+        var x_offset = (i & 15) << 4,
+            y_offset = (i >> 4) << 4
+        
+        for (var j=0; j<256; j++){
+          var x = (j & 15) + x_offset,
+              y = (j >> 4) + y_offset;
 
-					var pixel, index = (x << 3) + ((y << 1) << 11);
-					
-					for (var z=0; z<layers_len;z++){
-						var layer = layers[z];
+          var pixel, index = (x << 3) + ((y << 1) << 11);
+          
+          for (var z=0; z<layers_len;z++){
+            var layer = layers[z];
 
-						var map_x = (x_offset >> 4) + layer.x + scrollPos.x,
-								map_y = (y_offset >> 4) + layer.y + scrollPos.y;
+            var map_x = (x_offset >> 4) + layer.x + scrollPos.x,
+                map_y = (y_offset >> 4) + layer.y + scrollPos.y;
 
-						//TODO: Get ride of the greater than checks
-						var overflow_x = ((j & 15) + layer.x_offset + scrollPos.x_offset > 15) | 0,
-								overflow_y = (j + ((layer.y_offset + scrollPos.y_offset) << 4) > 255) | 0,
-								pixel_offset = j + layer.x_offset + scrollPos.x_offset + ((layer.y_offset + scrollPos.y_offset) << 4);
+            //TODO: Get ride of the greater than checks
+            var overflow_x = ((j & 15) + layer.x_offset + scrollPos.x_offset > 15) | 0,
+                overflow_y = (j + ((layer.y_offset + scrollPos.y_offset) << 4) > 255) | 0,
+                pixel_offset = j + layer.x_offset + scrollPos.x_offset + ((layer.y_offset + scrollPos.y_offset) << 4);
 
-					 		
-			 			map_x += overflow_x;
-			 		 	map_y += overflow_y;
+              
+            map_x += overflow_x;
+            map_y += overflow_y;
 
-			 			pixel_offset -= overflow_x << 4;
-			 			pixel_offset -= overflow_y << 8;
+            pixel_offset -= overflow_x << 4;
+            pixel_offset -= overflow_y << 8;
 
-					 	var map_index = (map_x & (dimensions[layer.index].x - 1)) + ((map_y & (dimensions[layer.index].y - 1)) * dimensions[layer.index].x),
-					 			tile_index = map_data[layer.index][map_index],
-					 			tile_data = layer.data[tile_index];
+            var map_index = (map_x & (dimensions[layer.index].x - 1)) + ((map_y & (dimensions[layer.index].y - 1)) * dimensions[layer.index].x),
+                tile_index = map_data[layer.index][map_index],
+                tile_data = layer.data[tile_index];
 
-					 	var animated_offset = pixel_offset + (256 * animated_frame),
-					 			color_index = !tile_data[animated_offset] ? tile_data[pixel_offset] : tile_data[animated_offset];
+            var animated_offset = pixel_offset + (256 * animated_frame),
+                color_index = !tile_data[animated_offset] ? tile_data[pixel_offset] : tile_data[animated_offset];
 
-				 	 	pixel = palette[color_index];
-						if( pixel[3] === 255 ) break;
-					}
-				
-					drawPixel(data, pixel, index)
-				}
-			}
+            pixel = palette[color_index];
+            if( pixel[3] === 255 ) break;
+          }
+        
+          drawPixel(data, pixel, index)
+        }
+      }
+    }
 
-			ctx.putImageData(dataObj, 0, 0)
-		}
+    function drawSprites(){
+      mapBounds = {
+        x1: (scrollPos.x << 4) + scrollPos.x_offset,
+        x2: (scrollPos.x << 4) + scrollPos.x_offset + 256,
+        y1: (scrollPos.y << 4) + scrollPos.y_offset,
+        y2: (scrollPos.y << 4) + scrollPos.y_offset + 256,
 
-		//TODO: be able to set width. Needed for mode7
-		function drawPixel(data, pal, index){
-			data[index] = pal[0]
-			data[index + 1] = pal[1]
-			data[index + 2] = pal[2]
-			data[index + 3] = pal[3]
+      }
 
-			data[index + 4] = pal[0]
-			data[index + 5] = pal[1]
-			data[index + 6] = pal[2]
-			data[index + 7] = pal[3]
+      for (var i=0; i<sprites.length; i++){
+        var sprite = sprites[i],
+          back_edge = (sprite.coords.x << 4) + sprite.coords.x_offset,
+          top_edge = (sprite.coords.y << 4) + sprite.coords.y_offset;
 
-			data[index + 2048] = pal[0]
-			data[index + 2049] = pal[1]
-			data[index + 2050] = pal[2]
-			data[index + 2051] = pal[3]
+        if (back_edge + 16 > mapBounds.x1 && back_edge < mapBounds.x2 && top_edge + 24 > mapBounds.y1 && top_edge < mapBounds.y2){
+          for (var y=0; y<24; y++){
+            for (var x=0; x<16; x++){
+              var color = sprite.tiles[x + (y << 4)],
+                data_x = x + (back_edge - mapBounds.x1),
+                data_y = y + (top_edge - mapBounds.y1);
 
-			data[index + 2052] = pal[0]
-			data[index + 2053] = pal[1]
-			data[index + 2054] = pal[2]
-			data[index + 2055] = pal[3]
-		}
+              if (data_x < 0 || data_x > 255 || data_y < 0 || data_y > 255 || color[3] === 0) continue
 
-		function palToString(pal){
-			return "rgba(" + pal[0] + "," + pal[1] + "," + pal[2] + "," + pal[3] + ")";
-		}
+              var data_offset = ((data_x * 2) + ((data_y * 2) * 512)) * 4
+              drawPixel(data, color, data_offset)
+            }
+          }
+        }
+      }
 
-		function fullscreenify(canvas) {
-		    var style = canvas.getAttribute('style') || '';
-		    
-		    window.addEventListener('resize', function () {resize(canvas);}, false);
-		 
-		    resize(canvas);
-		 
-		    function resize(canvas) {
-		        var scale = {x: 1, y: 1};
-		        scale.x = (window.innerWidth - 10) / canvas.width;
-		        scale.y = (window.innerHeight - 10) / canvas.height;
-		        
-		        
-		        if (scale.x < scale.y) {
-		            scale = scale.x + ', ' + scale.x;
-		        } else {
-		            scale = scale.y + ', ' + scale.y;
-		        }
-		        
-		        canvas.setAttribute('style', style + ' ' + '-ms-transform-origin: center top; -webkit-transform-origin: center top; -moz-transform-origin: center top; -o-transform-origin: center top; transform-origin: center top; -ms-transform: scale(' + scale + '); -webkit-transform: scale3d(' + scale + ', 1); -moz-transform: scale(' + scale + '); -o-transform: scale(' + scale + '); transform: scale3d(' + scale + "," + scale + ',0);');
-		    }
-		}
-	</script>
+      //ctx.putImageData(dataObj, 0, 0)
+    }
+
+    //TODO: be able to set width. Needed for mode7
+    function drawPixel(data, pal, index){
+      data[index] = pal[0]
+      data[index + 1] = pal[1]
+      data[index + 2] = pal[2]
+      data[index + 3] = pal[3]
+
+      data[index + 4] = pal[0]
+      data[index + 5] = pal[1]
+      data[index + 6] = pal[2]
+      data[index + 7] = pal[3]
+
+      data[index + 2048] = pal[0]
+      data[index + 2049] = pal[1]
+      data[index + 2050] = pal[2]
+      data[index + 2051] = pal[3]
+
+      data[index + 2052] = pal[0]
+      data[index + 2053] = pal[1]
+      data[index + 2054] = pal[2]
+      data[index + 2055] = pal[3]
+    }
+
+    function palToString(pal){
+      return "rgba(" + pal[0] + "," + pal[1] + "," + pal[2] + "," + pal[3] + ")";
+    }
+
+    function fullscreenify(canvas) {
+        var style = canvas.getAttribute('style') || '';
+        
+        window.addEventListener('resize', function () {resize(canvas);}, false);
+     
+        resize(canvas);
+     
+        function resize(canvas) {
+            var scale = {x: 1, y: 1};
+            scale.x = (window.innerWidth - 10) / canvas.width;
+            scale.y = (window.innerHeight - 10) / canvas.height;
+            
+            
+            if (scale.x < scale.y) {
+                scale = scale.x + ', ' + scale.x;
+            } else {
+                scale = scale.y + ', ' + scale.y;
+            }
+            
+            canvas.setAttribute('style', style + ' ' + '-ms-transform-origin: center top; -webkit-transform-origin: center top; -moz-transform-origin: center top; -o-transform-origin: center top; transform-origin: center top; -ms-transform: scale(' + scale + '); -webkit-transform: scale3d(' + scale + ', 1); -moz-transform: scale(' + scale + '); -o-transform: scale(' + scale + '); transform: scale3d(' + scale + "," + scale + ',0);');
+        }
+    }
+  </script>
 </div>
