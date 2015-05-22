@@ -18,6 +18,8 @@ class Sprites
       9.times do |j|
         npc_bytes << get_bytes(269328 + map_npc_start_pointer + (i * 9) + j, "C")  
       end
+
+      puts npc_bytes if i == 8
       
       @sprites << Sprite.new(npc_bytes)
     end
@@ -41,9 +43,20 @@ class Sprite
   def to_json
     {
       :coords => { :x => self.x_loc, :y => self.y_loc, :x_offset => 0, :y_offset => 0 },
-      :spite_index => self.gfx_set,
-      :tiles => self.gfx
+      :sprite_index => self.gfx_set,
+      :pal => self.pal,
+      :tiles => self.gfx,
+      :event_address => self.event_address,
+      :priority => 2
     }
+  end
+
+  def event_address
+    ((@bytes[2] & 3) * 65536) + (@bytes[1] * 256) + @bytes[0] + 655871
+  end
+
+  def pal
+    @pal ||= (@bytes[2] & 28) / 3
   end
 
   def x_loc
@@ -58,8 +71,10 @@ class Sprite
     @bytes[6]
   end
 
-  def gfx_index
-    @bytes[7] & 15
+  def movement
+    #3 = random (pseudo random)
+    #0 = standing still
+    @btyes[7] & 15
   end
 
   def walk_behind?
@@ -85,20 +100,21 @@ class Sprite
 
   def gfx
     return @gfx if defined? @gfx
-    # num_of_bytes = get_bytes(54332 + (self.gfx_set * 2), "S") & 16383
-    # num_of_tiles = num_of_bytes / 32
+    
     sprite_number = self.gfx_set
     bank_pointer = (get_bytes(54332 + (sprite_number * 2), "C") - 192) * 65536
-    gfx_pointer = get_bytes(54002 + (sprite_number * 2), "S") + bank_pointer
+    gfx_pointer = get_bytes(54002 + (sprite_number * 2), "S") + bank_pointer + 512
 
     @gfx = []
     
+    pal = self.pal
+
     6.times do |i|
       tile = []
 
-      h_flip = false,
-      v_flip = false,
-      pal = 4
+      h_flip = false
+      v_flip = false
+      
       tile_offset = gfx_pointer + (i * 32)
 
       x_offset = i % 2 == 0 ? 0 : 8
@@ -120,12 +136,10 @@ class Sprite
           x_index = h_flip ? x : x
           y_index = v_flip ? 7 - y : y
           color_index = (x_index + x_offset) + ((y_index + y_offset) * 16)
-            
+
           @gfx[color_index] = self.palettes[pal][color]
         end
-      end
-      
-      
+      end   
     end
   end
 

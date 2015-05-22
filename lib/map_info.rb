@@ -90,8 +90,11 @@ class Map
       tile_r, tile_p = assemble_chunk(tile_r, tile_p, chunk3, chunk3_info, tile_data_offsets, 0, 8, 2, i)
       tile_r, tile_p = assemble_chunk(tile_r, tile_p, chunk4, chunk4_info, tile_data_offsets, 8, 8, 3, i)
 
-      l1[:r] << tile_r 
-      l1[:p] << tile_p     
+      
+      
+
+      l1[:r] << tile_r.each_with_index.map { |x, i| x == nil ? tile_r[ i % 256] : x } 
+      l1[:p] << tile_p.each_with_index.map { |x, i| x == nil ? tile_p[ i % 256] : x }     
     end
 
     256.times do |i|
@@ -109,8 +112,8 @@ class Map
       tile_r, tile_p = assemble_chunk(tile_r, tile_p, chunk3, chunk3_info, tile_data_offsets, 0, 8, i)
       tile_r, tile_p = assemble_chunk(tile_r, tile_p, chunk4, chunk4_info, tile_data_offsets, 8, 8, i)
 
-      l2[:r] << tile_r 
-      l2[:p] << tile_p     
+      l2[:r] << tile_r.each_with_index.map { |x, i| x == nil ? tile_r[ i % 256] : x }
+      l2[:p] << tile_p.each_with_index.map { |x, i| x == nil ? tile_p[ i % 256] : x }
     end
 
     @tiles = [l1, l2, l3]
