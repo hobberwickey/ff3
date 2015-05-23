@@ -65,7 +65,7 @@ function checkActions(){
 /********************/
 function setupSpriteMovement(){
   for (var i=0; i<sprites.length; i++){
-    moveRandom(sprites[i])
+    //moveRandom(sprites[i])
   }
 }
 

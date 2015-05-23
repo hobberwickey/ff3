@@ -18,15 +18,28 @@ class Sprites
       9.times do |j|
         npc_bytes << get_bytes(269328 + map_npc_start_pointer + (i * 9) + j, "C")  
       end
-
-      puts npc_bytes if i == 8
       
       @sprites << Sprite.new(npc_bytes)
     end
   end
 
-  def to_json
-    @sprites.map { |s| s.to_json }.to_json
+  def sprites
+    @sprites.map { |s| s.to_json }
+  end
+
+  def sprite_positions
+    return @sprite_positions if defined? @sprite_positions
+
+    @sprite_positions = []
+    58.times do |i|
+      pos = []
+      6.times do |j|
+        pos << (get_bytes(53306 + (j* 2) + (i * 12), "S") / 32).to_i  
+      end
+      @sprite_positions << pos
+    end
+
+    return @sprite_positions
   end
 end
 
@@ -47,7 +60,9 @@ class Sprite
       :pal => self.pal,
       :tiles => self.gfx,
       :event_address => self.event_address,
-      :priority => 2
+      :priority => 2,
+      :position => 1,
+      :mirror => 0
     }
   end
 
@@ -109,16 +124,14 @@ class Sprite
     
     pal = self.pal
 
-    6.times do |i|
+    192.times do |i|
       tile = []
 
-      h_flip = false
-      v_flip = false
-      
       tile_offset = gfx_pointer + (i * 32)
 
-      x_offset = i % 2 == 0 ? 0 : 8
-      y_offset = ((i / 2) | 0) << 3
+      #x_offset = i % 2 == 0 ? 0 : 8
+      #y_offset = ((i / 2) | 0) << 3
+
 
       8.times do |y|
         byte1 = get_bytes(tile_offset + (y * 2), "C")
@@ -133,13 +146,12 @@ class Sprite
           color += ((byte3 & 1 << shift) >> shift) << 2
           color += ((byte4 & 1 << shift) >> shift) << 3
 
-          x_index = h_flip ? x : x
-          y_index = v_flip ? 7 - y : y
-          color_index = (x_index + x_offset) + ((y_index + y_offset) * 16)
-
-          @gfx[color_index] = self.palettes[pal][color]
+          color_index = (x) + (y * 8)
+          tile[color_index] = self.palettes[pal][color]
         end
-      end   
+      end 
+
+      @gfx << tile  
     end
   end
 

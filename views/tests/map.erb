@@ -9,8 +9,10 @@
         tiles = JSON.parse('<%= @map.tiles.to_json %>'),
         map_data = JSON.parse('<%= @map.layer_data.to_json %>'),
         dimensions = JSON.parse('<%= @map.info.dimensions.to_json %>'),
-        sprites = JSON.parse('<%= @map.sprite_info.to_json %>'),
+        sprites = JSON.parse('<%= @map.sprite_info.sprites.to_json %>'),
         paused = false,
+
+        SPRITE_POSITIONS = JSON.parse('<%= @map.sprite_info.sprite_positions.to_json %>')
         MAP_SIZE = [<%= @map.map_info.map_viewable_size[:x] %>, <%= @map.map_info.map_viewable_size[:y] %>]
 
     var ctx, dataObj, data, layers, scrollPos, scrollSpeed, animated_frame;
@@ -138,30 +140,41 @@
     }
 
     function drawSprites(){
-      mapBounds = {
-        x1: (scrollPos.x << 4) + scrollPos.x_offset,
-        x2: (scrollPos.x << 4) + scrollPos.x_offset + 256,
-        y1: (scrollPos.y << 4) + scrollPos.y_offset,
-        y2: (scrollPos.y << 4) + scrollPos.y_offset + 256,
+      var _sprites = sprites,
+          _scrollPos = scrollPos,
+          _spritePositions = SPRITE_POSITIONS;
+
+      var mapBounds = {
+        x1: (_scrollPos.x << 4) + _scrollPos.x_offset,
+        x2: (_scrollPos.x << 4) + _scrollPos.x_offset + 256,
+        y1: (_scrollPos.y << 4) + _scrollPos.y_offset,
+        y2: (_scrollPos.y << 4) + _scrollPos.y_offset + 256,
 
       }
 
-      for (var i=0; i<sprites.length; i++){
-        var sprite = sprites[i],
+      for (var i=0; i<_sprites.length; i++){
+        var sprite = _sprites[i],
           back_edge = (sprite.coords.x << 4) + sprite.coords.x_offset,
-          top_edge = ((sprite.coords.y - 1) << 4) + sprite.coords.y_offset;
+          top_edge = ((sprite.coords.y - 1) << 4) + sprite.coords.y_offset,
+          spritePos = _spritePositions[sprite.position];
 
         if (back_edge + 16 > mapBounds.x1 && back_edge < mapBounds.x2 && top_edge + 24 > mapBounds.y1 && top_edge < mapBounds.y2){
-          for (var y=0; y<24; y++){
-            for (var x=0; x<16; x++){
-              var color = sprite.tiles[x + (y << 4)],
-                data_x = x + (back_edge - mapBounds.x1),
-                data_y = y + (top_edge - mapBounds.y1);
+          for (var b=0; b<6; b++){
+            var x_offset = (b & 1) << 3,
+                y_offset = (b >> 1) << 3;
 
-              if (data_x < 0 || data_x > 255 || data_y < 0 || data_y > 255 || color[3] === 0) continue
+            for (var y=0; y<8; y++){
+              for (var x=0; x<8; x++){
+                var color = sprite.tiles[spritePos[b]][x + (y << 3)],
+                    x_pixel = sprite.mirror === 0 ? x + x_offset : 15 - (x + x_offset),
+                    data_x = (back_edge - mapBounds.x1) + x_pixel,
+                    data_y = (y + (top_edge - mapBounds.y1)) + y_offset;
 
-              var data_offset = ((data_x * 2) + ((data_y * 2) * 512)) * 4
-              if (pixelMap[data_x][data_y] <= sprite.priority) drawPixel(data, color, data_offset)
+                if (data_x < 0 || data_x > 255 || data_y < 0 || data_y > 255 || color[3] === 0) continue
+
+                var data_offset = ((data_x * 2) + ((data_y * 2) * 512)) * 4
+                if (pixelMap[data_x][data_y] <= sprite.priority) drawPixel(data, color, data_offset)
+              }
             }
           }
         }
