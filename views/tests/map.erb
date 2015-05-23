@@ -2,6 +2,7 @@
   
   <canvas id='screen' width='512' height='512' style='transform: translate3d(0,0,0);'></canvas>
   <div id='drawTime'></div>
+  <div id='stop'><a href='javascript:void(0)'>Stop</a></div>
   
   <script>
     var palette = JSON.parse('<%= @map.palette.to_json %>'),
@@ -9,7 +10,8 @@
         map_data = JSON.parse('<%= @map.layer_data.to_json %>'),
         dimensions = JSON.parse('<%= @map.info.dimensions.to_json %>'),
         sprites = JSON.parse('<%= @map.sprite_info.to_json %>'),
-        fps = 1000 / <%= params[:fps].blank? ? 24 : params[:fps].to_i %>;
+        paused = false,
+        MAP_SIZE = [<%= @map.map_info.map_viewable_size[:x] %>, <%= @map.map_info.map_viewable_size[:y] %>]
 
     var ctx, dataObj, data, layers, scrollPos, scrollSpeed, animated_frame;
     var scrollL = scrollR = scrollU = scrollD = false;
@@ -46,26 +48,40 @@
     setInterval(function(){
       animated_frame++;
       if (animated_frame >= 4) animated_frame = 0;
-    }, 100)
+    }, 10)
 
     var test = document.querySelector("#drawTime");
-    
-    loop();
-    
+  
     //var start = Date.now();
-    function loop() {
+    var timing = [ 
+      window.performance.now(), // start time
+      0, // frames
+      0, // last draw
+      0  // advanced
+    ]
+
+    function loop(timestamp) {
       //if (Date.now() - start > fps){ //24 FPS
-        var fps_counter = Date.now();
+        var t = timing;
+
         ctx.putImageData(dataObj, 0, 0)
+
+        checkActions();
         drawMap();
         drawSprites();
-        //start = Date.now();
-        test.innerHTML = (Date.now() - fps_counter) + " milliseconds to draw frame"
+        
+        t[1] = (timestamp - t[0]) >> 4;
+        t[3] = t[1] - t[2];
+        t[2] = t[1];
+
+        test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame " + t[3];
+        
       //}
-
-      window.requestAnimationFrame(loop);
+      if (!paused) window.requestAnimationFrame(loop);
     }
-
+    setupSpriteMovement();
+    loop();
+    
     function drawMap(){
       //var start = Date.now();
 
@@ -99,8 +115,10 @@
             pixel_offset -= overflow_x << 4;
             pixel_offset -= overflow_y << 8;
 
-            var map_index = (map_x & (dimensions[layer.index].x - 1)) + ((map_y & (dimensions[layer.index].y - 1)) * dimensions[layer.index].x),
-                tile_index = map_data[layer.index][map_index],
+            var map_size = dimensions,
+                map_index = (map_x & (map_size[layer.index].x - 1)) + ((map_y & (map_size[layer.index].y - 1)) * map_size[layer.index].x),
+                m_data = map_data,
+                tile_index = m_data[layer.index][map_index],
                 tile_data = layer.data[tile_index];
 
             var animated_offset = pixel_offset + (256 * animated_frame);
@@ -131,7 +149,7 @@
       for (var i=0; i<sprites.length; i++){
         var sprite = sprites[i],
           back_edge = (sprite.coords.x << 4) + sprite.coords.x_offset,
-          top_edge = (sprite.coords.y << 4) + sprite.coords.y_offset;
+          top_edge = ((sprite.coords.y - 1) << 4) + sprite.coords.y_offset;
 
         if (back_edge + 16 > mapBounds.x1 && back_edge < mapBounds.x2 && top_edge + 24 > mapBounds.y1 && top_edge < mapBounds.y2){
           for (var y=0; y<24; y++){
@@ -148,8 +166,6 @@
           }
         }
       }
-
-      //ctx.putImageData(dataObj, 0, 0)
     }
 
     //TODO: be able to set width. Needed for mode7
@@ -199,6 +215,15 @@
       }
     }, false)
     // })
+  
+    document.getElementById('stop').addEventListener("click", function(){
+      if (paused === true){
+        paused = false;
+        loop();
+      } else {
+        paused = true;
+      }
+    }, false)
 
     function scrollLeft(){
       if (scrollL || scrollR || scrollPos.x === 0) return
@@ -218,7 +243,7 @@
             scrollPos.x -= 1;
           }
         }
-      }, 20);
+      }, 10);
     }
 
     function scrollRight(){
@@ -233,7 +258,7 @@
           scrollPos.x += 1;
           if (scrollR === false || scrollPos.x + 16 > dimensions[0].x) clearInterval(t);
         }
-      }, 20);
+      }, 10);
     }
 
     function scrollUp(){
@@ -254,7 +279,7 @@
             scrollPos.y -= 1;
           }
         }
-      }, 20);
+      }, 10);
     }
 
     function scrollDown(){
@@ -269,7 +294,7 @@
           scrollPos.y += 1;
           if (scrollD === false || scrollPos.y + 16 > dimensions[0].y) clearInterval(t);
         }
-      }, 20);
+      }, 10);
     }
   </script>
 </div>
