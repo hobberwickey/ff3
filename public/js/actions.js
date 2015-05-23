@@ -65,7 +65,7 @@ function checkActions(){
 /********************/
 function setupSpriteMovement(){
   for (var i=0; i<sprites.length; i++){
-    //moveRandom(sprites[i])
+    moveRandom(sprites[i])
   }
 }
 
@@ -75,14 +75,66 @@ function moveRandom(sprite){
 
   var direction = Math.random() * 4 | 0,
       directions = [
-        moveSpriteLeft,
-        moveSpriteRight,
-        moveSpriteUp,
-        moveSpriteDown
+        walkLeft,
+        walkRight,
+        walkUp,
+        walkDown
       ]
 
   directions[direction](sprite, moveRandom);
 } 
+
+function walkLeft(sprite, callback){
+  moveSpriteLeft(sprite, callback);
+  sprite.mirror = 0
+  iterate(8, 2, function(){
+    if (sprite.position === 7){
+      sprite.position = sprite.lastStep === 0 ? 6 : 8;
+      sprite.lastStep = sprite.lastStep === 0 ? 1 : 0;
+    } else {
+      sprite.position = 7;
+    }
+  }, void(0), true)
+}
+
+function walkRight(sprite, callback){
+  moveSpriteRight(sprite, callback);
+  sprite.mirror = 1;
+  iterate(8, 2, function(){
+    if (sprite.position === 7){
+      sprite.position = sprite.lastStep === 0 ? 6 : 8;
+      sprite.lastStep = sprite.lastStep === 0 ? 1 : 0;
+    } else {
+      sprite.position = 7;
+    }
+  }, void(0), true)
+}
+
+function walkUp(sprite, callback){
+  moveSpriteUp(sprite, callback);
+  sprite.mirror = 0
+  iterate(8, 2, function(){
+    if (sprite.position === 4){
+      sprite.position = sprite.lastStep === 0 ? 3 : 5;
+      sprite.lastStep = sprite.lastStep === 0 ? 1 : 0;
+    } else {
+      sprite.position = 4;
+    }
+  }, void(0), true)
+}
+
+function walkDown(sprite, callback){
+  moveSpriteDown(sprite, callback);
+  sprite.mirror = 0
+  iterate(8, 2, function(){
+    if (sprite.position === 1){
+      sprite.position = sprite.lastStep === 0 ? 0 : 2;
+      sprite.lastStep = sprite.lastStep === 0 ? 1 : 0;
+    } else {
+      sprite.position = 1;
+    }
+  }, void(0), true)
+}
 
 function moveSpriteLeft(sprite, callback){
   if (sprite.coords.x === 2){

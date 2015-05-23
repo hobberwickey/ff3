@@ -62,7 +62,8 @@ class Sprite
       :event_address => self.event_address,
       :priority => 2,
       :position => 1,
-      :mirror => 0
+      :mirror => 0,
+      :lastLest => 0 #Absolutely crazy that this is necessary
     }
   end
 
