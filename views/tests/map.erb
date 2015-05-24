@@ -5,15 +5,16 @@
   <div id='stop'><a href='javascript:void(0)'>Stop</a></div>
   
   <script>
-    var palette = JSON.parse('<%= @map.palette.to_json %>'),
-        tiles = JSON.parse('<%= @map.tiles.to_json %>'),
-        map_data = JSON.parse('<%= @map.layer_data.to_json %>'),
-        dimensions = JSON.parse('<%= @map.info.dimensions.to_json %>'),
-        sprites = JSON.parse('<%= @map.sprite_info.sprites.to_json %>'),
-        paused = false,
+    var PALETTE = JSON.parse('<%= @map.palette.to_json %>'),
+        TILES = JSON.parse('<%= @map.tiles.to_json %>'),
+        MAP_DATA = JSON.parse('<%= @map.layer_data.to_json %>'),
+        DIMENSIONS = JSON.parse('<%= @map.info.dimensions.to_json %>'),
+        SPRITES = JSON.parse('<%= @map.sprite_info.sprites.to_json %>'),
+        CHARACTER = JSON.parse('<%= @map.sprite_info.character.to_json %>'),
+        PAUSED = false,
 
-        SPRITE_POSITIONS = JSON.parse('<%= @map.sprite_info.sprite_positions.to_json %>')
-        MAP_SIZE = [<%= @map.map_info.map_viewable_size[:x] %>, <%= @map.map_info.map_viewable_size[:y] %>]
+        SPRITE_POSITIONS = JSON.parse('<%= @map.sprite_info.sprite_positions.to_json %>'),
+        MAP_SIZE = [<%= @map.map_info.map_viewable_size[:x] %>, <%= @map.map_info.map_viewable_size[:y] %>];
 
     var ctx, dataObj, data, layers, scrollPos, scrollSpeed, animated_frame;
     var scrollL = scrollR = scrollU = scrollD = false;
@@ -24,10 +25,10 @@
         data = dataObj.data;
 
     var layers = [
-        { data: tiles[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
-        { data: tiles[1].p, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 },
-        { data: tiles[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
-        { data: tiles[1].r, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 }
+        { data: TILES[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
+        { data: TILES[1].p, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 },
+        { data: TILES[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
+        { data: TILES[1].r, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 }
       ]
 
     var scrollPos = {
@@ -77,18 +78,25 @@
         t[3] = t[1] - t[2];
         t[2] = t[1];
 
-        test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame " + t[3];
+        test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "// + t[3];
         
       //}
-      if (!paused) window.requestAnimationFrame(loop);
+      if (!PAUSED) window.requestAnimationFrame(loop);
     }
     setupSpriteMovement();
     loop();
     
+    function empty(){
+      //DO NOTHING
+    }
+
     function drawMap(){
       //var start = Date.now();
 
-      var layers_len = layers.length;
+      var layers_len = layers.length,
+          map_size = DIMENSIONS,
+          m_data = MAP_DATA;    
+                
 
       for (var i=0; i<256; i++){
         var x_offset = (i & 15) << 4,
@@ -103,24 +111,15 @@
           for (var z=0; z<layers_len;z++){
             var layer = layers[z];
 
-            var map_x = (x_offset >> 4) + layer.x + scrollPos.x,
-                map_y = (y_offset >> 4) + layer.y + scrollPos.y;
-
-            //TODO: Get ride of the greater than checks
             var overflow_x = ((j & 15) + layer.x_offset + scrollPos.x_offset > 15) | 0,
                 overflow_y = (j + ((layer.y_offset + scrollPos.y_offset) << 4) > 255) | 0,
-                pixel_offset = j + layer.x_offset + scrollPos.x_offset + ((layer.y_offset + scrollPos.y_offset) << 4);
+                pixel_offset = (j + layer.x_offset + scrollPos.x_offset + ((layer.y_offset + scrollPos.y_offset) << 4)) - (overflow_x << 4) - (overflow_y << 8);
 
-              
-            map_x += overflow_x;
-            map_y += overflow_y;
 
-            pixel_offset -= overflow_x << 4;
-            pixel_offset -= overflow_y << 8;
-
-            var map_size = dimensions,
-                map_index = (map_x & (map_size[layer.index].x - 1)) + ((map_y & (map_size[layer.index].y - 1)) * map_size[layer.index].x),
-                m_data = map_data,
+            var map_x = (x_offset >> 4) + layer.x + scrollPos.x + overflow_x,
+                map_y = (y_offset >> 4) + layer.y + scrollPos.y + overflow_y;
+  
+            var map_index = (map_x & (map_size[layer.index].x - 1)) + ((map_y & (map_size[layer.index].y - 1)) * map_size[layer.index].x),
                 tile_index = m_data[layer.index][map_index],
                 tile_data = layer.data[tile_index];
 
@@ -128,7 +127,7 @@
             
             var color_index = tile_data[animated_offset] === void(0) ? tile_data[pixel_offset] : tile_data[animated_offset];
 
-            pixel = palette[color_index];
+            pixel = PALETTE[color_index];
             if( pixel[3] === 255 ){ 
               pixelMap[x][y] = layers_len - z
               break;
@@ -141,7 +140,9 @@
     }
 
     function drawSprites(){
-      var _sprites = sprites,
+      // TODO: This will need to be broken up into subroutines so that sprites can be drawn according to priority
+      // to get the layering exact.
+      var _sprites = SPRITES,
           _scrollPos = scrollPos,
           _spritePositions = SPRITE_POSITIONS;
 
@@ -180,6 +181,35 @@
           }
         }
       }
+
+      drawCharacter(mapBounds, _spritePositions);
+    }
+
+    function drawCharacter(mapBounds, sprite_positions){
+      var sprite = CHARACTER;
+          
+      var back_edge = (sprite.coords.x << 4) + sprite.coords.x_offset,
+          top_edge = ((sprite.coords.y - 1) << 4) + sprite.coords.y_offset,
+          spritePos = sprite_positions[sprite.position];
+
+      for (var b=0; b<6; b++){
+        var x_offset = (b & 1) << 3,
+            y_offset = (b >> 1) << 3;
+
+        for (var y=0; y<8; y++){
+          for (var x=0; x<8; x++){
+            var color = sprite.tiles[spritePos[b]][x + (y << 3)],
+                x_pixel = sprite.mirror === 0 ? x + x_offset : 15 - (x + x_offset),
+                data_x = (back_edge - mapBounds.x1) + x_pixel,
+                data_y = (y + (top_edge - mapBounds.y1)) + y_offset;
+
+            if (color[3] === 0) continue
+
+            var data_offset = ((data_x * 2) + ((data_y * 2) * 512)) * 4
+            if (pixelMap[data_x][data_y] <= sprite.priority) drawPixel(data, color, data_offset)
+          }
+        }
+      }
     }
 
     //TODO: be able to set width. Needed for mode7
@@ -207,13 +237,13 @@
 
     window.addEventListener("keydown", function(e){
       if (e.keyCode === 37){
-        scrollLeft(); scrollL = true;
+        moveLeft(); scrollL = true;
       } else if (e.keyCode === 38) {
-        scrollUp(); scrollU = true;
+        moveUp(); scrollU = true;
       } else if (e.keyCode === 39) {
-        scrollRight(); scrollR = true;
+        moveRight(); scrollR = true;
       } else if (e.keyCode === 40) {
-        scrollDown(); scrollD = true;
+        moveDown(); scrollD = true;
       }
     }, false)
 
@@ -231,84 +261,56 @@
     // })
   
     document.getElementById('stop').addEventListener("click", function(){
-      if (paused === true){
-        paused = false;
+      if (PAUSED === true){
+        PAUSED = false;
         loop();
       } else {
-        paused = true;
+        PAUSED = true;
       }
     }, false)
 
-    function scrollLeft(){
-      if (scrollL || scrollR || scrollPos.x === 0) return
+    function scrollLeft(speed){
+      var s = scrollPos;
+      
+      s.x -= 1;
+      s.x_offset = 15;
 
-      scrollPos.x_offset = 14;
-      scrollPos.x -= 1;
-
-      var t = setInterval(function(){
-        scrollPos.x_offset -= 2;
-
-        if (scrollPos.x_offset <= 0){
-          if (scrollL === false || scrollPos.x === 0){ 
-            scrollPos.x_offset = 0
-            clearInterval(t);
-          } else {
-            scrollPos.x_offset = 14;
-            scrollPos.x -= 1;
-          }
-        }
-      }, 10);
+      iterate(2, 14, function(){
+        s.x_offset -= 1
+      }, function(){ 
+        s.x_offset = 0; 
+      }, false)
     }
 
-    function scrollRight(){
-      if (scrollL || scrollR || scrollPos.x + 16 > dimensions[0].x) return
-
-      scrollPos.x_offset += 2
-      var t = setInterval(function(){
-        scrollPos.x_offset += 2;
-
-        if (scrollPos.x_offset >= 16){
-          scrollPos.x_offset = 0;
-          scrollPos.x += 1;
-          if (scrollR === false || scrollPos.x + 16 > dimensions[0].x) clearInterval(t);
-        }
-      }, 10);
+    function scrollRight(speed){
+      iterate(2, 15, function(){
+        scrollPos.x_offset += 1;
+      }, function(){ 
+        scrollPos.x_offset = 0;
+        scrollPos.x += 1; 
+      }, true)
     }
 
     function scrollUp(){
-      if (scrollU || scrollD || scrollPos.y === 0) return
+      var s = scrollPos;
+      
+      s.y -= 1;
+      s.y_offset = 15;
 
-      scrollPos.y_offset = 14;
-      scrollPos.y -= 1;
-
-      var t = setInterval(function(){
-        scrollPos.y_offset -= 2;
-
-        if (scrollPos.y_offset <= 0){
-          if (scrollU === false || scrollPos.y === 0){ 
-            scrollPos.y_offset = 0
-            clearInterval(t);
-          } else {
-            scrollPos.y_offset = 14;
-            scrollPos.y -= 1;
-          }
-        }
-      }, 10);
+      iterate(2, 14, function(){
+        s.y_offset -= 1
+      }, function(){ 
+        s.y_offset = 0; 
+      }, false)
     }
 
     function scrollDown(){
-      if (scrollU || scrollD || scrollPos.y + 16 > dimensions[0].y) return
-
-      scrollPos.y_offset += 2
-      var t = setInterval(function(){
-        scrollPos.y_offset += 2;
-
-        if (scrollPos.y_offset >= 16){
-          scrollPos.y_offset = 0;
-          scrollPos.y += 1;
-          if (scrollD === false || scrollPos.y + 16 > dimensions[0].y) clearInterval(t);
-        }
-      }, 10);
+      iterate(2, 15, function(){
+        scrollPos.y_offset += 1;
+      }, function(){ 
+        scrollPos.y_offset = 0;
+        scrollPos.y += 1; 
+      }, true)
     }
   </script>
 </div>

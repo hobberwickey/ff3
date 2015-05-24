@@ -5,8 +5,9 @@ class Sprites
 
   attr_accessor :map, :sprites
 
-  def initialize(map)
+  def initialize(map, character=nil)
     @map = map
+    @character = character.nil? ? nil : Character.new(character)
     @sprites = []
 
     map_npc_start_pointer = get_bytes(269328 + ( @map.map_info.map_index * 2), "S")
@@ -25,6 +26,10 @@ class Sprites
 
   def sprites
     @sprites.map { |s| s.to_json }
+  end
+
+  def character
+    @character.to_json
   end
 
   def sprite_positions
@@ -63,28 +68,28 @@ class Sprite
       :priority => 2,
       :position => 1,
       :mirror => 0,
-      :lastLest => 0 #Absolutely crazy that this is necessary
+      :lastStep => 0 #Absolutely crazy that this is necessary
     }
   end
 
   def event_address
-    ((@bytes[2] & 3) * 65536) + (@bytes[1] * 256) + @bytes[0] + 655871
+    @event_address ||= ((@bytes[2] & 3) * 65536) + (@bytes[1] * 256) + @bytes[0] + 655871
   end
 
   def pal
-    @pal ||= (@bytes[2] & 28) / 3
+    @pal ||= @pal ||= (@bytes[2] & 28) / 3
   end
 
   def x_loc
-    @bytes[4]
+    @x_loc ||= @bytes[4]
   end
 
   def y_loc 
-    @bytes[5] & 63
+    @y_loc ||= @bytes[5] & 63
   end
 
   def gfx_set
-    @bytes[6]
+    @gxf_set ||= @bytes[6]
   end
 
   def movement
@@ -165,5 +170,19 @@ class Sprite
     end
 
     return @palettes
+  end
+end
+
+class Character < Sprite
+  PALETTES = {0 => 0, 1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0, 6 => 0, 7 => 0, 8 => 0, 9 => 0, 10 => 0, 11 => 0, 12 => 0, 13 => 0, 14 => 0}
+
+  def initialize(sprite_number)
+    @gxf_set = sprite_number
+    @pal = PALETTES[sprite_number]
+    @x_loc = 8
+    @y_loc = 8
+    @event_address = 655871
+
+    self.gfx
   end
 end

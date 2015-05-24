@@ -8,7 +8,7 @@ class Map
 
   def initialize(args = {})
     @map_info = args[:map_info] || nil
-    @sprite_info = Sprites.new(self)
+    @sprite_info = Sprites.new(self, args[:character])
   end
 
   def info

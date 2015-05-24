@@ -1,13 +1,13 @@
 /******************/
 /*  Action Queue  */
 /******************/
-var actions = {
+var ACTIONS = {
 
 }
 
 function iterate(frame_num, stopAfter, fn, callback, immediate){
   var key = "_" + Math.random();
-  actions[key] = {
+  ACTIONS[key] = {
     framesSoFar: 0,
     every: frame_num,
     fn: fn,
@@ -23,7 +23,7 @@ function iterate(frame_num, stopAfter, fn, callback, immediate){
 
 function every(frame_num, fn, immediate){
   var key = "_" + Math.random();
-  actions[key] = {
+  ACTIONS[key] = {
     framesSoFar: 0,
     every: frame_num,
     fn: fn,
@@ -38,7 +38,7 @@ function every(frame_num, fn, immediate){
 }
 
 function checkActions(){
-  var a = actions,
+  var a = ACTIONS,
       t = timing;
 
   for (var x in a){
@@ -53,7 +53,7 @@ function checkActions(){
 
       if (action.stopAfter !== void(0) && action.iterations > action.stopAfter ){
         if (action.callback !== void(0)) action.callback();
-        delete actions[x];
+        delete a[x];
         break;            
       }
     }
@@ -64,8 +64,8 @@ function checkActions(){
 /*  Sprite Actions  */
 /********************/
 function setupSpriteMovement(){
-  for (var i=0; i<sprites.length; i++){
-    moveRandom(sprites[i])
+  for (var i=0; i<SPRITES.length; i++){
+    moveRandom(SPRITES[i])
   }
 }
 
@@ -83,6 +83,106 @@ function moveRandom(sprite){
 
   directions[direction](sprite, moveRandom);
 } 
+
+function canMoveLeft(sprite){
+  return true;
+}
+
+function canMoveRight(sprite){
+  return true
+}
+
+function canMoveUp(sprite){
+  return true
+}
+
+function canMoveDown(sprite){
+  return true
+}
+
+function moveLeft(){
+  if (scrollL || scrollR) return
+
+  var c = CHARACTER,
+      s = scrollPos;
+
+  if (canMoveLeft(c)){
+    if (c.coords.x - s.x <= 8 && s.x > 0){
+      scrollLeft();
+    }
+
+    walkLeft(c, function(){ 
+      if (scrollL){ 
+        scrollL = false; 
+        moveLeft(); 
+        scrollL = true; 
+      } 
+    });
+  }
+}
+
+function moveRight(){
+  if (scrollL || scrollR) return
+
+  var c = CHARACTER,
+      s = scrollPos;
+
+  if (canMoveRight(c)){
+    if (c.coords.x - s.x >= 8 && s.x + 16 < MAP_SIZE[0]){
+      scrollRight();
+    }
+
+    walkRight(c, function(){ 
+      if (scrollR){ 
+        scrollR = false; 
+        moveRight(); 
+        scrollR = true; 
+      } 
+    });
+  }
+}
+
+function moveUp(){
+  if (scrollU || scrollD) return
+
+  var c = CHARACTER,
+      s = scrollPos;
+
+  if (canMoveUp(c)){
+    if (c.coords.y - s.y <= 8 && s.y > 0){
+      scrollUp();
+    }
+
+    walkUp(c, function(){ 
+      if (scrollU){ 
+        scrollU = false; 
+        moveUp(); 
+        scrollU = true; 
+      } 
+    });
+  }
+}
+
+function moveDown(){
+  if (scrollU || scrollD) return
+
+  var c = CHARACTER,
+      s = scrollPos;
+
+  if (canMoveDown(c)){
+    if (c.coords.y - s.y >= 8 && s.y + 16 < MAP_SIZE[1]){
+      scrollDown();
+    }
+
+    walkDown(c, function(){ 
+      if (scrollD){ 
+        scrollD = false; 
+        moveDown(); 
+        scrollD = true; 
+      } 
+    });
+  }
+}
 
 function walkLeft(sprite, callback){
   moveSpriteLeft(sprite, callback);
@@ -142,7 +242,7 @@ function moveSpriteLeft(sprite, callback){
     return;
   }
 
-  iterate(2, 16, function(){
+  iterate(2, 15, function(){
     sprite.coords.x_offset -= 1;
   }, function(){
     sprite.coords.x -= 1;
@@ -157,7 +257,7 @@ function moveSpriteRight(sprite, callback){
     return;
   }
 
-  iterate(2, 16, function(){
+  iterate(2, 15, function(){
     sprite.coords.x_offset += 1;
   }, function(){
     sprite.coords.x += 1;
@@ -172,7 +272,7 @@ function moveSpriteUp(sprite, callback){
     return;
   }
 
-  iterate(2, 16, function(){
+  iterate(2, 15, function(){
     sprite.coords.y_offset -= 1;
   }, function(){
     sprite.coords.y -= 1;
@@ -187,7 +287,7 @@ function moveSpriteDown(sprite, callback){
     return;
   }
 
-  iterate(2, 16, function(){
+  iterate(2, 15, function(){
     sprite.coords.y_offset += 1;
   }, function(){
     sprite.coords.y += 1;

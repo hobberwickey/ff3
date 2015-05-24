@@ -32,69 +32,9 @@ class Application < Sinatra::Base
   
   get "/" do
     @map_info = MapInfo.new :map_index => params[:map].to_i
-    @map = Map.new :map_info => @map_info
+    @map = Map.new :map_info => @map_info, :character => params[:character].to_i
     #erb :index
     erb :"tests/map"
-  end
-
-  get "/app_demo" do
-    send_file "catnaps/www/index.html"
-  end
-
-  get "/login" do
-    erb :"registration/login"
-  end
-
-  get "/signup" do
-    erb :"/registration/signup"
-  end
-
-  post "/login" do
-    @user = User.find_by(:email => params[:user][:email])
-
-    if @user and @user.authenticate(params[:user][:password])
-      flash[:notice] = "Thank you #{@user.first_name} #{@user.last_name}, you're sign in now"
-      session[:user_id] = @user.id 
-      redirect "/"
-    else
-      flash.now[:notice] = "Incorrect Username or password"
-      erb :"/registration/login"
-    end
-  end
-
-  post "/signup" do
-    @user = User.new(params[:user])
-
-    if @user.save
-      flash.now[:notice] = "Thank you #{@user.first_name} #{@user.last_name}, your account has been created"
-      session[:user_id] = @user.id 
-      redirect "/"
-    else 
-      flash.now[:notice] = "couldn't create user"
-      erb :"/registration/signup"
-    end
-  end
-
-  get "/users/:id/profile" do
-    @user = User.find(params[:id])
-    puts @user.id
-    if @user.blank?
-      flash[:notice] = "Please log in first"
-      redirect "/login"
-    else 
-      erb :"users/profile"
-    end
-  end
-
-  post "/users/:id/update" do
-    puts "PARAMS ARE: #{params[:user]}"
-    @user = User.find(params[:id])
-
-    if @user.update_attributes(params[:user])
-      return {:success => true}.to_json
-    else
-      return {:success => false}.to_json
-    end
   end
 end
 
