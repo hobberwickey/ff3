@@ -41,6 +41,21 @@ class Map
     @layer_data << decompress(@map_info.map_data_offsets[2])
   end
 
+  def tile_properties
+    @tile_properties = []
+
+    pntr = get_bytes(1691408 + (@map_info.tile_properties * 2), "S") + 1681920
+    
+    puts pntr
+    puts @map_info.tile_properties
+    data = decompress(pntr)
+    (data.length  / 2).times do |j|
+      @tile_properties << [ data[j], data[j + 256] ]
+    end    
+
+    return @tile_properties
+  end
+
   def tiles
     pnt1 = get_pointer(2079744 + (@map_info.formations[0] * 3))
     pnt2 = get_pointer(2079744 + (@map_info.formations[1] * 3))
@@ -202,6 +217,10 @@ class MapInfo
     end
   end
 
+  def offset
+    @offset
+  end
+
   def palette
     @palette = get_bytes(@offset + 25, "C")
   end
@@ -279,6 +298,10 @@ class MapInfo
       (data & (127 << 9)) >> 9,
       (get_bytes(@offset + 10, "S") & (63 << 4)) >> 4 
     ]
+  end
+
+  def tile_properties
+    @tile_properties = get_bytes(@offset + 4, "C")
   end
 
   def map_data_offsets

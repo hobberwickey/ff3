@@ -11,6 +11,7 @@
         DIMENSIONS = JSON.parse('<%= @map.info.dimensions.to_json %>'),
         SPRITES = JSON.parse('<%= @map.sprite_info.sprites.to_json %>'),
         CHARACTER = JSON.parse('<%= @map.sprite_info.character.to_json %>'),
+        TILE_PROPERTIES = JSON.parse('<%= @map.tile_properties.to_json %>'),
         PAUSED = false,
 
         SPRITE_POSITIONS = JSON.parse('<%= @map.sprite_info.sprite_positions.to_json %>'),
@@ -26,9 +27,9 @@
 
     var layers = [
         { data: TILES[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
-        { data: TILES[1].p, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 },
+        // { data: TILES[1].p, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 },
         { data: TILES[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
-        { data: TILES[1].r, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 }
+        // { data: TILES[1].r, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 }
       ]
 
     var scrollPos = {
@@ -121,7 +122,7 @@
   
             var map_index = (map_x & (map_size[layer.index].x - 1)) + ((map_y & (map_size[layer.index].y - 1)) * map_size[layer.index].x),
                 tile_index = m_data[layer.index][map_index],
-                tile_data = layer.data[tile_index];
+                tile_data = layer.data[i];
 
             var animated_offset = pixel_offset + (256 * animated_frame);
             
