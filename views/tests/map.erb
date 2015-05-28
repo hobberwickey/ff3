@@ -274,10 +274,13 @@
 
         map[x][y] = {
           stairs: (prop[0] & 192) >> 6 === 3 ? 2 : (prop[0] & 192) >> 6,
-          east: true, //prop[0] !== 0xf8,
-          west: true, //prop[0] !== 0xf8,
-          north: true, //prop[0] !== 0xf8,
-          south: true, //prop[0] !== 0xf8,
+          enter: (prop[0] & 0xf7) !== 0xf7,
+          enter_layer1: (prop[0] & 15) !== 2,
+          enter_layer0: (prop[0] & 15) !== 4,
+          exit_east: (prop[1] & 1) === 1,
+          exit_west: (prop[1] & 2) === 2, //prop[0] !== 0xf8,
+          exit_south: (prop[1] & 4) === 4, //prop[0] !== 0xf8,
+          exit_north: (prop[1] & 8) === 8, //prop[0] !== 0xf8,
           tile_number: tiles[i]
         }
 
@@ -319,7 +322,6 @@
       } else if (e.keyCode === 40) {
         scrollD = false;
       } else if (e.keyCode === 49) {
-        console.log(toggle);
         ctx.canvas.style.display = toggle ? 'none' : 'block';
         toggle = !toggle; 
       }

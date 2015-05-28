@@ -85,21 +85,12 @@ function moveRandom(sprite){
 } 
 
 function canMoveLeft(sprite){
-  var tile = PHYSICAL_MAP[sprite.coords.x][sprite.coords.y],
-      s_priority = sprite.priority;
-  // console.log(tile, s_priority)
-  if (tile.east){
-    switch (tile.stairs){
-      case 0:
-        break
-      case 1:
-        moveSpriteDown(sprite, empty);
-        break;
-      case 2:
-        moveSpriteUp(sprite, empty);
-        break;
-    }
-
+  var map = PHYSICAL_MAP,
+      current = map[sprite.coords.x][sprite.coords.y],
+      next = map[sprite.coords.x - 1][sprite.coords.y],
+      prop = sprite.priority === 1 ? next.enter_layer1 : next.enter_layer0;
+  // console.log(tile)
+  if (current.exit_west && next.enter && prop){
     return true;
   } else {
     return false;
@@ -107,20 +98,12 @@ function canMoveLeft(sprite){
 }
 
 function canMoveRight(sprite){
-  var tile = PHYSICAL_MAP[sprite.coords.x + 1][sprite.coords.y];
-  // console.log(tile, sprite.coords)
-  if (tile.west){
-    switch (tile.stairs){
-      case 0:
-        break
-      case 1:
-        moveSpriteUp(sprite, empty);
-        break;
-      case 2:
-        moveSpriteDown(sprite, empty);
-        break;
-    }
-
+  var map = PHYSICAL_MAP,
+      current = map[sprite.coords.x][sprite.coords.y],
+      next = map[sprite.coords.x + 1][sprite.coords.y],
+      prop = sprite.priority === 1 ? next.enter_layer1 : next.enter_layer0;
+  // console.log(tile)
+  if (current.exit_east && next.enter && prop){
     return true;
   } else {
     return false;
@@ -128,17 +111,12 @@ function canMoveRight(sprite){
 }
 
 function canMoveUp(sprite){
-  var tile = PHYSICAL_MAP[sprite.coords.x][sprite.coords.y - 1];
+  var map = PHYSICAL_MAP,
+      current = map[sprite.coords.x][sprite.coords.y],
+      next = map[sprite.coords.x][sprite.coords.y - 1],
+      prop = sprite.priority === 1 ? next.enter_layer1 : next.enter_layer0;
   // console.log(tile)
-  if (tile.south){
-    // switch (tile.stairs){
-    //   case 0:
-    //     break
-    //   case 1:
-    //   case 2:
-    //     return false;
-    // }
-
+  if (current.exit_north && next.enter && prop){
     return true;
   } else {
     return false;
@@ -146,17 +124,13 @@ function canMoveUp(sprite){
 }
 
 function canMoveDown(sprite){
-  var tile = PHYSICAL_MAP[sprite.coords.x][sprite.coords.y + 1];
-  // console.log(tile)
-  if (tile.north){
-    // switch (tile.stairs){
-    //   case 0:
-    //     break
-    //   case 1:
-    //   case 2:
-    //     return false;
-    // }
+  var map = PHYSICAL_MAP,
+      current = map[sprite.coords.x][sprite.coords.y],
+      next = map[sprite.coords.x][sprite.coords.y + 1],
+      prop = sprite.priority === 1 ? next.enter_layer1 : next.enter_layer0;
 
+  console.log(current.exit_south && next.enter && prop)
+  if (current.exit_south && next.enter && prop){
     return true;
   } else {
     return false;
