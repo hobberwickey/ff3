@@ -65,7 +65,7 @@ class Sprite
       :pal => self.pal,
       :tiles => self.gfx,
       :event_address => self.event_address,
-      :priority => 2,
+      :priority => 1,
       :position => 1,
       :mirror => 0,
       :lastStep => 0 #Absolutely crazy that this is necessary
@@ -179,8 +179,8 @@ class Character < Sprite
   def initialize(sprite_number)
     @gxf_set = sprite_number
     @pal = PALETTES[sprite_number]
-    @x_loc = 8
-    @y_loc = 8
+    @x_loc = 10
+    @y_loc = 11
     @event_address = 655871
 
     self.gfx

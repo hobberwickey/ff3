@@ -65,7 +65,7 @@ function checkActions(){
 /********************/
 function setupSpriteMovement(){
   for (var i=0; i<SPRITES.length; i++){
-    moveRandom(SPRITES[i])
+    //moveRandom(SPRITES[i])
   }
 }
 
@@ -85,23 +85,86 @@ function moveRandom(sprite){
 } 
 
 function canMoveLeft(sprite){
-  return true;
+  var tile = PHYSICAL_MAP[sprite.coords.x][sprite.coords.y],
+      s_priority = sprite.priority;
+  // console.log(tile, s_priority)
+  if (tile.east){
+    switch (tile.stairs){
+      case 0:
+        break
+      case 1:
+        moveSpriteDown(sprite, empty);
+        break;
+      case 2:
+        moveSpriteUp(sprite, empty);
+        break;
+    }
+
+    return true;
+  } else {
+    return false;
+  }
 }
 
 function canMoveRight(sprite){
-  return true
+  var tile = PHYSICAL_MAP[sprite.coords.x + 1][sprite.coords.y];
+  // console.log(tile, sprite.coords)
+  if (tile.west){
+    switch (tile.stairs){
+      case 0:
+        break
+      case 1:
+        moveSpriteUp(sprite, empty);
+        break;
+      case 2:
+        moveSpriteDown(sprite, empty);
+        break;
+    }
+
+    return true;
+  } else {
+    return false;
+  }
 }
 
 function canMoveUp(sprite){
-  return true
+  var tile = PHYSICAL_MAP[sprite.coords.x][sprite.coords.y - 1];
+  // console.log(tile)
+  if (tile.south){
+    // switch (tile.stairs){
+    //   case 0:
+    //     break
+    //   case 1:
+    //   case 2:
+    //     return false;
+    // }
+
+    return true;
+  } else {
+    return false;
+  }
 }
 
 function canMoveDown(sprite){
-  return true
+  var tile = PHYSICAL_MAP[sprite.coords.x][sprite.coords.y + 1];
+  // console.log(tile)
+  if (tile.north){
+    // switch (tile.stairs){
+    //   case 0:
+    //     break
+    //   case 1:
+    //   case 2:
+    //     return false;
+    // }
+
+    return true;
+  } else {
+    return false;
+  }
 }
 
 function moveLeft(){
-  if (scrollL || scrollR) return
+  if (scrollL || scrollR || scrollU || scrollD) return
 
   var c = CHARACTER,
       s = scrollPos;
@@ -118,11 +181,14 @@ function moveLeft(){
         scrollL = true; 
       } 
     });
+  } else {
+    c.position = 7;
+    c.mirror = 0;
   }
 }
 
 function moveRight(){
-  if (scrollL || scrollR) return
+  if (scrollL || scrollR || scrollU || scrollD) return
 
   var c = CHARACTER,
       s = scrollPos;
@@ -139,6 +205,9 @@ function moveRight(){
         scrollR = true; 
       } 
     });
+  } else {
+    c.position = 7;
+    c.mirror = 1;
   }
 }
 

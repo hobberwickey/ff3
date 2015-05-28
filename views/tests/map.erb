@@ -1,8 +1,11 @@
 <div>
-  
-  <canvas id='screen' width='512' height='512' style='transform: translate3d(0,0,0);'></canvas>
   <div id='drawTime'></div>
   <div id='stop'><a href='javascript:void(0)'>Stop</a></div>
+  
+  <div id='screen_wrapper' style='position: relative; width: 512px; height: 512px; margin: 0px auto; zoom: 2; overflow: hidden;'>
+    <div id='props' style='position: absolute; width: 512px;'></div>
+    <canvas id='screen' width='256' height='256' style='background-color: #00f; transform: scale(2); transform-origin: 0 0;'></canvas>
+  </div>
   
   <script>
     var PALETTE = JSON.parse('<%= @map.palette.to_json %>'),
@@ -16,20 +19,23 @@
 
         SPRITE_POSITIONS = JSON.parse('<%= @map.sprite_info.sprite_positions.to_json %>'),
         MAP_SIZE = [<%= @map.map_info.map_viewable_size[:x] %>, <%= @map.map_info.map_viewable_size[:y] %>];
+        PHYSICAL_MAP = {};
+
+    var tile_props = document.getElementById("props");
 
     var ctx, dataObj, data, layers, scrollPos, scrollSpeed, animated_frame;
     var scrollL = scrollR = scrollU = scrollD = false;
 
     // document.addEventListener("polymer-ready", function(){
     var ctx = document.querySelector("#screen").getContext("2d"),
-        dataObj = ctx.getImageData(0,0,512,512),
+        dataObj = ctx.getImageData(0,0,256,256),
         data = dataObj.data;
 
     var layers = [
         { data: TILES[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
-        // { data: TILES[1].p, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 },
+        { data: TILES[1].p, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 },
         { data: TILES[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
-        // { data: TILES[1].r, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 }
+        { data: TILES[1].r, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 }
       ]
 
     var scrollPos = {
@@ -84,12 +90,16 @@
       //}
       if (!PAUSED) window.requestAnimationFrame(loop);
     }
+
+    buildPhysicalMap();
     setupSpriteMovement();
     loop();
     
     function empty(){
       //DO NOTHING
     }
+
+
 
     function drawMap(){
       //var start = Date.now();
@@ -107,7 +117,7 @@
           var x = (j & 15) + x_offset,
               y = (j >> 4) + y_offset;
 
-          var pixel, index = (x << 3) + ((y << 1) << 11);
+          var pixel, index = (x * 4) + (y * 1024);
           
           for (var z=0; z<layers_len;z++){
             var layer = layers[z];
@@ -122,7 +132,7 @@
   
             var map_index = (map_x & (map_size[layer.index].x - 1)) + ((map_y & (map_size[layer.index].y - 1)) * map_size[layer.index].x),
                 tile_index = m_data[layer.index][map_index],
-                tile_data = layer.data[i];
+                tile_data = layer.data[tile_index];
 
             var animated_offset = pixel_offset + (256 * animated_frame);
             
@@ -130,7 +140,7 @@
 
             pixel = PALETTE[color_index];
             if( pixel[3] === 255 ){ 
-              pixelMap[x][y] = layers_len - z
+              pixelMap[x][y] = z
               break;
             }
           }
@@ -158,7 +168,7 @@
       for (var i=0; i<_sprites.length; i++){
         var sprite = _sprites[i],
           back_edge = (sprite.coords.x << 4) + sprite.coords.x_offset,
-          top_edge = ((sprite.coords.y - 1) << 4) + sprite.coords.y_offset,
+          top_edge = (sprite.coords.y << 4) + sprite.coords.y_offset,
           spritePos = _spritePositions[sprite.position];
 
         if (back_edge + 16 > mapBounds.x1 && back_edge < mapBounds.x2 && top_edge + 24 > mapBounds.y1 && top_edge < mapBounds.y2){
@@ -175,7 +185,7 @@
 
                 if (data_x < 0 || data_x > 255 || data_y < 0 || data_y > 255 || color[3] === 0) continue
 
-                var data_offset = ((data_x * 2) + ((data_y * 2) * 512)) * 4
+                var data_offset = ((data_x) + ((data_y) * 256)) * 4
                 if (pixelMap[data_x][data_y] <= sprite.priority) drawPixel(data, color, data_offset)
               }
             }
@@ -190,12 +200,13 @@
       var sprite = CHARACTER;
           
       var back_edge = (sprite.coords.x << 4) + sprite.coords.x_offset,
-          top_edge = ((sprite.coords.y - 1) << 4) + sprite.coords.y_offset,
+          top_edge =  ((sprite.coords.y - 1) << 4) + sprite.coords.y_offset,
           spritePos = sprite_positions[sprite.position];
 
       for (var b=0; b<6; b++){
         var x_offset = (b & 1) << 3,
-            y_offset = (b >> 1) << 3;
+            y_offset = (b >> 1) << 3,
+            sprite_priority = y_offset === 16 ? sprite.priority + 1 : sprite.priority;
 
         for (var y=0; y<8; y++){
           for (var x=0; x<8; x++){
@@ -206,8 +217,10 @@
 
             if (color[3] === 0) continue
 
-            var data_offset = ((data_x * 2) + ((data_y * 2) * 512)) * 4
-            if (pixelMap[data_x][data_y] <= sprite.priority) drawPixel(data, color, data_offset)
+            var data_offset = ((data_x) + ((data_y) * 256)) * 4;
+
+            if (sprite_priority <= pixelMap[data_x][data_y]) drawPixel(data, color, data_offset)
+            
           }
         }
       }
@@ -220,20 +233,67 @@
       data[index + 2] = pal[2]
       data[index + 3] = pal[3]
 
-      data[index + 4] = pal[0]
-      data[index + 5] = pal[1]
-      data[index + 6] = pal[2]
-      data[index + 7] = pal[3]
+      // data[index + 4] = pal[0]
+      // data[index + 5] = pal[1]
+      // data[index + 6] = pal[2]
+      // data[index + 7] = pal[3]
 
-      data[index + 2048] = pal[0]
-      data[index + 2049] = pal[1]
-      data[index + 2050] = pal[2]
-      data[index + 2051] = pal[3]
+      // data[index + 2048] = pal[0]
+      // data[index + 2049] = pal[1]
+      // data[index + 2050] = pal[2]
+      // data[index + 2051] = pal[3]
 
-      data[index + 2052] = pal[0]
-      data[index + 2053] = pal[1]
-      data[index + 2054] = pal[2]
-      data[index + 2055] = pal[3]
+      // data[index + 2052] = pal[0]
+      // data[index + 2053] = pal[1]
+      // data[index + 2054] = pal[2]
+      // data[index + 2055] = pal[3]
+    }
+
+    function buildPhysicalMap(){
+      var props = TILE_PROPERTIES,
+          tiles = MAP_DATA[0],
+          map_size = DIMENSIONS[0],
+          map = PHYSICAL_MAP;
+
+      var props_tiles = document.getElementById("props");
+      props_tiles.style.width = (32 * map_size.x) + "px";
+
+      for (var i=0; i<tiles.length; i++){
+        var p = document.createElement("div");
+
+        p.className = "prop"
+        p.innerHTML = "<span>" + ((props[tiles[i]][0] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][0] & 15).toString(2) + "</span><span> " +  ((props[tiles[i]][1] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][1] & 15).toString(2) + "</span>";
+        props_tiles.appendChild(p);
+        
+        var x = i & (map_size.x - 1),
+            y = ((i / map_size.x) | 0);
+
+        var prop = props[tiles[i]];
+
+        if (map[x] === void(0)) map[x] = {};
+
+        map[x][y] = {
+          stairs: (prop[0] & 192) >> 6 === 3 ? 2 : (prop[0] & 192) >> 6,
+          east: true, //prop[0] !== 0xf8,
+          west: true, //prop[0] !== 0xf8,
+          north: true, //prop[0] !== 0xf8,
+          south: true, //prop[0] !== 0xf8,
+          tile_number: tiles[i]
+        }
+
+        // map[x][y] = {
+        //   stairs: (prop[0] & 192) >> 6 === 3 ? 2 : (prop[0] & 192) >> 6,
+        //   canMove: (prop[0] & 4) === 4,
+        //   west: (prop[1] & 1) === 1,
+        //   east: (prop[1] & 2) === 2,
+        //   north: (prop[1] & 4) === 4,
+        //   south: (prop[1] & 8) === 8,
+        //   solid: (prop[0] & 8) !== 8,
+        //   solidToLayer1: prop[0] & 1 + 1,
+        //   solidToLayer2: prop[0] & 2 + 1,
+        //   tile_number: tiles[i]
+        // }
+      }
     }
 
     window.addEventListener("keydown", function(e){
@@ -248,6 +308,7 @@
       }
     }, false)
 
+    var toggle = true;  
     window.addEventListener("keyup", function(e){
       if (e.keyCode === 37){
         scrollL = false;
@@ -257,6 +318,10 @@
         scrollR = false;
       } else if (e.keyCode === 40) {
         scrollD = false;
+      } else if (e.keyCode === 49) {
+        console.log(toggle);
+        ctx.canvas.style.display = toggle ? 'none' : 'block';
+        toggle = !toggle; 
       }
     }, false)
     // })
@@ -275,6 +340,8 @@
       
       s.x -= 1;
       s.x_offset = 15;
+      tile_props.style.marginLeft = (s.x * -32) + "px";
+      
 
       iterate(2, 14, function(){
         s.x_offset -= 1
@@ -289,6 +356,7 @@
       }, function(){ 
         scrollPos.x_offset = 0;
         scrollPos.x += 1; 
+        tile_props.style.marginLeft = (scrollPos.x * -32) + "px";
       }, true)
     }
 
@@ -297,7 +365,8 @@
       
       s.y -= 1;
       s.y_offset = 15;
-
+      tile_props.style.marginTop = (scrollPos.y * -32)  + "px";
+      
       iterate(2, 14, function(){
         s.y_offset -= 1
       }, function(){ 
@@ -311,6 +380,7 @@
       }, function(){ 
         scrollPos.y_offset = 0;
         scrollPos.y += 1; 
+        tile_props.style.marginTop = (scrollPos.y * -32) + "px";
       }, true)
     }
   </script>
