@@ -2,8 +2,8 @@
   <div id='drawTime'></div>
   <div id='stop'><a href='javascript:void(0)'>Stop</a></div>
   
-  <div id='screen_wrapper' style='position: relative; width: 512px; height: 512px; margin: 0px auto; zoom: 2; overflow: hidden;'>
-    <div id='props' style='position: absolute; width: 512px;'></div>
+  <div id='screen_wrapper' style='position: relative; width: 512px; height: 512px; margin: 0px auto; overflow: hidden;'>
+    <!-- <div id='props' style='position: absolute; width: 512px;'></div> -->
     <canvas id='screen' width='256' height='256' style='background-color: #00f; transform: scale(2); transform-origin: 0 0;'></canvas>
   </div>
   
@@ -255,47 +255,110 @@
           map_size = DIMENSIONS[0],
           map = PHYSICAL_MAP;
 
-      var props_tiles = document.getElementById("props");
-      props_tiles.style.width = (32 * map_size.x) + "px";
+      // var props_tiles = document.getElementById("props");
+      // props_tiles.style.width = (32 * map_size.x) + "px";
 
       for (var i=0; i<tiles.length; i++){
-        var p = document.createElement("div");
+        // var p = document.createElement("div");
 
-        p.className = "prop"
-        p.innerHTML = "<span>" + ((props[tiles[i]][0] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][0] & 15).toString(2) + "</span><span> " +  ((props[tiles[i]][1] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][1] & 15).toString(2) + "</span>";
-        props_tiles.appendChild(p);
+        // p.className = "prop"
+        // p.innerHTML = "<span>" + ((props[tiles[i]][0] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][0] & 15).toString(2) + "</span><span> " +  ((props[tiles[i]][1] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][1] & 15).toString(2) + "</span>";
+        // props_tiles.appendChild(p);
         
         var x = i & (map_size.x - 1),
             y = ((i / map_size.x) | 0);
 
-        var prop = props[tiles[i]];
+        var prop = props[tiles[i]],
+            prop_west = x > 0 ? props[tiles[i - 1]] : 63487,
+            prop_east = x < (map_size.x - 1) ? props[tiles[i + 1]] : 63487,
+            prop_north = y > 0 ? props[tiles[i - map_size.x]] : 63487,
+            prop_south = y < (map_size.y - 1) ? props[tiles[i + map_size.x]] : 63487;
 
-        if (map[x] === void(0)) map[x] = {};
+        //TODO: directions
+        function canMove(from, to){
+          var results = {};
 
-        map[x][y] = {
-          stairs: (prop[0] & 192) >> 6 === 3 ? 2 : (prop[0] & 192) >> 6,
-          enter: (prop[0] & 0xf7) !== 0xf7,
-          enter_layer1: (prop[0] & 15) !== 2,
-          enter_layer0: (prop[0] & 15) !== 4,
-          exit_east: (prop[1] & 1) === 1,
-          exit_west: (prop[1] & 2) === 2, //prop[0] !== 0xf8,
-          exit_south: (prop[1] & 4) === 4, //prop[0] !== 0xf8,
-          exit_north: (prop[1] & 8) === 8, //prop[0] !== 0xf8,
-          tile_number: tiles[i]
+          if (to[0] === 0xf7 && to[1] === 0xff){
+            return {
+              layer_0: false,
+              layer_1: false
+            }
+          }
+
+          if ( (from[0] & 6) === 4 ) {
+            if ( (to[0] & 6) === 4 ) {
+              results.layer_1 = true;
+              results.layer_0 = true;
+              results.priority = function(){ return CHARACTER.priority };
+            } else if ( (to[0] & 7) === 1) {
+              results.layer_1 = true;
+              results.layer_0 = false;
+              results.priority = function(){ return 0 };
+            } else if ( (to[0] & 7) === 0) {
+              results.layer_1 = false;
+              results.layer_0 = true
+              results.priority = function(){ return 0 };
+            } else if ( (to[0] & 7) === 2 ) {
+              results.layer_1 = false;
+              results.layer_0 = true;
+              results.priority = function(){ return 0 };
+            } 
+            else {
+              results.layer_1 = false;
+              results.layer_0 = false
+            }
+          } else if ( (from[0] & 6) === 2 ){
+            if ( ((to[0] & 7) !== 5) && (((to[0] & 7) !== 1) || ((from[0] & 1) === 1)) ) {
+              results.layer_0 = true;
+              results.layer_1 = false;
+              results.priority = function(){ return 0 };
+            } else {
+              results.layer_0 = false;
+              results.layer_1 = false;
+            }
+          } else {
+            if ( (from[0] & 1) === 0 ){
+              if ( ((to[0] & 7) === 0) || ((to[0] & 7) === 4) || ((to[0] & 7) === 3) ){
+                results.layer_0 = true;
+                results.layer_1 = false;
+                results.priority = function(){ return 0 };
+              } else {
+                results.layer_0 = false;
+                results.layer_1 = false
+              }
+            } else {
+              if ( (to[0] & 6) === 4){
+                results.layer_0 = true;
+                results.layer_1 = true;
+                results.priority = function(){ return 1 };
+              } else if ( (to[0] & 7) === 2 ) {
+                results.layer_0 = false;
+                results.layer_1 = false;
+              } else if ( (to[0] & 7) === 3 ) {
+                results.layer_0 = true;
+                results.layer_1 = false;
+                results.priority = function(){ return 0 };
+              } else if ( (to[0] & 6) === 0 ) {
+                results.layer_0 = true;
+                results.layer_1 = false;
+                results.priority = function(){ return 0 };
+              } else {
+                results.layer_0 = false;
+                results.layer_1 = false;
+              }
+            }
+          }
+
+          return results;    
         }
 
-        // map[x][y] = {
-        //   stairs: (prop[0] & 192) >> 6 === 3 ? 2 : (prop[0] & 192) >> 6,
-        //   canMove: (prop[0] & 4) === 4,
-        //   west: (prop[1] & 1) === 1,
-        //   east: (prop[1] & 2) === 2,
-        //   north: (prop[1] & 4) === 4,
-        //   south: (prop[1] & 8) === 8,
-        //   solid: (prop[0] & 8) !== 8,
-        //   solidToLayer1: prop[0] & 1 + 1,
-        //   solidToLayer2: prop[0] & 2 + 1,
-        //   tile_number: tiles[i]
-        // }
+        if (map[x] === void(0)) map[x] = {};
+        map[x][y] = {
+          north: canMove(prop, prop_north),
+          south: canMove(prop, prop_south),
+          east: canMove(prop, prop_east),
+          west: canMove(prop, prop_west)
+        }
       }
     }
 
@@ -342,7 +405,7 @@
       
       s.x -= 1;
       s.x_offset = 15;
-      tile_props.style.marginLeft = (s.x * -32) + "px";
+      // tile_props.style.marginLeft = (s.x * -32) + "px";
       
 
       iterate(2, 14, function(){
@@ -358,7 +421,7 @@
       }, function(){ 
         scrollPos.x_offset = 0;
         scrollPos.x += 1; 
-        tile_props.style.marginLeft = (scrollPos.x * -32) + "px";
+        // tile_props.style.marginLeft = (scrollPos.x * -32) + "px";
       }, true)
     }
 
@@ -367,7 +430,7 @@
       
       s.y -= 1;
       s.y_offset = 15;
-      tile_props.style.marginTop = (scrollPos.y * -32)  + "px";
+      // tile_props.style.marginTop = (scrollPos.y * -32)  + "px";
       
       iterate(2, 14, function(){
         s.y_offset -= 1
@@ -382,7 +445,7 @@
       }, function(){ 
         scrollPos.y_offset = 0;
         scrollPos.y += 1; 
-        tile_props.style.marginTop = (scrollPos.y * -32) + "px";
+        // tile_props.style.marginTop = (scrollPos.y * -32) + "px";
       }, true)
     }
   </script>

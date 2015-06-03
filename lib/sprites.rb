@@ -65,7 +65,7 @@ class Sprite
       :pal => self.pal,
       :tiles => self.gfx,
       :event_address => self.event_address,
-      :priority => 1,
+      :priority => 0,
       :position => 1,
       :mirror => 0,
       :lastStep => 0 #Absolutely crazy that this is necessary

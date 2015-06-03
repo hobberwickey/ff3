@@ -284,9 +284,11 @@ class MapInfo
   end
 
   def map_viewable_size
+    x = get_bytes(@offset + 30, "C")
+    y = get_bytes(@offset + 31, "C")
     @map_viewable_size = { 
-      x: get_bytes(@offset + 30, "C"), 
-      y: get_bytes(@offset + 31, "C") 
+      x: x == 0 ? dimensions[0][:x] : x, 
+      y: y == 0 ? dimensions[0][:y] : y 
     }
   end
 

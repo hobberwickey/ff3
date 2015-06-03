@@ -85,12 +85,13 @@ function moveRandom(sprite){
 } 
 
 function canMoveLeft(sprite){
+  // return true
   var map = PHYSICAL_MAP,
-      current = map[sprite.coords.x][sprite.coords.y],
-      next = map[sprite.coords.x - 1][sprite.coords.y],
-      prop = sprite.priority === 1 ? next.enter_layer1 : next.enter_layer0;
-  // console.log(tile)
-  if (current.exit_west && next.enter && prop){
+      current = map[sprite.coords.x][sprite.coords.y].west,
+      yes = sprite.priority === 0 ? current.layer_0 : current.layer_1;
+
+  if ( yes ){
+    sprite.priority = current.priority();
     return true;
   } else {
     return false;
@@ -98,12 +99,13 @@ function canMoveLeft(sprite){
 }
 
 function canMoveRight(sprite){
+  // return true
   var map = PHYSICAL_MAP,
-      current = map[sprite.coords.x][sprite.coords.y],
-      next = map[sprite.coords.x + 1][sprite.coords.y],
-      prop = sprite.priority === 1 ? next.enter_layer1 : next.enter_layer0;
-  // console.log(tile)
-  if (current.exit_east && next.enter && prop){
+      current = map[sprite.coords.x][sprite.coords.y].east,
+      yes = sprite.priority === 0 ? current.layer_0 : current.layer_1;
+
+  if ( yes ){
+    sprite.priority = current.priority();
     return true;
   } else {
     return false;
@@ -111,12 +113,13 @@ function canMoveRight(sprite){
 }
 
 function canMoveUp(sprite){
+  // return true
   var map = PHYSICAL_MAP,
-      current = map[sprite.coords.x][sprite.coords.y],
-      next = map[sprite.coords.x][sprite.coords.y - 1],
-      prop = sprite.priority === 1 ? next.enter_layer1 : next.enter_layer0;
-  // console.log(tile)
-  if (current.exit_north && next.enter && prop){
+      current = map[sprite.coords.x][sprite.coords.y].north,
+      yes = sprite.priority === 0 ? current.layer_0 : current.layer_1;
+
+  if ( yes ){
+    sprite.priority = current.priority();
     return true;
   } else {
     return false;
@@ -124,13 +127,13 @@ function canMoveUp(sprite){
 }
 
 function canMoveDown(sprite){
+  // return true
   var map = PHYSICAL_MAP,
-      current = map[sprite.coords.x][sprite.coords.y],
-      next = map[sprite.coords.x][sprite.coords.y + 1],
-      prop = sprite.priority === 1 ? next.enter_layer1 : next.enter_layer0;
+      current = map[sprite.coords.x][sprite.coords.y].south,
+      yes = sprite.priority === 0 ? current.layer_0 : current.layer_1;
 
-  console.log(current.exit_south && next.enter && prop)
-  if (current.exit_south && next.enter && prop){
+  if ( yes ){
+    sprite.priority = current.priority();
     return true;
   } else {
     return false;
@@ -203,6 +206,9 @@ function moveUp(){
         scrollU = true; 
       } 
     });
+  } else {
+    c.position = 4;
+    c.mirror = false;
   }
 }
 
@@ -224,6 +230,9 @@ function moveDown(){
         scrollD = true; 
       } 
     });
+  } else {
+    c.position = 1;
+    c.mirror = false;
   }
 }
 
