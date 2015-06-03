@@ -81,7 +81,7 @@ class Sprite
   end
 
   def x_loc
-    @x_loc ||= @bytes[4]
+    @x_loc ||= @bytes[4] & 127
   end
 
   def y_loc 

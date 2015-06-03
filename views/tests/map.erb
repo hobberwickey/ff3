@@ -1,6 +1,6 @@
 <div>
   <div id='drawTime'></div>
-  <div id='stop'><a href='javascript:void(0)'>Stop</a></div>
+  <div id='stop'><a href='javascript:void(0)'>Pause</a></div>
   
   <div id='screen_wrapper' style='position: relative; width: 512px; height: 512px; margin: 0px auto; overflow: hidden;'>
     <!-- <div id='props' style='position: absolute; width: 512px;'></div> -->
@@ -168,7 +168,7 @@
       for (var i=0; i<_sprites.length; i++){
         var sprite = _sprites[i],
           back_edge = (sprite.coords.x << 4) + sprite.coords.x_offset,
-          top_edge = (sprite.coords.y << 4) + sprite.coords.y_offset,
+          top_edge = ((sprite.coords.y - 1) << 4) + sprite.coords.y_offset,
           spritePos = _spritePositions[sprite.position];
 
         if (back_edge + 16 > mapBounds.x1 && back_edge < mapBounds.x2 && top_edge + 24 > mapBounds.y1 && top_edge < mapBounds.y2){
@@ -186,7 +186,12 @@
                 if (data_x < 0 || data_x > 255 || data_y < 0 || data_y > 255 || color[3] === 0) continue
 
                 var data_offset = ((data_x) + ((data_y) * 256)) * 4
-                if (pixelMap[data_x][data_y] <= sprite.priority) drawPixel(data, color, data_offset)
+                if (sprite.priority === 0){ 
+                  if (pixelMap[data_x][data_y] !== 1 && pixelMap[data_x][data_y] !== 0) drawPixel(data, color, data_offset)
+                } else {
+                  if (pixelMap[data_x][data_y] !== 1) drawPixel(data, color, data_offset)
+                }
+                // if (pixelMap[data_x][data_y] <= sprite.priority) drawPixel(data, color, data_offset)
               }
             }
           }
@@ -205,8 +210,7 @@
 
       for (var b=0; b<6; b++){
         var x_offset = (b & 1) << 3,
-            y_offset = (b >> 1) << 3,
-            sprite_priority = y_offset === 16 ? sprite.priority + 1 : sprite.priority;
+            y_offset = (b >> 1) << 3; 
 
         for (var y=0; y<8; y++){
           for (var x=0; x<8; x++){
@@ -219,8 +223,12 @@
 
             var data_offset = ((data_x) + ((data_y) * 256)) * 4;
 
-            if (sprite_priority <= pixelMap[data_x][data_y]) drawPixel(data, color, data_offset)
-            
+
+            if (sprite.priority === 0){ 
+              if (pixelMap[data_x][data_y] !== 1 && pixelMap[data_x][data_y] !== 0) drawPixel(data, color, data_offset)
+            } else {
+              if (pixelMap[data_x][data_y] !== 1) drawPixel(data, color, data_offset)
+            }
           }
         }
       }
@@ -275,15 +283,28 @@
             prop_south = y < (map_size.y - 1) ? props[tiles[i + map_size.x]] : 63487;
 
         //TODO: directions
-        function canMove(from, to){
+        function canMove(from, to, direction){
           var results = {};
 
           if (to[0] === 0xf7 && to[1] === 0xff){
-            return {
-              layer_0: false,
-              layer_1: false
-            }
+            return { layer_0: false, layer_1: false }
           }
+
+          if (direction === 0 && ((from[1] & 8) !== 8)) {
+            return { layer_0: false, layer_1: false }
+          }
+
+          if (direction === 1 && ((from[1] & 4) !== 4)) {
+            return { layer_0: false, layer_1: false }
+          }
+
+          if (direction === 2 && ((from[1] & 1) !== 1)) {
+            return { layer_0: false, layer_1: false }
+          } 
+
+          if (direction === 3 && ((from[1] & 2) !== 2)) {
+            return { layer_0: false, layer_1: false }
+          }         
 
           if ( (from[0] & 6) === 4 ) {
             if ( (to[0] & 6) === 4 ) {
@@ -354,10 +375,10 @@
 
         if (map[x] === void(0)) map[x] = {};
         map[x][y] = {
-          north: canMove(prop, prop_north),
-          south: canMove(prop, prop_south),
-          east: canMove(prop, prop_east),
-          west: canMove(prop, prop_west)
+          north: canMove(prop, prop_north, 0),
+          south: canMove(prop, prop_south, 1),
+          east: canMove(prop, prop_east, 2),
+          west: canMove(prop, prop_west, 3)
         }
       }
     }
@@ -408,7 +429,7 @@
       // tile_props.style.marginLeft = (s.x * -32) + "px";
       
 
-      iterate(2, 14, function(){
+      iterate(1, 14, function(){
         s.x_offset -= 1
       }, function(){ 
         s.x_offset = 0; 
@@ -416,7 +437,7 @@
     }
 
     function scrollRight(speed){
-      iterate(2, 15, function(){
+      iterate(1, 15, function(){
         scrollPos.x_offset += 1;
       }, function(){ 
         scrollPos.x_offset = 0;
@@ -432,7 +453,7 @@
       s.y_offset = 15;
       // tile_props.style.marginTop = (scrollPos.y * -32)  + "px";
       
-      iterate(2, 14, function(){
+      iterate(1, 14, function(){
         s.y_offset -= 1
       }, function(){ 
         s.y_offset = 0; 
@@ -440,7 +461,7 @@
     }
 
     function scrollDown(){
-      iterate(2, 15, function(){
+      iterate(1, 15, function(){
         scrollPos.y_offset += 1;
       }, function(){ 
         scrollPos.y_offset = 0;

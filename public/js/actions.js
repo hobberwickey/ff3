@@ -65,15 +65,15 @@ function checkActions(){
 /********************/
 function setupSpriteMovement(){
   for (var i=0; i<SPRITES.length; i++){
-    //moveRandom(SPRITES[i])
+    moveRandom(SPRITES[i])
   }
 }
 
-function moveRandom(sprite){
+function moveRandom(sprite, recurse){
   var x = sprite.coords.x,
       y = sprite.coords.y;
 
-  var direction = Math.random() * 4 | 0,
+  var direction = recurse ? 0 : (Math.random() * 4 | 0),
       directions = [
         walkLeft,
         walkRight,
@@ -81,11 +81,22 @@ function moveRandom(sprite){
         walkDown
       ]
 
+
+  if (direction === 0 && !canMoveLeft(sprite)) direction = 1;
+  if (direction === 1 && !canMoveRight(sprite)) direction = 2;
+  if (direction === 2 && !canMoveUp(sprite)) direction = 3;
+  if (direction === 3 && !canMoveDown(sprite)){
+    if ( !recurse ) moveRandom(sprite, true);
+    return;
+  }
+
   directions[direction](sprite, moveRandom);
 } 
 
 function canMoveLeft(sprite){
-  // return true
+  if (sprite.coords.x === 158) console.log(sprite)
+  if (sprite.coords.x === 0) return false;
+
   var map = PHYSICAL_MAP,
       current = map[sprite.coords.x][sprite.coords.y].west,
       yes = sprite.priority === 0 ? current.layer_0 : current.layer_1;
@@ -99,7 +110,9 @@ function canMoveLeft(sprite){
 }
 
 function canMoveRight(sprite){
-  // return true
+  // console.log(sprite.coords.x)
+  if (sprite.coords.x === DIMENSIONS[0].x - 1) return false;
+
   var map = PHYSICAL_MAP,
       current = map[sprite.coords.x][sprite.coords.y].east,
       yes = sprite.priority === 0 ? current.layer_0 : current.layer_1;
@@ -113,7 +126,9 @@ function canMoveRight(sprite){
 }
 
 function canMoveUp(sprite){
-  // return true
+  // console.log(sprite.coords.x)
+  if (sprite.coords.y === 0) return false;
+
   var map = PHYSICAL_MAP,
       current = map[sprite.coords.x][sprite.coords.y].north,
       yes = sprite.priority === 0 ? current.layer_0 : current.layer_1;
@@ -127,7 +142,9 @@ function canMoveUp(sprite){
 }
 
 function canMoveDown(sprite){
-  // return true
+  // console.log(sprite.coords.x)
+  if (sprite.coords.y === DIMENSIONS[0].y - 1) return false
+
   var map = PHYSICAL_MAP,
       current = map[sprite.coords.x][sprite.coords.y].south,
       yes = sprite.priority === 0 ? current.layer_0 : current.layer_1;
@@ -239,7 +256,7 @@ function moveDown(){
 function walkLeft(sprite, callback){
   moveSpriteLeft(sprite, callback);
   sprite.mirror = 0
-  iterate(8, 2, function(){
+  iterate(4, 2, function(){
     if (sprite.position === 7){
       sprite.position = sprite.lastStep === 0 ? 6 : 8;
       sprite.lastStep = sprite.lastStep === 0 ? 1 : 0;
@@ -252,7 +269,7 @@ function walkLeft(sprite, callback){
 function walkRight(sprite, callback){
   moveSpriteRight(sprite, callback);
   sprite.mirror = 1;
-  iterate(8, 2, function(){
+  iterate(4, 2, function(){
     if (sprite.position === 7){
       sprite.position = sprite.lastStep === 0 ? 6 : 8;
       sprite.lastStep = sprite.lastStep === 0 ? 1 : 0;
@@ -265,7 +282,7 @@ function walkRight(sprite, callback){
 function walkUp(sprite, callback){
   moveSpriteUp(sprite, callback);
   sprite.mirror = 0
-  iterate(8, 2, function(){
+  iterate(4, 2, function(){
     if (sprite.position === 4){
       sprite.position = sprite.lastStep === 0 ? 3 : 5;
       sprite.lastStep = sprite.lastStep === 0 ? 1 : 0;
@@ -278,7 +295,7 @@ function walkUp(sprite, callback){
 function walkDown(sprite, callback){
   moveSpriteDown(sprite, callback);
   sprite.mirror = 0
-  iterate(8, 2, function(){
+  iterate(4, 2, function(){
     if (sprite.position === 1){
       sprite.position = sprite.lastStep === 0 ? 0 : 2;
       sprite.lastStep = sprite.lastStep === 0 ? 1 : 0;
@@ -294,7 +311,7 @@ function moveSpriteLeft(sprite, callback){
     return;
   }
 
-  iterate(2, 15, function(){
+  iterate(1, 15, function(){
     sprite.coords.x_offset -= 1;
   }, function(){
     sprite.coords.x -= 1;
@@ -309,7 +326,7 @@ function moveSpriteRight(sprite, callback){
     return;
   }
 
-  iterate(2, 15, function(){
+  iterate(1, 15, function(){
     sprite.coords.x_offset += 1;
   }, function(){
     sprite.coords.x += 1;
@@ -324,7 +341,7 @@ function moveSpriteUp(sprite, callback){
     return;
   }
 
-  iterate(2, 15, function(){
+  iterate(1, 15, function(){
     sprite.coords.y_offset -= 1;
   }, function(){
     sprite.coords.y -= 1;
@@ -339,7 +356,7 @@ function moveSpriteDown(sprite, callback){
     return;
   }
 
-  iterate(2, 15, function(){
+  iterate(1, 15, function(){
     sprite.coords.y_offset += 1;
   }, function(){
     sprite.coords.y += 1;
