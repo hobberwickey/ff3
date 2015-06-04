@@ -1,12 +1,47 @@
 <div>
   <div id='drawTime'></div>
   <div id='stop'><a href='javascript:void(0)'>Pause</a></div>
+  <div id='up'><a href='javascript:void(0)'>Up</a></div>
+  <div id='left'><a href='javascript:void(0)'>Left</a></div>
+  <div id='down'><a href='javascript:void(0)'>Down</a></div>
+  <div id='right'><a href='javascript:void(0)'>Right</a></div>
   
-  <div id='screen_wrapper' style='position: relative; width: 512px; height: 512px; margin: 0px auto; overflow: hidden;'>
+  <div id='screen_wrapper' style='position: relative; width: 512px; height: 512px; margin: -50px auto 0 auto; overflow: hidden;'>
     <!-- <div id='props' style='position: absolute; width: 512px;'></div> -->
     <canvas id='screen' width='256' height='256' style='background-color: #00f; transform: scale(2); transform-origin: 0 0;'></canvas>
   </div>
   
+  <script>
+    document.getElementById('stop').addEventListener("click", function(){
+      if (PAUSED === true){
+        PAUSED = false;
+        loop();
+      } else {
+        PAUSED = true;
+      }
+    }, false)
+
+    document.getElementById('up').addEventListener("click", function(){
+      CHARACTER.coords.y -= 1;
+      if (scrollPos.y > 0) scrollPos.y -= 1;
+    }, false)
+
+    document.getElementById('left').addEventListener("click", function(){
+      CHARACTER.coords.x -= 1;
+      if (scrollPos.x > 0) scrollPos.x -= 1;
+    }, false)
+
+    document.getElementById('down').addEventListener("click", function(){
+      CHARACTER.coords.y += 1;
+      if (scrollPos.y < DIMENSIONS[0].y - 1) scrollPos.y += 1;
+    }, false)
+
+    document.getElementById('right').addEventListener("click", function(){
+      CHARACTER.coords.x += 1;
+      if (scrollPos.y < DIMENSIONS[0].x - 1) scrollPos.x += 1;
+    }, false)
+  </script>
+
   <script>
     var PALETTE = JSON.parse('<%= @map.palette.to_json %>'),
         TILES = JSON.parse('<%= @map.tiles.to_json %>'),
@@ -257,132 +292,6 @@
       // data[index + 2055] = pal[3]
     }
 
-    function buildPhysicalMap(){
-      var props = TILE_PROPERTIES,
-          tiles = MAP_DATA[0],
-          map_size = DIMENSIONS[0],
-          map = PHYSICAL_MAP;
-
-      // var props_tiles = document.getElementById("props");
-      // props_tiles.style.width = (32 * map_size.x) + "px";
-
-      for (var i=0; i<tiles.length; i++){
-        // var p = document.createElement("div");
-
-        // p.className = "prop"
-        // p.innerHTML = "<span>" + ((props[tiles[i]][0] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][0] & 15).toString(2) + "</span><span> " +  ((props[tiles[i]][1] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][1] & 15).toString(2) + "</span>";
-        // props_tiles.appendChild(p);
-        
-        var x = i & (map_size.x - 1),
-            y = ((i / map_size.x) | 0);
-
-        var prop = props[tiles[i]],
-            prop_west = x > 0 ? props[tiles[i - 1]] : 63487,
-            prop_east = x < (map_size.x - 1) ? props[tiles[i + 1]] : 63487,
-            prop_north = y > 0 ? props[tiles[i - map_size.x]] : 63487,
-            prop_south = y < (map_size.y - 1) ? props[tiles[i + map_size.x]] : 63487;
-
-        //TODO: directions
-        function canMove(from, to, direction){
-          var results = {};
-
-          if (to[0] === 0xf7 && to[1] === 0xff){
-            return { layer_0: false, layer_1: false }
-          }
-
-          if (direction === 0 && ((from[1] & 8) !== 8)) {
-            return { layer_0: false, layer_1: false }
-          }
-
-          if (direction === 1 && ((from[1] & 4) !== 4)) {
-            return { layer_0: false, layer_1: false }
-          }
-
-          if (direction === 2 && ((from[1] & 1) !== 1)) {
-            return { layer_0: false, layer_1: false }
-          } 
-
-          if (direction === 3 && ((from[1] & 2) !== 2)) {
-            return { layer_0: false, layer_1: false }
-          }         
-
-          if ( (from[0] & 6) === 4 ) {
-            if ( (to[0] & 6) === 4 ) {
-              results.layer_1 = true;
-              results.layer_0 = true;
-              results.priority = function(){ return CHARACTER.priority };
-            } else if ( (to[0] & 7) === 1) {
-              results.layer_1 = true;
-              results.layer_0 = false;
-              results.priority = function(){ return 0 };
-            } else if ( (to[0] & 7) === 0) {
-              results.layer_1 = false;
-              results.layer_0 = true
-              results.priority = function(){ return 0 };
-            } else if ( (to[0] & 7) === 2 ) {
-              results.layer_1 = false;
-              results.layer_0 = true;
-              results.priority = function(){ return 0 };
-            } 
-            else {
-              results.layer_1 = false;
-              results.layer_0 = false
-            }
-          } else if ( (from[0] & 6) === 2 ){
-            if ( ((to[0] & 7) !== 5) && (((to[0] & 7) !== 1) || ((from[0] & 1) === 1)) ) {
-              results.layer_0 = true;
-              results.layer_1 = false;
-              results.priority = function(){ return 0 };
-            } else {
-              results.layer_0 = false;
-              results.layer_1 = false;
-            }
-          } else {
-            if ( (from[0] & 1) === 0 ){
-              if ( ((to[0] & 7) === 0) || ((to[0] & 7) === 4) || ((to[0] & 7) === 3) ){
-                results.layer_0 = true;
-                results.layer_1 = false;
-                results.priority = function(){ return 0 };
-              } else {
-                results.layer_0 = false;
-                results.layer_1 = false
-              }
-            } else {
-              if ( (to[0] & 6) === 4){
-                results.layer_0 = true;
-                results.layer_1 = true;
-                results.priority = function(){ return 1 };
-              } else if ( (to[0] & 7) === 2 ) {
-                results.layer_0 = false;
-                results.layer_1 = false;
-              } else if ( (to[0] & 7) === 3 ) {
-                results.layer_0 = true;
-                results.layer_1 = false;
-                results.priority = function(){ return 0 };
-              } else if ( (to[0] & 6) === 0 ) {
-                results.layer_0 = true;
-                results.layer_1 = false;
-                results.priority = function(){ return 0 };
-              } else {
-                results.layer_0 = false;
-                results.layer_1 = false;
-              }
-            }
-          }
-
-          return results;    
-        }
-
-        if (map[x] === void(0)) map[x] = {};
-        map[x][y] = {
-          north: canMove(prop, prop_north, 0),
-          south: canMove(prop, prop_south, 1),
-          east: canMove(prop, prop_east, 2),
-          west: canMove(prop, prop_west, 3)
-        }
-      }
-    }
-
     window.addEventListener("keydown", function(e){
       if (e.keyCode === 37){
         moveLeft(); scrollL = true;
@@ -411,15 +320,6 @@
       }
     }, false)
     // })
-  
-    document.getElementById('stop').addEventListener("click", function(){
-      if (PAUSED === true){
-        PAUSED = false;
-        loop();
-      } else {
-        PAUSED = true;
-      }
-    }, false)
 
     function scrollLeft(speed){
       var s = scrollPos;

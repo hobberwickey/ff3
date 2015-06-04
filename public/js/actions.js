@@ -94,7 +94,7 @@ function moveRandom(sprite, recurse){
 } 
 
 function canMoveLeft(sprite){
-  if (sprite.coords.x === 158) console.log(sprite)
+  // return true
   if (sprite.coords.x === 0) return false;
 
   var map = PHYSICAL_MAP,
@@ -110,7 +110,7 @@ function canMoveLeft(sprite){
 }
 
 function canMoveRight(sprite){
-  // console.log(sprite.coords.x)
+  // return true
   if (sprite.coords.x === DIMENSIONS[0].x - 1) return false;
 
   var map = PHYSICAL_MAP,
@@ -126,7 +126,7 @@ function canMoveRight(sprite){
 }
 
 function canMoveUp(sprite){
-  // console.log(sprite.coords.x)
+  // return true
   if (sprite.coords.y === 0) return false;
 
   var map = PHYSICAL_MAP,
@@ -142,7 +142,7 @@ function canMoveUp(sprite){
 }
 
 function canMoveDown(sprite){
-  // console.log(sprite.coords.x)
+  // return true
   if (sprite.coords.y === DIMENSIONS[0].y - 1) return false
 
   var map = PHYSICAL_MAP,
@@ -161,11 +161,20 @@ function moveLeft(){
   if (scrollL || scrollR || scrollU || scrollD) return
 
   var c = CHARACTER,
-      s = scrollPos;
+      s = scrollPos,
+      t = PHYSICAL_MAP[c.coords.x][c.coords.y].west;
 
   if (canMoveLeft(c)){
     if (c.coords.x - s.x <= 8 && s.x > 0){
       scrollLeft();
+
+      if (t.stairs === 2 && c.priority === 1 && c.coords.y - s.y >= 8 && s.y + 16 < MAP_SIZE[1]){
+        scrollDown();
+      }
+
+      if (t.stairs === 1 && c.priority === 1 && c.coords.y - s.y <= 8 && s.y > 0){
+        scrollUp();
+      }
     }
 
     walkLeft(c, function(){ 
@@ -185,11 +194,20 @@ function moveRight(){
   if (scrollL || scrollR || scrollU || scrollD) return
 
   var c = CHARACTER,
-      s = scrollPos;
-
+      s = scrollPos,
+      t = PHYSICAL_MAP[c.coords.x][c.coords.y].east;
+  
   if (canMoveRight(c)){
     if (c.coords.x - s.x >= 8 && s.x + 16 < MAP_SIZE[0]){
       scrollRight();
+      
+      if (t.stairs === 1 && c.priority === 1 && c.coords.y - s.y >= 8 && s.y + 16 < MAP_SIZE[1]){
+        scrollUp();
+      }
+
+      if (t.stairs === 2 && c.priority === 1 && c.coords.y - s.y <= 8 && s.y > 0){
+        scrollDown();
+      }
     }
 
     walkRight(c, function(){ 
@@ -255,6 +273,10 @@ function moveDown(){
 
 function walkLeft(sprite, callback){
   moveSpriteLeft(sprite, callback);
+  var t = PHYSICAL_MAP[sprite.coords.x][sprite.coords.y].west
+  if (t.stairs === 2 && !(t.walk_under && sprite.priority === 0)) moveSpriteDown(sprite, empty);
+  if (t.stairs === 1 && !(t.walk_under && sprite.priority === 0)) moveSpriteUp(sprite, empty);
+
   sprite.mirror = 0
   iterate(4, 2, function(){
     if (sprite.position === 7){
@@ -268,6 +290,10 @@ function walkLeft(sprite, callback){
 
 function walkRight(sprite, callback){
   moveSpriteRight(sprite, callback);
+  var t = PHYSICAL_MAP[sprite.coords.x][sprite.coords.y].east
+  if (t.stairs === 2 && !(t.walk_under && sprite.priority === 0)) moveSpriteDown(sprite, empty);
+  if (t.stairs === 1 && !(t.walk_under && sprite.priority === 0)) moveSpriteUp(sprite, empty);
+
   sprite.mirror = 1;
   iterate(4, 2, function(){
     if (sprite.position === 7){
