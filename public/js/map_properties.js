@@ -4,15 +4,15 @@ function buildPhysicalMap(){
       map_size = DIMENSIONS[0],
       map = PHYSICAL_MAP;
 
-  // var props_tiles = document.getElementById("props");
-  // props_tiles.style.width = (32 * map_size.x) + "px";
+  var props_tiles = document.getElementById("props");
+  props_tiles.style.width = (32 * map_size.x) + "px";
 
   for (var i=0; i<tiles.length; i++){
-    // var p = document.createElement("div");
+    var p = document.createElement("div");
 
-    // p.className = "prop"
-    // p.innerHTML = "<span>" + ((props[tiles[i]][0] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][0] & 15).toString(2) + "</span><span> " +  ((props[tiles[i]][1] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][1] & 15).toString(2) + "</span>";
-    // props_tiles.appendChild(p);
+    p.className = "prop"
+    p.innerHTML = "<span>" + ((props[tiles[i]][0] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][0] & 15).toString(2) + "</span><span> " +  ((props[tiles[i]][1] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][1] & 15).toString(2) + "</span>";
+    props_tiles.appendChild(p);
     
     var x = i & (map_size.x - 1),
         y = ((i / map_size.x) | 0);
@@ -114,7 +114,6 @@ function buildPhysicalMap(){
         return { layer_0: false, layer_1: false }
       }         
 
-      //Stairs
       if ((from[0] & 0x40) === 0x40 && (to[0] & 0x40) === 0x40){
         if (direction === 2){
           results.stairs = 1;
@@ -144,7 +143,7 @@ function buildPhysicalMap(){
         } else if ( (to[0] & 7) === 1) {
           results.layer_1 = true;
           results.layer_0 = results.stairs === 0 ? false : true;
-          results.priority = function(){ return results.stairs === 0 ? 0 : CHARACTER.priority };
+          results.priority = function(){ return (to[1] & 0x80) >> 7 }//return results.stairs === 0 ? 0 : (to[1] & 0x80) >> 7  };
         } else if ( (to[0] & 7) === 0) {
           results.layer_1 = false;
           results.layer_0 = true
@@ -156,7 +155,8 @@ function buildPhysicalMap(){
         } 
         else {
           results.layer_1 = false;
-          results.layer_0 = false
+          results.layer_0 = false;
+          results.priority = function(){ return 0 };
         }
       } else if ( (from[0] & 6) === 2 ){
         if ( ((to[0] & 7) !== 5) && ((to[0] & 7) !== 7) && (((to[0] & 7) !== 1) || ((from[0] & 1) === 1)) ) {
@@ -164,12 +164,19 @@ function buildPhysicalMap(){
             results.walk_under = true;
           } 
 
-          results.layer_0 = true;
-          results.layer_1 = false;
-          results.priority = function(){ return 0 };
+          if ((from[0] & 7) === 3 && (to[0] & 7) !== 4){
+            results.layer_0 = true;
+            results.layer_1 = true;
+            results.priority = function(){ return 0 };
+          } else {
+            results.layer_0 = true;
+            results.layer_1 = false;
+            results.priority = function(){ return 0 };
+          }
         } else {
           results.layer_0 = false;
           results.layer_1 = false;
+          results.priority = function(){ return 0 };
         }
       } else {
         if ( (from[0] & 1) === 0 ){
@@ -179,7 +186,8 @@ function buildPhysicalMap(){
             results.priority = function(){ return 0 };
           } else {
             results.layer_0 = false;
-            results.layer_1 = false
+            results.layer_1 = false;
+            results.priority = function(){ return 0 };
           }
         } else {
           if ( (to[0] & 6) === 4){
@@ -189,17 +197,19 @@ function buildPhysicalMap(){
           } else if ( (to[0] & 7) === 2 ) {
             results.layer_0 = false;
             results.layer_1 = false;
+            results.priority = function(){  return 0 };
           } else if ( (to[0] & 7) === 3 ) {
             results.layer_0 = true;
             results.layer_1 = true;
-            results.priority = function(){ return 0 };
+            results.priority = function(){  return CHARACTER.priority };
           } else if ( (to[0] & 6) === 0 ) {
             results.layer_0 = true;
-            results.layer_1 = false;
-            results.priority = function(){ return 0 };
+            results.layer_1 = true;
+            results.priority = function(){  return (to[1] & 0x80) >> 7 };
           } else {
             results.layer_0 = false;
             results.layer_1 = false;
+            results.priority = function(){  return CHARACTER.priority };
           }
         }
       }
@@ -209,6 +219,8 @@ function buildPhysicalMap(){
 
     if (map[x] === void(0)) map[x] = {};
     map[x][y] = {
+      mask: (prop[0] & 4) >> 2,
+      layer: (prop[0] & 8) >> 3,
       north: canMove(prop, prop_north, 0),
       south: canMove(prop, prop_south, 1),
       east: canMove(prop, prop_east, 2),
