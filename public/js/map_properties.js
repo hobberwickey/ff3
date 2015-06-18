@@ -17,75 +17,87 @@ function buildPhysicalMap(){
     var x = i & (map_size.x - 1),
         y = ((i / map_size.x) | 0);
 
-    function get_west_prop(from, x, y, index){
-      if (from[0] === 0xf7 && from[1] === 0xff) return from;
+    // function get_west_prop(from, x, y, index){
+    //   if (from[0] === 0xf7 && from[1] === 0xff) return from;
 
-      if (x > 0){
-        if ((from[0] & 0xf0) === 0x40){
-          if (y < (map_size.y - 1)){
-            if ((props[tiles[index - 1 + map_size.x]][0] & 0xf0) === 0x40 ) {
-              return props[tiles[index - 1 + map_size.x]]
-            } else {
-              return props[tiles[index - 1]]
-            }
-          } else {
-            return [0xf7, 0xff]
-          }
-        } else if ((from[0] & 0xf0) === 0x80){
-          if (y > 0){
-            if (( props[tiles[index - 1 - map_size.x]][0] & 0xf0) === 0x80){
-              return props[tiles[index - 1 - map_size.x]]
-            } else {
-              return props[tiles[index - 1]]
-            }
-          } else {
-            return [0xf7, 0xff]
-          }
-        } else {
-          return props[tiles[index - 1]]
-        }
-      } else {
-        return [0xf7, 0xff]
-      }
-    }
+    //   if (x > 0){
+    //     if ((from[0] & 0xf0) === 0x40){
+    //       if (y < (map_size.y - 1)){
+    //         if ((props[tiles[index - 1 + map_size.x]][0] & 0xf0) === 0x40 ) {
+    //           return props[tiles[index - 1 + map_size.x]]
+    //         } else {
+    //           return props[tiles[index - 1]]
+    //         }
+    //       } else {
+    //         return [0xf7, 0xff]
+    //       }
+    //     } else if ((from[0] & 0xf0) === 0x80){
+    //       if (y > 0){
+    //         if (( props[tiles[index - 1 - map_size.x]][0] & 0xf0) === 0x80){
+    //           return props[tiles[index - 1 - map_size.x]]
+    //         } else {
+    //           return props[tiles[index - 1]]
+    //         }
+    //       } else {
+    //         return [0xf7, 0xff]
+    //       }
+    //     } else {
+    //       return props[tiles[index - 1]]
+    //     }
+    //   } else {
+    //     return [0xf7, 0xff]
+    //   }
+    // }
 
-    function get_east_prop(from, x, y, index){
-      if (from[0] === 0xf7 && from[1] === 0xff) return from;
+    // function get_east_prop(from, x, y, index){
+    //   if (from[0] === 0xf7 && from[1] === 0xff) return from;
       
-      if (x < (map_size.x - 1)){
-        if ((from[0] & 0xf0) === 0x40){
-          if (y > 0){
-            if ( (props[tiles[index + 1 - map_size.x]][0] & 0xf0) === 0x40 ){
-              return props[tiles[index + 1 - map_size.x]]
-            } else {
-              return props[tiles[index + 1]]
-            }
-          } else {
-            return [0xf7, 0xff]
-          }
-        } else if ((from[0] & 0xf0) === 0x80){
-          if (y < (map_size.y - 1)){
-            if ( (props[tiles[index + 1 + map_size.x]][0] & 0xf0) === 0x80 ){
-              return props[tiles[index + 1 + map_size.x]]
-            } else {
-              return props[tiles[index + 1]]
-            }
-          } else {
-            return [0xf7, 0xff]
-          }
-        } else {
-          return props[tiles[index + 1]]
-        }
+    //   if (x < (map_size.x - 1)){
+    //     if ((from[0] & 0xf0) === 0x40){
+    //       if (y > 0){
+    //         if ( (props[tiles[index + 1 - map_size.x]][0] & 0xf0) === 0x40 ){
+    //           return props[tiles[index + 1 - map_size.x]]
+    //         } else {
+    //           return props[tiles[index + 1]]
+    //         }
+    //       } else {
+    //         return [0xf7, 0xff]
+    //       }
+    //     } else if ((from[0] & 0xf0) === 0x80){
+    //       if (y < (map_size.y - 1)){
+    //         if ( (props[tiles[index + 1 + map_size.x]][0] & 0xf0) === 0x80 ){
+    //           return props[tiles[index + 1 + map_size.x]]
+    //         } else {
+    //           return props[tiles[index + 1]]
+    //         }
+    //       } else {
+    //         return [0xf7, 0xff]
+    //       }
+    //     } else {
+    //       return props[tiles[index + 1]]
+    //     }
+    //   } else {
+    //     return [0xf7, 0xff]
+    //   }
+    // }
+
+    function getTile(x, y){
+      if (x >= map_size.x - 1 || x < 1 || y >= map_size.y - 1 || y < 1){ 
+        return [0xf7, 0xff];
       } else {
-        return [0xf7, 0xff]
+        return props[tiles[x + (y * map_size.x)]]
       }
     }
 
     var prop = props[tiles[i]],
-        prop_west = get_west_prop(prop, x, y, i),
-        prop_east = get_east_prop(prop, x, y, i),
-        prop_north = y > 0 ? props[tiles[i - map_size.x]] : [0xf7, 0xff],
-        prop_south = y < (map_size.y - 1) ? props[tiles[i + map_size.x]] : [0xf7, 0xff];
+        n = getTile(x, y - 1),
+        ne = getTile(x + 1, y - 1),
+        e = getTile(x + 1, y),
+        se = getTile(x + 1, y + 1),
+        s = getTile(x, y + 1),
+        sw = getTile(x - 1, y + 1),
+        w = getTile(x - 1, y),
+        nw = getTile(x - 1, y - 1);
 
     //TODO: directions
     function canMove(from, to, direction){
@@ -205,7 +217,7 @@ function buildPhysicalMap(){
           } else if ( (to[0] & 6) === 0 ) {
             results.layer_0 = true;
             results.layer_1 = true;
-            results.priority = function(){  return (to[1] & 0x80) >> 7 };
+            results.priority = function(){  return 1 };
           } else {
             results.layer_0 = false;
             results.layer_1 = false;
@@ -214,17 +226,25 @@ function buildPhysicalMap(){
         }
       }
 
+      results.raw = to;
+
       return results;    
     }
 
     if (map[x] === void(0)) map[x] = {};
+    
     map[x][y] = {
-      mask: (prop[0] & 4) >> 2,
-      layer: (prop[0] & 8) >> 3,
-      north: canMove(prop, prop_north, 0),
-      south: canMove(prop, prop_south, 1),
-      east: canMove(prop, prop_east, 2),
-      west: canMove(prop, prop_west, 3)
+      mask: prop[0] === 0xf7 && prop[1] === 0xff ? 0 : (prop[0] & 4) >> 2,
+      drawPriority: (prop[0] & 12) >> 2,
+      
+      north: canMove(prop, n, 0),
+      north_east: canMove(prop, ne, 2),
+      east: canMove(prop, e, 2),
+      south_east: canMove(prop, se, 2),
+      south: canMove(prop, s, 1),
+      south_west: canMove(prop, sw, 3),
+      west: canMove(prop, w, 3),
+      north_west: canMove(prop, nw, 3)
     }
   }
 }
