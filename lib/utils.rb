@@ -26,7 +26,7 @@ module Utils
     len = get_bytes(offset, "S")
     pos = offset + 2
     window = 0
-    puts "offset #{offset}"
+    # puts "offset #{offset}"
     loop do
       flag_byte = get_bytes(pos, "C")
       pos += 1
