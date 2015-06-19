@@ -5,9 +5,10 @@
   <div id='left'><a href='javascript:void(0)'>Left</a></div>
   <div id='down'><a href='javascript:void(0)'>Down</a></div>
   <div id='right'><a href='javascript:void(0)'>Right</a></div>
+  <div id='priority'><a href='javascript:void(0)'>Toggle Priority</a></div>
   
   <div id='screen_wrapper' style='position: relative; width: 512px; height: 512px; margin: -50px auto 0 auto; overflow: hidden;'>
-    <div id='props' style='position: absolute; width: 512px;'></div>
+    <!-- <div id='props' style='position: absolute; width: 512px;'></div> -->
     <canvas id='screen' width='256' height='256' style='background-color: #00f; transform: scale(2); transform-origin: 0 0;'></canvas>
   </div>
   
@@ -40,6 +41,10 @@
       CHARACTER.coords.x += 1;
       if (scrollPos.y < DIMENSIONS[0].x - 1) scrollPos.x += 1;
     }, false)
+
+    document.getElementById('priority').addEventListener("click", function(){
+      CHARACTER.priority = !CHARACTER.priority | 0
+    }, false)
   </script>
 
   <script>
@@ -57,7 +62,7 @@
         MAP_SIZE = [<%= @map.map_info.map_viewable_size[:x] %>, <%= @map.map_info.map_viewable_size[:y] %>];
         PHYSICAL_MAP = {};
 
-    var tile_props = document.getElementById("props");
+    // var tile_props = document.getElementById("props");
 
     var ctx, dataObj, data, layers, scrollPos, scrollSpeed, animated_frame;
     var scrollL = scrollR = scrollU = scrollD = false;
@@ -121,7 +126,7 @@
         t[3] = t[1] - t[2];
         t[2] = t[1];
 
-        //test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "// + t[3];
+        // test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "// + t[3];
         
       //}
       if (!PAUSED) window.requestAnimationFrame(loop);
@@ -171,9 +176,12 @@
                 tile_data = layer.data[tile_index];
 
             var animated_offset = pixel_offset + (256 * animated_frame);
-            
+            try{
             var color_index = tile_data[animated_offset] === void(0) ? tile_data[pixel_offset] : tile_data[animated_offset];
-
+          } catch(e){
+            console.log(animated_offset, pixel_offset)
+            throw "Error"
+          }
             pixel = PALETTE[color_index];
             if( pixel[3] === 255 ){ 
               pixelMap[x][y] = z
@@ -274,7 +282,7 @@
 
             if (layer === 0 || mask){ 
               if (mask){
-                if (pixelMap[data_x][data_y] === 3) drawPixel(data, color, data_offset)
+                //if (pixelMap[data_x][data_y] === 2) drawPixel(data, color, data_offset)
               } else {
                 if (pixelMap[data_x][data_y] !== 1 && pixelMap[data_x][data_y] !== 0) drawPixel(data, color, data_offset)
               }
@@ -343,7 +351,7 @@
       
       s.x -= 1;
       s.x_offset = 15;
-      tile_props.style.marginLeft = (s.x * -32) + "px";
+      // tile_props.style.marginLeft = (s.x * -32) + "px";
       
 
       iterate(1, 14, function(){
@@ -359,7 +367,7 @@
       }, function(){ 
         scrollPos.x_offset = 0;
         scrollPos.x += 1; 
-        tile_props.style.marginLeft = (scrollPos.x * -32) + "px";
+        // tile_props.style.marginLeft = (scrollPos.x * -32) + "px";
       }, true)
     }
 
@@ -368,7 +376,7 @@
       
       s.y -= 1;
       s.y_offset = 15;
-      tile_props.style.marginTop = (scrollPos.y * -32)  + "px";
+      // tile_props.style.marginTop = (scrollPos.y * -32)  + "px";
       
       iterate(1, 14, function(){
         s.y_offset -= 1
@@ -383,7 +391,7 @@
       }, function(){ 
         scrollPos.y_offset = 0;
         scrollPos.y += 1; 
-        tile_props.style.marginTop = (scrollPos.y * -32) + "px";
+        // tile_props.style.marginTop = (scrollPos.y * -32) + "px";
       }, true)
     }
   </script>

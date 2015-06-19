@@ -132,7 +132,7 @@ function canMoveUp(sprite){
   var map = PHYSICAL_MAP,
       current = map[sprite.coords.x][sprite.coords.y].north,
       yes = sprite.priority === 0 ? current.layer_0 : current.layer_1;
-  console.log(current)
+
   if ( yes ){
     sprite.priority = current.priority();
     return true;

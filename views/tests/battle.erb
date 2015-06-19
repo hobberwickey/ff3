@@ -1,0 +1,223 @@
+<div>
+  <div id='drawTime'></div>
+  <a id='previous_palette' href='javascript:void(0)'>Previous Palette</a>
+  <a id='next_palette' href='javascript:void(0)'>Next Palette</a>
+
+  <div id='screen_wrapper' style='position: relative; width: 512px; height: 512px; margin: 0px auto 0 auto; overflow: hidden;'>
+    <canvas id='screen' width='256' height='256' style='background-color: #00f; transform: scale(2); transform-origin: 0 0;'></canvas>
+  </div>
+  
+
+  <script>
+   var BG = JSON.parse('<%= @battle.background( params[:bg].blank? ? 0 : params[:bg].to_i ).to_json %>'),
+      BG_DATA = BG.data,
+      PALETTES = BG.palettes,
+      PALETTE_INDEX = 0;
+
+    // document.addEventListener("polymer-ready", function(){
+    var ctx = document.querySelector("#screen").getContext("2d"),
+        dataObj = ctx.getImageData(0,0,256,256),
+        data = dataObj.data;
+
+    document.querySelector("#next_palette").addEventListener('click', function(){
+      PALETTE_INDEX += 1;
+      if (PALETTES[PALETTE_INDEX] === void(0)) PALETTE_INDEX = 0;
+
+      drawBG();
+    }, false);
+
+    document.querySelector("#previous_palette").addEventListener('click', function(){
+      PALETTE_INDEX -= 1;
+      if (PALETTES[PALETTE_INDEX] === void(0)) PALETTE_INDEX = PALETTES.length - 1;
+
+      drawBG();
+    }, false);
+
+    var test = document.querySelector("#drawTime");
+  
+    //var start = Date.now();
+    // var timing = [ 
+    //   window.performance.now(), // start time
+    //   0, // frames
+    //   0, // last draw
+    //   0  // advanced
+    // ]
+
+    // function loop(timestamp) {
+    //   //if (Date.now() - start > fps){ //24 FPS
+    //     var t = timing;
+
+    //     ctx.putImageData(dataObj, 0, 0)
+
+    //     checkActions();
+    //     drawMap();
+    //     drawSprites();
+        
+    //     t[1] = (timestamp - t[0]) >> 4;
+    //     t[3] = t[1] - t[2];
+    //     t[2] = t[1];
+
+    //     // test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "// + t[3];
+        
+    //   //}
+    //   if (!PAUSED) window.requestAnimationFrame(loop);
+    // }
+
+    // buildPhysicalMap();
+    // setupSpriteMovement();
+    // loop();
+    
+    // function empty(){
+    //   //DO NOTHING
+    // }
+
+
+    function drawBG(){
+      var tiles = BG_DATA,
+          palettes = PALETTES,
+          palette_index = PALETTE_INDEX;
+
+      for (var i=0; i<tiles.length; i++){
+        var tile = tiles[i],
+            x_offset = (i % 32),
+            y_offset = ((i / 32) | 0);
+        
+        for (var y=0; y<8; y++){
+          for (var x = 0; x < 8; x++){
+            var index = (x * 4) + (y * 1024) + (x_offset * 32) + (y_offset * 8192),
+                color = palettes[palette_index][tile[x + (y * 8)]];
+
+            drawPixel(data, color, index);
+          }
+        }
+      }
+      test.innerHTML = "PALLETE INDEX: " + palette_index;
+      ctx.putImageData(dataObj, 0, 0)
+    }
+
+    drawBG();
+    // function drawMap(){
+    //   //var start = Date.now();
+
+    //   var layers_len = layers.length,
+    //       map_size = DIMENSIONS,
+    //       m_data = MAP_DATA;    
+                
+
+    //   for (var i=0; i<256; i++){
+    //     var x_offset = (i & 15) << 4,
+    //         y_offset = (i >> 4) << 4
+        
+    //     for (var j=0; j<256; j++){
+    //       var x = (j & 15) + x_offset,
+    //           y = (j >> 4) + y_offset;
+
+    //       var pixel, index = (x * 4) + (y * 1024);
+          
+    //       for (var z=0; z<layers_len;z++){
+    //         var layer = layers[z];
+
+    //         var overflow_x = ((j & 15) + layer.x_offset + scrollPos.x_offset > 15) | 0,
+    //             overflow_y = (j + ((layer.y_offset + scrollPos.y_offset) << 4) > 255) | 0,
+    //             pixel_offset = (j + layer.x_offset + scrollPos.x_offset + ((layer.y_offset + scrollPos.y_offset) << 4)) - (overflow_x << 4) - (overflow_y << 8);
+
+
+    //         var map_x = (x_offset >> 4) + layer.x + scrollPos.x + overflow_x,
+    //             map_y = (y_offset >> 4) + layer.y + scrollPos.y + overflow_y;
+  
+    //         var map_index = (map_x & (map_size[layer.index].x - 1)) + ((map_y & (map_size[layer.index].y - 1)) * map_size[layer.index].x),
+    //             tile_index = m_data[layer.index][map_index],
+    //             tile_data = layer.data[tile_index];
+
+    //         var animated_offset = pixel_offset + (256 * animated_frame);
+    //         try{
+    //         var color_index = tile_data[animated_offset] === void(0) ? tile_data[pixel_offset] : tile_data[animated_offset];
+    //       } catch(e){
+    //         console.log(animated_offset, pixel_offset)
+    //         throw "Error"
+    //       }
+    //         pixel = PALETTE[color_index];
+    //         if( pixel[3] === 255 ){ 
+    //           pixelMap[x][y] = z
+    //           break;
+    //         }
+    //       }
+        
+    //       drawPixel(data, pixel, index)
+    //     }
+    //   }
+    // }
+
+    // function drawCharacter(mapBounds, sprite_positions){
+    //   var sprite = CHARACTER;
+          
+    //   var back_edge = (sprite.coords.x << 4) + sprite.coords.x_offset,
+    //       top_edge =  ((sprite.coords.y - 1) << 4) + sprite.coords.y_offset,
+    //       spritePos = sprite_positions[sprite.position],
+    //       physical_tile = PHYSICAL_MAP[sprite.coords.x][sprite.coords.y],
+    //       upperMask = sprite.priority === 0 && PHYSICAL_MAP[sprite.coords.x][sprite.coords.y - 1].mask === 1,
+    //       lowerMask = sprite.priority === 0 && PHYSICAL_MAP[sprite.coords.x][sprite.coords.y].mask === 1,
+    //       upperPriority = sprite.priority === 0 ? (physical_tile.drawPriority > 1) | 0 : (physical_tile.drawPriority > 0) | 0,
+    //       lowerPriority = 0;
+
+
+    //   for (var b=0; b<6; b++){
+    //     var x_offset = (b & 1) << 3,
+    //         y_offset = (b >> 1) << 3; 
+
+    //     var layer = b < 4 ? upperPriority : lowerPriority;
+    //         mask = b < 4 ?  upperMask : lowerMask;
+
+    //     test.innerHTML = "Draw Priority is: " + upperPriority + " Sprite Priority is: " + sprite.priority + " Upper mask: " + upperMask + " Lower mask: " + lowerMask;
+        
+
+    //     for (var y=0; y<8; y++){
+    //       for (var x=0; x<8; x++){
+    //         var color = sprite.tiles[spritePos[b]][x + (y << 3)],
+    //             x_pixel = sprite.mirror === 0 ? x + x_offset : 15 - (x + x_offset),
+    //             data_x = (back_edge - mapBounds.x1) + x_pixel,
+    //             data_y = (y + (top_edge - mapBounds.y1)) + y_offset;
+
+    //         if (color[3] === 0) continue
+
+    //         var data_offset = ((data_x) + ((data_y) * 256)) * 4;
+
+
+    //         if (layer === 0 || mask){ 
+    //           if (mask){
+    //             //if (pixelMap[data_x][data_y] === 2) drawPixel(data, color, data_offset)
+    //           } else {
+    //             if (pixelMap[data_x][data_y] !== 1 && pixelMap[data_x][data_y] !== 0) drawPixel(data, color, data_offset)
+    //           }
+    //         } else {
+    //           drawPixel(data, color, data_offset)
+    //         } 
+    //       }
+    //     }
+    //   }
+    // }
+
+    //TODO: be able to set width. Needed for mode7
+    function drawPixel(data, pal, index){
+      data[index] = pal[0]
+      data[index + 1] = pal[1]
+      data[index + 2] = pal[2]
+      data[index + 3] = pal[3]
+
+      // data[index + 4] = pal[0]
+      // data[index + 5] = pal[1]
+      // data[index + 6] = pal[2]
+      // data[index + 7] = pal[3]
+
+      // data[index + 2048] = pal[0]
+      // data[index + 2049] = pal[1]
+      // data[index + 2050] = pal[2]
+      // data[index + 2051] = pal[3]
+
+      // data[index + 2052] = pal[0]
+      // data[index + 2053] = pal[1]
+      // data[index + 2054] = pal[2]
+      // data[index + 2055] = pal[3]
+    }
+  </script>
+</div>

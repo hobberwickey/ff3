@@ -4,15 +4,15 @@ function buildPhysicalMap(){
       map_size = DIMENSIONS[0],
       map = PHYSICAL_MAP;
 
-  var props_tiles = document.getElementById("props");
-  props_tiles.style.width = (32 * map_size.x) + "px";
+  // var props_tiles = document.getElementById("props");
+  // props_tiles.style.width = (32 * map_size.x) + "px";
 
   for (var i=0; i<tiles.length; i++){
-    var p = document.createElement("div");
+    // var p = document.createElement("div");
 
-    p.className = "prop"
-    p.innerHTML = "<span>" + ((props[tiles[i]][0] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][0] & 15).toString(2) + "</span><span> " +  ((props[tiles[i]][1] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][1] & 15).toString(2) + "</span>";
-    props_tiles.appendChild(p);
+    // p.className = "prop"
+    // p.innerHTML = "<span>" + ((props[tiles[i]][0] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][0] & 15).toString(2) + "</span><span> " +  ((props[tiles[i]][1] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][1] & 15).toString(2) + "</span>";
+    // props_tiles.appendChild(p);
     
     var x = i & (map_size.x - 1),
         y = ((i / map_size.x) | 0);

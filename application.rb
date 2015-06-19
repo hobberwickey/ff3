@@ -36,6 +36,12 @@ class Application < Sinatra::Base
     #erb :index
     erb :"tests/map"
   end
+
+  get "/battle" do
+    @battle = Battle.new
+
+    erb :"tests/battle"
+  end
 end
 
 Dir[File.dirname(__FILE__) + "/config/*.rb"].each { |file| require file }
