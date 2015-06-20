@@ -4,16 +4,42 @@ class Battle
   include Utils
 
   def background
-    #offsets = [ 0x27ABE7, 0x27B859, 0x27BFE2, 0x27C899, 0x27CF04, 0x27D212, 0x27DB78, 0x27E2B5, 0x27E77B, 0x27EEC8, 0x27F77F, 0x2802B3, 0x280E49, 0x281A41, 0x282149, 0x282E58, 0x2835C1, 0x283ECA, 0x2845AE, 0x284A76, 0x28512D, 0x2858B6, 0x285CB5, 0x286960, 0x2872BA, 0x2875DE, 0x287C67, 0x288858, 0x288F6E, 0x289625, 0x28A617, 0x28AC6A, 0x28B3F3, 0x28BAB5, 0x28C1E7, 0x28CC7F, 0x28D3CE, 0x28D566, 0x28E620, 0x28F74B, 0x29074A, 0x29189D, 0x2928D9, 0x2937D6, 0x29481E, 0x29582A, 0x295A63, 0x29616d ]
     gfx_palettes = []
     tiles = []
+    assembly = []
+    info = []
+
+    56.times do |i|
+      info[i] = []
+      6.times do |j|
+        info[i] << get_bytes(0x270200 + (i * 6) + j, "C")
+      end
+    end
 
     75.times do |i|
       offset = get_bytes(0x271850 + (i * 3), "S")
       bank = get_bytes(0x271852 + (i * 3), "C") - 0xe7
-      puts "BANK: #{i} #{bank}"
-      gfx_data = decompress(0x270200 + (bank * 0x10000) + offset)
+      
+      if bank < 0
+        gfx_data = []
+        
+        128.times do |j|
+          32.times do |k|
+            gfx_data << get_bytes(0x270200 + (bank * 0x10000) + offset + k + (j * 32), "C") 
+          end
+        end
+      else
+        gfx_data = decompress(0x270200 + (bank * 0x10000) + offset)
+      end
+
       tiles << assemble_chunk(gfx_data)
+    end
+
+    75.times do |i|
+      offset = get_bytes(0x271A48 + (i * 2), "S")
+      tile_assembly = decompress(0x270200 + offset)
+
+      assembly << tile_assembly
     end
 
     168.times do |i|
@@ -22,7 +48,9 @@ class Battle
 
     return {
       :data => tiles,
-      :palettes => gfx_palettes
+      :assembly => assembly,
+      :palettes => gfx_palettes,
+      :info => info
     }
   end
 
