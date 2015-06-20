@@ -1,8 +1,6 @@
 <div>
   <div id='drawTime'></div>
   <div><a id='next_bg' href='javascript:void(0)'>Next BG</a></div>
-  <div><a id='previous_tileset' href='javascript:void(0)'>Previous Tileset</a></div>
-  <div><a id='next_tileset' href='javascript:void(0)'>Next Tileset</a></div>
   <div><a id='previous_palette' href='javascript:void(0)'>Previous Palette</a></div>
   <div><a id='next_palette' href='javascript:void(0)'>Next Palette</a><div>
   
@@ -36,20 +34,6 @@
     document.querySelector("#previous_palette").addEventListener('click', function(){
       PALETTE_INDEX -= 1;
       if (PALETTES[PALETTE_INDEX] === void(0)) PALETTE_INDEX = PALETTES.length - 1;
-
-      drawBG();
-    }, false);
-
-    document.querySelector("#next_tileset").addEventListener('click', function(){
-      BG_DATA_INDEX += 1;
-      if (BG_DATA[BG_DATA_INDEX] === void(0)) BG_DATA_INDEX = 0;
-
-      drawBG();
-    }, false);
-
-    document.querySelector("#previous_tileset").addEventListener('click', function(){
-      BG_DATA_INDEX -= 1;
-      if (BG_DATA[BG_DATA_INDEX] === void(0)) BG_DATA_INDEX = BG_DATA.length - 1;
 
       drawBG();
     }, false);
