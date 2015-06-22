@@ -4,10 +4,14 @@ function buildPhysicalMap(){
       map_size = DIMENSIONS[0],
       map = PHYSICAL_MAP;
 
+  if (map_size.x * map_size.y > tiles.length) map_size = DIMENSIONS[1];
+  
+  //if (map_size[0] * map_size[1] < tiles.length) map_size = DIMENSIONS[2];
+  
   // var props_tiles = document.getElementById("props");
   // props_tiles.style.width = (32 * map_size.x) + "px";
-
   for (var i=0; i<tiles.length; i++){
+    
     // var p = document.createElement("div");
 
     // p.className = "prop"
@@ -16,70 +20,6 @@ function buildPhysicalMap(){
     
     var x = i & (map_size.x - 1),
         y = ((i / map_size.x) | 0);
-
-    // function get_west_prop(from, x, y, index){
-    //   if (from[0] === 0xf7 && from[1] === 0xff) return from;
-
-    //   if (x > 0){
-    //     if ((from[0] & 0xf0) === 0x40){
-    //       if (y < (map_size.y - 1)){
-    //         if ((props[tiles[index - 1 + map_size.x]][0] & 0xf0) === 0x40 ) {
-    //           return props[tiles[index - 1 + map_size.x]]
-    //         } else {
-    //           return props[tiles[index - 1]]
-    //         }
-    //       } else {
-    //         return [0xf7, 0xff]
-    //       }
-    //     } else if ((from[0] & 0xf0) === 0x80){
-    //       if (y > 0){
-    //         if (( props[tiles[index - 1 - map_size.x]][0] & 0xf0) === 0x80){
-    //           return props[tiles[index - 1 - map_size.x]]
-    //         } else {
-    //           return props[tiles[index - 1]]
-    //         }
-    //       } else {
-    //         return [0xf7, 0xff]
-    //       }
-    //     } else {
-    //       return props[tiles[index - 1]]
-    //     }
-    //   } else {
-    //     return [0xf7, 0xff]
-    //   }
-    // }
-
-    // function get_east_prop(from, x, y, index){
-    //   if (from[0] === 0xf7 && from[1] === 0xff) return from;
-      
-    //   if (x < (map_size.x - 1)){
-    //     if ((from[0] & 0xf0) === 0x40){
-    //       if (y > 0){
-    //         if ( (props[tiles[index + 1 - map_size.x]][0] & 0xf0) === 0x40 ){
-    //           return props[tiles[index + 1 - map_size.x]]
-    //         } else {
-    //           return props[tiles[index + 1]]
-    //         }
-    //       } else {
-    //         return [0xf7, 0xff]
-    //       }
-    //     } else if ((from[0] & 0xf0) === 0x80){
-    //       if (y < (map_size.y - 1)){
-    //         if ( (props[tiles[index + 1 + map_size.x]][0] & 0xf0) === 0x80 ){
-    //           return props[tiles[index + 1 + map_size.x]]
-    //         } else {
-    //           return props[tiles[index + 1]]
-    //         }
-    //       } else {
-    //         return [0xf7, 0xff]
-    //       }
-    //     } else {
-    //       return props[tiles[index + 1]]
-    //     }
-    //   } else {
-    //     return [0xf7, 0xff]
-    //   }
-    // }
 
     function getTile(x, y){
       if (x >= map_size.x - 1 || x < 1 || y >= map_size.y - 1 || y < 1){ 
@@ -98,7 +38,7 @@ function buildPhysicalMap(){
         sw = getTile(x - 1, y + 1),
         w = getTile(x - 1, y),
         nw = getTile(x - 1, y - 1);
-
+    
     //TODO: directions
     function canMove(from, to, direction){
       var results = {};

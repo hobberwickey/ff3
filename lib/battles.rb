@@ -23,7 +23,7 @@ class Battle
       if bank < 0
         gfx_data = []
         
-        128.times do |j|
+        256.times do |j|
           32.times do |k|
             gfx_data << get_bytes(0x270200 + (bank * 0x10000) + offset + k + (j * 32), "C") 
           end
