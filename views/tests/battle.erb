@@ -1,5 +1,8 @@
 <div>
   <div id='drawTime'></div>
+  <div><a id='pause' href='javascript:void(0)'>Pause</a></div>
+  <div><a id='ripple' href='javascript:void(0)'>Toggle Ripple</a></div>
+
   <div><a id='next_bg' href='javascript:void(0)'>Next BG</a></div>
   <div><a id='previous_bg' href='javascript:void(0)'>Previous BG</a></div>
   
@@ -9,130 +12,223 @@
   
 
   <script>
-  var BG = JSON.parse('<%= @battle.background.to_json %>'),
-      BG_DATA = BG.data,
-      BG_DATA_INDEX = 0,
-      PALETTES = BG.palettes,
-      PALETTE_INDEX = 0,
-      ASSEMBLY_DATA = BG.assembly,
-      INFO = BG.info,
-      INFO_INDEX = 0;
+    var Effects = function(){
+      this.effects = {}
+    }
 
-    // document.addEventListener("polymer-ready", function(){
-    var ctx = document.querySelector("#screen").getContext("2d"),
-        dataObj = ctx.getImageData(0,0,256,256),
-        data = dataObj.data;
+    Effects.prototype.ripple = function(){
+      var effect = {
+        data: [ 0, 0, 0, 1, 1, 0, 0, 0 ],
+        fn: function(y){
+          var offset = y % effect.data.length;
+          if (effect.data[offset] === 1){ 
+            return y - 1
+          } else {
+            return y
+          }
+        }.bind(this)
+      }
 
-    document.querySelector("#next_bg").addEventListener('click', function(){
-      INFO_INDEX += 1;
-      if (INFO[INFO_INDEX] === void(0)) INFO_INDEX = 0;
+      setInterval(function(){
+        var item = effect.data[1];
+        effect.data.splice(1, 1);
+        effect.data.push(item);
+      }.bind(this), 100)
+    
+      this.effects.ripple = effect;
+    }
 
-      drawBG();
-    }, false);
+    var BATTLE = function(backgrounds){
+      var PAUSED = false,
+          RIPPLE = false;
 
-    document.querySelector("#previous_bg").addEventListener('click', function(){
-      INFO_INDEX -= 1;
-      if (INFO[INFO_INDEX] === void(0)) INFO_INDEX = INFO.length - 1;
-
-      drawBG();
-    }, false);
-
-    var test = document.querySelector("#drawTime");
-
-    function drawBG(){
-      //TODO: Remove, this is just for clearing the canvas
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-      dataObj = ctx.getImageData(0,0,256,256),
-      data = dataObj.data;
-
-      var tiles = [[],[],[]],
-          lens = [];
-
-      var info = INFO[INFO_INDEX]
-      var tilesets = [info[0] & 127, info[1] & 127, info[2] & 127];
-      
-      for (var i=0; i<3; i++){
-        var tileset = BG_DATA[tilesets[i]];
-        if (!tileset){
-          lens.push(0);
+      document.querySelector("#pause").addEventListener("click", function(){
+        if (PAUSED === true){
+          PAUSED = false;
+          loop();
         } else {
-          lens.push(tileset.length);
-          for (var j=0; j<tileset.length; j++){
-            tiles[i].push(tileset[j]);
+          PAUSED = true;
+        }
+      }, false)
+
+      document.querySelector("#ripple").addEventListener("click", function(){
+        if (RIPPLE){
+          RIPPLE = false;
+          delete effect.effects.ripple
+        } else {
+          RIPPLE = true;
+          effect.ripple();
+        }
+      }, false)
+
+      document.querySelector("#next_bg").addEventListener('click', function(){
+        INFO_INDEX += 1;
+        if (INFO[INFO_INDEX] === void(0)) INFO_INDEX = 0;
+
+        buildTiles();
+      }, false);
+
+      document.querySelector("#previous_bg").addEventListener('click', function(){
+        INFO_INDEX -= 1;
+        if (INFO[INFO_INDEX] === void(0)) INFO_INDEX = INFO.length - 1;
+
+        buildTiles();
+      }, false);
+
+
+      var BG = backgrounds,
+          BG_DATA = BG.data,
+          BG_DATA_INDEX = 0,
+          PALETTES = BG.palettes,
+          PALETTE_INDEX = 0,
+          ASSEMBLY_DATA = BG.assembly,
+          INFO = BG.info,
+          INFO_INDEX = 0,
+          TILES = [[],[],[]];
+
+      // document.addEventListener("polymer-ready", function(){
+      var ctx = document.querySelector("#screen").getContext("2d"),
+          dataObj = ctx.getImageData(0,0,256,256),
+          data = dataObj.data;
+
+      var test = document.querySelector("#drawTime");
+
+      var timing = [ 
+        window.performance.now(), // start time
+        0, // frames
+        0, // last draw
+        0  // advanced
+      ]
+
+      function buildTiles(){
+        var info = INFO[INFO_INDEX],
+            tilesets = [info[0] & 127, info[1] & 127, info[2] & 127];
+        
+        //This definitely shouldn't be here. 
+        for (var i=0; i<3; i++){
+          var tileset = BG_DATA[tilesets[i]];
+          TILES[i] = [];
+          if (tileset){
+            for (var j=0; j<tileset.length; j++){
+              TILES[i].push(tileset[j]);
+            }
           }
         }
       }
 
-      var bg_data = BG_DATA,
-          bg_data_index = BG_DATA_INDEX,
-          palettes = PALETTES,
-          palette_index = PALETTE_INDEX;
+      var effect = new Effects();
 
-      var assembly1 = ASSEMBLY_DATA[info[3]],
-          assembly2 = ASSEMBLY_DATA[info[4]];
+      function drawBG(tiles){
+        var tiles = TILES,
+            info = INFO[INFO_INDEX];
+      
+        var palettes = PALETTES,
+            palette_index = PALETTE_INDEX;
+
+        var assembly1 = ASSEMBLY_DATA[info[3]],
+            assembly2 = ASSEMBLY_DATA[info[4]];
+        
+        for (var yPos=0; yPos<152; yPos++){
+          if (effect.effects.ripple !== void(0)){
+            var _yPos = effect.effects.ripple.fn(yPos);
+          } else {
+            var _yPos = yPos;
+          }
+
+          for (var xPos=0; xPos<256; xPos++){  
+            var x_offset = xPos >> 3,
+                y_offset = yPos >> 3;
           
-      for (var i=0; i<608; i++){
-        var assembly = assembly1;
+            var x = xPos & 7,
+                y = yPos & 7,
+                i = (y_offset << 5) + x_offset;
 
-        var part1 = assembly[i * 2],
-            part2 = assembly[(i * 2) + 1],
-            tileset = (((part2 & 1) ) + ((part1 & 128) >> 7))
-            tile_number = part1 & 127;
-        
-        var hFlip = (part2 & 64) === 64,
-            vFlip = (part2 & 128) === 128;
+            var assembly = assembly1;
 
-        var tile = tiles[tileset][tile_number],
-            palette = palettes[((info[5] & 127) * 3) + (((part2 & 12) - 1) >> 2)],
-            x_offset = (i % 32),
-            y_offset = ((i / 32) | 0);
-        
-        if (!tile){
-          tile = tiles[0][tile_number + 128]
-          if (!tile) continue
-        }
+            var part1 = assembly[i * 2],
+                part2 = assembly[(i * 2) + 1],
+                tileset = (((part2 & 1) ) + ((part1 & 128) >> 7))
+                tile_number = part1 & 127;
+            
+            var hFlip = (part2 & 64) === 64,
+                vFlip = (part2 & 128) === 128;
 
-        for (var y=0; y<8; y++){
-          var y_pos = vFlip ? 7 - y : y;
+            var tile = tiles[tileset][tile_number],
+                palette = palettes[((info[5] & 127) * 3) + (((part2 & 12) - 1) >> 2)];
+            
+            if (!tile){
+              tile = tiles[0][tile_number + 128]
+              if (!tile) continue
+            }
 
-          for (var x = 0; x < 8; x++){
-            var x_pos = hFlip ? 7 - x : x;
+            var y_pos = vFlip ? 7 - y : y,
+                x_pos = hFlip ? 7 - x : x;
 
             var index = (x_pos * 4) + (y_pos * 1024) + (x_offset * 32) + (y_offset * 8192),
-                color = palette[tile[x + (y * 8)]];
+                color = palette[tile[x + ((_yPos & 7) * 8)]];
 
             drawPixel(data, color, index);
           }
         }
+
+        ctx.putImageData(dataObj, 0, 0)
       }
 
-      test.innerHTML = "BACKGROUND: " + INFO_INDEX;
-      ctx.putImageData(dataObj, 0, 0)
+      var timing = [ 
+        window.performance.now(), // start time
+        0, // frames
+        0, // last draw
+        0  // advanced
+      ]
+
+      function loop(timestamp) {
+        //if (Date.now() - start > fps){ //24 FPS
+          var t = timing;
+
+          drawBG();
+
+          t[1] = (timestamp - t[0]) >> 4;
+          t[3] = t[1] - t[2];
+          t[2] = t[1];
+
+          test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "// + t[3];
+          
+        //}
+        if (!PAUSED){ 
+          window.requestAnimationFrame(loop);
+        } else {
+          test.innerHTML = "Paused";
+        }
+      }
+
+      buildTiles();
+      loop();
+      
+      //TODO: be able to set width. Needed for mode7
+      function drawPixel(data, pal, index){
+        data[index] = pal[0]
+        data[index + 1] = pal[1]
+        data[index + 2] = pal[2]
+        data[index + 3] = pal[3]
+
+        // data[index + 4] = pal[0]
+        // data[index + 5] = pal[1]
+        // data[index + 6] = pal[2]
+        // data[index + 7] = pal[3]
+
+        // data[index + 2048] = pal[0]
+        // data[index + 2049] = pal[1]
+        // data[index + 2050] = pal[2]
+        // data[index + 2051] = pal[3]
+
+        // data[index + 2052] = pal[0]
+        // data[index + 2053] = pal[1]
+        // data[index + 2054] = pal[2]
+        // data[index + 2055] = pal[3]
+      }
     }
 
-    drawBG();
-    
-    //TODO: be able to set width. Needed for mode7
-    function drawPixel(data, pal, index){
-      data[index] = pal[0]
-      data[index + 1] = pal[1]
-      data[index + 2] = pal[2]
-      data[index + 3] = pal[3]
-
-      // data[index + 4] = pal[0]
-      // data[index + 5] = pal[1]
-      // data[index + 6] = pal[2]
-      // data[index + 7] = pal[3]
-
-      // data[index + 2048] = pal[0]
-      // data[index + 2049] = pal[1]
-      // data[index + 2050] = pal[2]
-      // data[index + 2051] = pal[3]
-
-      // data[index + 2052] = pal[0]
-      // data[index + 2053] = pal[1]
-      // data[index + 2054] = pal[2]
-      // data[index + 2055] = pal[3]
-    }
+    var Battle = new BATTLE(JSON.parse('<%= @battle.background.to_json %>'));
+  
   </script>
 </div>

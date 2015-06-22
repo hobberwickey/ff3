@@ -128,7 +128,7 @@
         // test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "// + t[3];
         
       //}
-      //if (!PAUSED) window.requestAnimationFrame(loop);
+      if (!PAUSED) window.requestAnimationFrame(loop);
     }
 
     buildPhysicalMap();
