@@ -66,4 +66,33 @@ module Utils
 
     return output
   end
+
+  def assemble_2bit(gfx)
+    len = (gfx.length / 16).to_i
+    tiles = []
+
+    len.times do |index|
+      tile = []
+
+      tile_offset = index * 16
+      
+      8.times do |y|
+        byte1 = gfx[tile_offset + (y * 2)]
+        byte2 = gfx[tile_offset + 1 + (y * 2)]
+        
+        8.times do |x|
+          shift = 7 - x
+          color = (byte1 & 1 << shift) >> shift
+          color += ((byte2 & 1 << shift) >> shift) << 1
+          
+          color_index = x + (y * 8)
+          tile[color_index] = color
+        end
+      end
+
+      tiles << tile
+    end
+
+    return tiles
+  end
 end

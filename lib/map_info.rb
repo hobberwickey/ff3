@@ -46,8 +46,6 @@ class Map
 
     pntr = get_bytes(1691408 + (@map_info.tile_properties * 2), "S") + 1681920
     
-    puts pntr
-    puts @map_info.tile_properties
     data = decompress(pntr)
     (data.length  / 2).times do |j|
       @tile_properties << [ data[j], data[j + 256] ]
@@ -59,10 +57,10 @@ class Map
   def tiles
     pnt1 = get_pointer(2079744 + (@map_info.formations[0] * 3))
     pnt2 = get_pointer(2079744 + (@map_info.formations[1] * 3))
-
+    
     data1 = decompress(pnt1 + 1966592)
     data2 = decompress(pnt2 + 1966592)
-
+    
     animated_pointer_1 = get_bytes(37845 + (@map_info.tilesets[4] * 2), "S")
     animated_pointers_2 = []
     4.times do |j|
@@ -87,7 +85,6 @@ class Map
 
     l1 = {r: [], p: []}
     l2 = {r: [], p: []}
-    l3 = {r: [], p: []}
     
     #could refactor this
     256.times do |i|
@@ -131,7 +128,7 @@ class Map
       l2[:p] << tile_p.each_with_index.map { |x, i| x == nil ? tile_p[ i % 256] : x }
     end
 
-    @tiles = [l1, l2, l3]
+    @tiles = [l1, l2, layer_3_tiles]
   end
 
   def blank_tile
@@ -139,6 +136,41 @@ class Map
     256.times { |i| tile << nil }
 
     return tile
+  end
+
+  def layer_3_tiles
+    offset = get_pointer(2543456 + (@map_info.tilesets[5] * 3))
+    gfx = decompress(offset + 2525568)
+    chunks = assemble_2bit(gfx)
+
+    tiles = []
+    4.times do |o|
+      h_flip = o == 1 || o == 3
+      v_flip = o == 2 || o == 3
+
+      64.times do |i|
+        
+        tile = []
+        
+        4.times do |j|
+          tile_index = (i * 4) + j + 4
+          
+          x_offset = (h_flip ? (j + 1) % 2 : j % 2) * 8
+          y_offset = v_flip ? (j > 1 ? 0 : 8) : (j > 1 ? 8 : 0)
+
+          64.times do |k|
+            y = (v_flip ? 7 - (k / 8).to_i : (k / 8).to_i) + y_offset
+            x = (h_flip ? 7 - (k % 8) : k % 8) + x_offset
+            
+            tile[x + (y * 16)] = chunks[tile_index][k]
+          end
+        end 
+        
+        tiles << tile
+      end
+    end
+
+    return tiles
   end
 
   def assemble_chunk(tile_r, tile_p, tile_index, tile_info, tile_data_offsets, x_offset, y_offset, index, test=0)
@@ -263,6 +295,17 @@ class MapInfo
     ]
   end
 
+  def effects
+    @effects = {
+      ripple_3: get_bytes(@offset + 1, "C") & 0x04 == 0x04,
+      ripple_2: get_bytes(@offset + 1, "C") & 0x08 == 0x08,
+      ripple_1: get_bytes(@offset + 1, "C") & 0x10 == 0x10,
+      search_lights: get_bytes(@offset + 1, "C") & 0x20 == 0x20,
+      animation_2: get_bytes(@offset + 25, "C") & 0x1F,
+      animation_3: (get_bytes(@offset + 25, "C") & 0xE0) >> 5
+    }
+  end
+
   def dimensions
     data1 = get_bytes(@offset + 23, "C")
     data2 = get_bytes(@offset + 24, "C")
@@ -323,6 +366,7 @@ class MapInfo
 
   def tilesets 
     data1 = get_bytes(@offset + 7, "L")
+    data3 = get_bytes(@offset + 10, "C")
     data2 = get_bytes(@offset + 27, "C")
     
     @tilesets = [
@@ -330,7 +374,8 @@ class MapInfo
       (data1 & (127 << 7)) >> 7 ,
       (data1 & (127 << 14)) >> 14,
       (data1 & (127 << 21)) >> 21,
-      data2 & 31 #animated tiles
+      data2 & 31, #animated tiles
+      (data3 & 1008) / 16
     ]
   end
 end

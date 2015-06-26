@@ -7,9 +7,9 @@
   <div id='right'><a href='javascript:void(0)'>Right</a></div>
   <div id='priority'><a href='javascript:void(0)'>Toggle Priority</a></div>
   
-  <div id='screen_wrapper' style='position: relative; width: 512px; height: 512px; margin: -50px auto 0 auto; overflow: hidden;'>
+  <div id='screen_wrapper' style='position: relative; width: 512px; height: 512px; margin: -100px auto 0 auto; overflow: hidden;'>
     <!-- <div id='props' style='position: absolute; width: 512px;'></div> -->
-    <canvas id='screen' width='256' height='256' style='background-color: #00f; transform: scale(2); transform-origin: 0 0;'></canvas>
+    <canvas moz-opaque id='screen' width='256' height='256' style='background-color: #00f; transform: scale(2); transform-origin: 0 0;'></canvas>
   </div>
   
   <script>
@@ -56,6 +56,9 @@
         CHARACTER = JSON.parse('<%= @map.sprite_info.character.to_json %>'),
         TILE_PROPERTIES = JSON.parse('<%= @map.tile_properties.to_json %>'),
         LAYER_PRIORITIES = JSON.parse('<%= @map.info.layer_priorities %>'),
+        X_SHIFT = JSON.parse('<%= @map.info.x_shift.to_json %>'),
+        Y_SHIFT = JSON.parse('<%= @map.info.y_shift.to_json %>'),
+        EFFECTS = JSON.parse('<%= @map.info.effects.to_json %>'),
         PAUSED = false,
 
         SPRITE_POSITIONS = JSON.parse('<%= @map.sprite_info.sprite_positions.to_json %>'),
@@ -72,6 +75,7 @@
         data = dataObj.data;
 
     var layers = [
+        { data: TILES[2], index: 2, x: 0, x_offset: 0, y: 0, y_offset: 0 },
         { data: TILES[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
         { data: TILES[1].p, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0 },
         { data: TILES[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0 },
@@ -79,8 +83,8 @@
       ]
 
     var scrollPos = {
-        x: 0,
-        y: 0,
+        x: 30,
+        y: 8,
         x_offset: 0,
         y_offset: 0
       }
@@ -89,7 +93,15 @@
     for (var i=0; i<256; i++){
       pixelMap[i] = [];
       for (var j=0; j<256; j++){
-        pixelMap[i][j] = 0;
+        pixelMap[i][j] = { priority: 0, trans: 0 };
+      }
+    }
+
+    var transMap = []
+    for (var i=0; i<256; i++){
+      transMap[i] = [];
+      for (var j=0; j<256; j++){
+        transMap[i][j] = { priority: 0, trans: 0 };
       }
     }
 
@@ -125,7 +137,7 @@
         t[3] = t[1] - t[2];
         t[2] = t[1];
 
-        // test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "// + t[3];
+        test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "// + t[3];
         
       //}
       if (!PAUSED) window.requestAnimationFrame(loop);
@@ -144,9 +156,13 @@
     function drawMap(){
       //var start = Date.now();
 
-      var layers_len = layers.length,
-          map_size = DIMENSIONS,
-          m_data = MAP_DATA;                    
+      var layers_len = window.layers.length,
+          map_size = window.DIMENSIONS,
+          m_data = window.MAP_DATA,
+          palette = window.PALETTE,
+          pMap = window.pixelMap,
+          tMap = window.transMap,
+          d = window.data;                   
 
       for (var i=0; i<256; i++){
         var x_offset = (i & 15) << 4,
@@ -156,10 +172,13 @@
           var x = (j & 15) + x_offset,
               y = (j >> 4) + y_offset;
 
-          var pixel, index = (x * 4) + (y * 1024);
+          var pixel = [0, 0, 0, 0], 
+              index = (x << 2) + (y << 10),
+              transColor = 0;
           
           for (var z=0; z<layers_len;z++){
-            var layer = layers[z];
+            var layer = layers[z],
+                layer_index = layer.index;
 
             var overflow_x = ((j & 15) + layer.x_offset + scrollPos.x_offset > 15) | 0,
                 overflow_y = (j + ((layer.y_offset + scrollPos.y_offset) << 4) > 255) | 0,
@@ -168,29 +187,60 @@
 
             var map_x = (x_offset >> 4) + layer.x + scrollPos.x + overflow_x,
                 map_y = (y_offset >> 4) + layer.y + scrollPos.y + overflow_y;
-          
-            var map_index = (map_x & (map_size[layer.index].x - 1)) + ((map_y & (map_size[layer.index].y - 1)) * map_size[layer.index].x),
-                tile_index = m_data[layer.index][map_index],
-                tile_data = layer.data[tile_index];
             
-            var animated_offset = pixel_offset + (256 * animated_frame),
+            var map_index = (map_x & (map_size[layer_index].x - 1)) + ((map_y & (map_size[layer_index].y - 1)) * map_size[layer_index].x),
+                tile_index = m_data[layer_index][map_index],
+                tile_data = layer.data[tile_index]; //
+
+            var animated_offset = pixel_offset + (animated_frame << 8),
                 color_index = tile_data[animated_offset] === void(0) ? tile_data[pixel_offset] : tile_data[animated_offset];
           
-            pixel = PALETTE[color_index];
-            if( pixel[3] === 255 ){ 
-              pixelMap[x][y] = z
-              break;
+            pixel = palette[color_index];
+            
+            
+            if (pixel[3] !== 0){ 
+              if ((layer_index & 2) !== 0){
+                transColor = pixel;
+              } else {
+                if (transColor !== 0){
+                  pixel = addColors(pixel, transColor);
+                }
+
+                pMap[x][y] = z - 1;
+                tMap[x][y] = transColor;
+                transColor = 0;
+                break;
+              }
             }
           }
         
-          drawPixel(data, pixel, index)
+          drawPixel(d, pixel, index)
         }
       }
+    }
+
+    function addColors(o, n){
+      var alpha = 0.5;
+      
+      return [
+        alpha * n[0] + alpha * o[0],
+        alpha * n[1] + alpha * o[1],
+        alpha * n[2] + alpha * o[2],
+        255
+      ];
+          
+      // results[0] = alpha * n[0] + alpha * o[0];
+      // results[1] = alpha * n[1] + alpha * o[1];
+      // results[2] = alpha * n[2] + alpha * o[2];
+      // results[3] = 255;
+
+      // return results;
     }
 
     function drawSprites(){
       // TODO: This will need to be broken up into subroutines so that sprites can be drawn according to priority
       // to get the layering exact.
+      
       var _sprites = SPRITES,
           _scrollPos = scrollPos,
           _spritePositions = SPRITE_POSITIONS;
@@ -199,42 +249,41 @@
         x1: (_scrollPos.x << 4) + _scrollPos.x_offset,
         x2: (_scrollPos.x << 4) + _scrollPos.x_offset + 256,
         y1: (_scrollPos.y << 4) + _scrollPos.y_offset,
-        y2: (_scrollPos.y << 4) + _scrollPos.y_offset + 256,
-
+        y2: (_scrollPos.y << 4) + _scrollPos.y_offset + 256
       }
 
-      for (var i=0; i<_sprites.length; i++){
-        var sprite = _sprites[i],
-          back_edge = (sprite.coords.x << 4) + sprite.coords.x_offset,
-          top_edge = ((sprite.coords.y - 1) << 4) + sprite.coords.y_offset,
-          spritePos = _spritePositions[sprite.position];
+      // for (var i=0; i<_sprites.length; i++){
+      //   var sprite = _sprites[i],
+      //     back_edge = (sprite.coords.x << 4) + sprite.coords.x_offset,
+      //     top_edge = ((sprite.coords.y - 1) << 4) + sprite.coords.y_offset,
+      //     spritePos = _spritePositions[sprite.position];
 
-        if (back_edge + 16 > mapBounds.x1 && back_edge < mapBounds.x2 && top_edge + 24 > mapBounds.y1 && top_edge < mapBounds.y2){
-          for (var b=0; b<6; b++){
-            var x_offset = (b & 1) << 3,
-                y_offset = (b >> 1) << 3;
+      //   if (back_edge + 16 > mapBounds.x1 && back_edge < mapBounds.x2 && top_edge + 24 > mapBounds.y1 && top_edge < mapBounds.y2){
+      //     for (var b=0; b<6; b++){
+      //       var x_offset = (b & 1) << 3,
+      //           y_offset = (b >> 1) << 3;
 
-            for (var y=0; y<8; y++){
-              for (var x=0; x<8; x++){
-                var color = sprite.tiles[spritePos[b]][x + (y << 3)],
-                    x_pixel = sprite.mirror === 0 ? x + x_offset : 15 - (x + x_offset),
-                    data_x = (back_edge - mapBounds.x1) + x_pixel,
-                    data_y = (y + (top_edge - mapBounds.y1)) + y_offset;
+      //       for (var y=0; y<8; y++){
+      //         for (var x=0; x<8; x++){
+      //           var color = sprite.tiles[spritePos[b]][x + (y << 3)],
+      //               x_pixel = sprite.mirror === 0 ? x + x_offset : 15 - (x + x_offset),
+      //               data_x = (back_edge - mapBounds.x1) + x_pixel,
+      //               data_y = (y + (top_edge - mapBounds.y1)) + y_offset;
 
-                if (data_x < 0 || data_x > 255 || data_y < 0 || data_y > 255 || color[3] === 0) continue
+      //           if (data_x < 0 || data_x > 255 || data_y < 0 || data_y > 255 || color[3] === 0) continue
 
-                var data_offset = ((data_x) + ((data_y) * 256)) * 4
-                if (sprite.priority === 0){ 
-                  if (pixelMap[data_x][data_y] !== 1 && pixelMap[data_x][data_y] !== 0) drawPixel(data, color, data_offset)
-                } else {
-                  if (pixelMap[data_x][data_y] !== 1) drawPixel(data, color, data_offset)
-                }
-                // if (pixelMap[data_x][data_y] <= sprite.priority) drawPixel(data, color, data_offset)
-              }
-            }
-          }
-        }
-      }
+      //           var data_offset = ((data_x) + ((data_y) * 256)) * 4
+      //           if (sprite.priority === 0){ 
+      //             if (pixelMap[data_x][data_y] !== 1 && pixelMap[data_x][data_y] !== 0) drawPixel(data, color, data_offset)
+      //           } else {
+      //             if (pixelMap[data_x][data_y] !== 1) drawPixel(data, color, data_offset)
+      //           }
+      //           // if (pixelMap[data_x][data_y] <= sprite.priority) drawPixel(data, color, data_offset)
+      //         }
+      //       }
+      //     }
+      //   }
+      // }
 
       drawCharacter(mapBounds, _spritePositions);
     }
@@ -249,7 +298,8 @@
           upperMask = sprite.priority === 0 && PHYSICAL_MAP[sprite.coords.x][sprite.coords.y - 1].mask === 1,
           lowerMask = sprite.priority === 0 && PHYSICAL_MAP[sprite.coords.x][sprite.coords.y].mask === 1,
           upperPriority = sprite.priority === 0 ? (physical_tile.drawPriority > 1) | 0 : (physical_tile.drawPriority > 0) | 0,
-          lowerPriority = 0;
+          lowerPriority = 0,
+          tMap = window.transMap;
 
 
       for (var b=0; b<6; b++){
@@ -258,9 +308,6 @@
 
         var layer = b < 4 ? upperPriority : lowerPriority;
             mask = b < 4 ?  upperMask : lowerMask;
-
-        test.innerHTML = "Draw Priority is: " + upperPriority + " Sprite Priority is: " + sprite.priority + " Upper mask: " + upperMask + " Lower mask: " + lowerMask;
-        
 
         for (var y=0; y<8; y++){
           for (var x=0; x<8; x++){
@@ -278,9 +325,13 @@
               if (mask){
                 //if (pixelMap[data_x][data_y] === 2) drawPixel(data, color, data_offset)
               } else {
-                if (pixelMap[data_x][data_y] !== 1 && pixelMap[data_x][data_y] !== 0) drawPixel(data, color, data_offset)
+                if (pixelMap[data_x][data_y] !== 1 && pixelMap[data_x][data_y] !== 0){ 
+                  if (tMap[data_x][data_y] !== 0) color = addColors(color, tMap[data_x][data_y])
+                  drawPixel(data, color, data_offset)
+                }
               }
             } else {
+              if (tMap[data_x][data_y] !== 0) color = addColors(color, tMap[data_x][data_y])
               drawPixel(data, color, data_offset)
             } 
           }
