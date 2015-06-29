@@ -65,7 +65,7 @@ function checkActions(){
 /********************/
 function setupSpriteMovement(){
   for (var i=0; i<SPRITES.length; i++){
-    //moveRandom(SPRITES[i])
+    moveRandom(SPRITES[i])
   }
 }
 
@@ -102,7 +102,7 @@ function canMoveLeft(sprite){
       yes = sprite.priority === 0 ? current.layer_0 : current.layer_1;
 
   if ( yes ){
-    sprite.priority = current.priority();
+    sprite.priority = current.priority(sprite);
     return true;
   } else {
     return false;
@@ -118,7 +118,7 @@ function canMoveRight(sprite){
       yes = sprite.priority === 0 ? current.layer_0 : current.layer_1;
 
   if ( yes ){
-    sprite.priority = current.priority();
+    sprite.priority = current.priority(sprite);
     return true;
   } else {
     return false;
@@ -134,7 +134,7 @@ function canMoveUp(sprite){
       yes = sprite.priority === 0 ? current.layer_0 : current.layer_1;
 
   if ( yes ){
-    sprite.priority = current.priority();
+    sprite.priority = current.priority(sprite);
     return true;
   } else {
     return false;
@@ -150,7 +150,7 @@ function canMoveDown(sprite){
       yes = sprite.priority === 0 ? current.layer_0 : current.layer_1;
 
   if ( yes ){
-    sprite.priority = current.priority();
+    sprite.priority = current.priority(sprite);
     return true;
   } else {
     return false;
@@ -168,7 +168,7 @@ function moveLeft(){
     if (c.coords.x - s.x <= 8 && s.x > 0){
       scrollLeft();
 
-      if (t.stairs === 2 && c.priority === 1 && c.coords.y - s.y >= 8 && s.y + 16 < MAP_SIZE[1]){
+      if (t.stairs === 2 && c.priority === 1 && c.coords.y - s.y >= 8 && s.y + 16 < MAP_VIEWABLE_SIZE[1]){
         scrollDown();
       }
 
@@ -198,10 +198,10 @@ function moveRight(){
       t = PHYSICAL_MAP[c.coords.x][c.coords.y].east;
   
   if (canMoveRight(c)){
-    if (c.coords.x - s.x >= 8 && s.x + 16 < MAP_SIZE[0]){
+    if (c.coords.x - s.x >= 8 && s.x + 16 < MAP_VIEWABLE_SIZE[0]){
       scrollRight();
       
-      if (t.stairs === 1 && c.priority === 1 && c.coords.y - s.y >= 8 && s.y + 16 < MAP_SIZE[1]){
+      if (t.stairs === 1 && c.priority === 1 && c.coords.y - s.y >= 8 && s.y + 16 < MAP_VIEWABLE_SIZE[1]){
         scrollUp();
       }
 
@@ -254,7 +254,7 @@ function moveDown(){
       s = scrollPos;
 
   if (canMoveDown(c)){
-    if (c.coords.y - s.y >= 8 && s.y + 16 < MAP_SIZE[1]){
+    if (c.coords.y - s.y >= 8 && s.y + 16 < MAP_VIEWABLE_SIZE[1]){
       scrollDown();
     }
 
@@ -347,7 +347,7 @@ function moveSpriteLeft(sprite, callback){
 }
  
 function moveSpriteRight(sprite, callback){
-  if (sprite.coords.x === MAP_SIZE[0]){
+  if (sprite.coords.x === MAP_VIEWABLE_SIZE[0]){
     callback(sprite);
     return;
   }
@@ -377,7 +377,7 @@ function moveSpriteUp(sprite, callback){
 }
 
 function moveSpriteDown(sprite, callback){
-  if (sprite.coords.y === MAP_SIZE[1]){
+  if (sprite.coords.y === MAP_VIEWABLE_SIZE[1]){
     callback(sprite);
     return;
   }

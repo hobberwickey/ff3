@@ -77,7 +77,7 @@ class Sprite
   end
 
   def pal
-    @pal ||= @pal ||= (@bytes[2] & 28) / 3
+    @pal ||= @pal ||= ((@bytes[2] & 28) >> 2)
   end
 
   def x_loc
@@ -179,8 +179,8 @@ class Character < Sprite
   def initialize(sprite_number)
     @gxf_set = sprite_number
     @pal = PALETTES[sprite_number]
-    @x_loc = 38
-    @y_loc = 16
+    @x_loc = 8
+    @y_loc = 8
     @event_address = 655871
 
     self.gfx

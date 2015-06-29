@@ -91,7 +91,7 @@ function buildPhysicalMap(){
         if ( (to[0] & 6) === 4 ) {
           results.layer_1 = true;
           results.layer_0 = true;
-          results.priority = function(){ return CHARACTER.priority };
+          results.priority = function(s){ return s.priority };
         } else if ( (to[0] & 7) === 1) {
           results.layer_1 = true;
           results.layer_0 = results.stairs === 0 ? false : true;
@@ -153,7 +153,7 @@ function buildPhysicalMap(){
           } else if ( (to[0] & 7) === 3 ) {
             results.layer_0 = true;
             results.layer_1 = true;
-            results.priority = function(){  return CHARACTER.priority };
+            results.priority = function(s){  return s.priority };
           } else if ( (to[0] & 6) === 0 ) {
             results.layer_0 = true;
             results.layer_1 = true;
@@ -161,7 +161,7 @@ function buildPhysicalMap(){
           } else {
             results.layer_0 = false;
             results.layer_1 = false;
-            results.priority = function(){  return CHARACTER.priority };
+            results.priority = function(s){  return s.priority };
           }
         }
       }

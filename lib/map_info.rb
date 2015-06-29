@@ -25,7 +25,7 @@ class Map
       r = bytes & 31
       g = (bytes & ( 31 << 5 )) >> 5 
       b = (bytes & ( 31 << 10 )) >> 10 
-      a = i % 16 == 0 ? 0 : 255
+      a = i < 16 ? (i % 4 == 0 ? 0 : 255) : (i % 16 == 0 ? 0 : 255)
       pal << [r * 8, g * 8, b * 8, a]
     end
 
@@ -140,16 +140,24 @@ class Map
 
   def layer_3_tiles
     offset = get_pointer(2543456 + (@map_info.tilesets[5] * 3))
+    
+    #return [] if (offset === 0)
+
     gfx = decompress(offset + 2525568)
     chunks = assemble_2bit(gfx)
 
     tiles = []
+
+    puts @map_info.tilesets[5]
+    puts chunks[0].to_json
+
     4.times do |o|
       h_flip = o == 1 || o == 3
       v_flip = o == 2 || o == 3
 
+
+
       64.times do |i|
-        
         tile = []
         
         4.times do |j|
@@ -162,9 +170,9 @@ class Map
             y = (v_flip ? 7 - (k / 8).to_i : (k / 8).to_i) + y_offset
             x = (h_flip ? 7 - (k % 8) : k % 8) + x_offset
             
-            tile[x + (y * 16)] = chunks[tile_index][k]
+            tile[x + (y * 16)] = chunks[tile_index][k] % 4 == 0 ? 0 : 17
           end
-        end 
+        end
         
         tiles << tile
       end
@@ -312,12 +320,12 @@ class MapInfo
 
     @dimensions = [
       {
-        x: (2 ** ((data1 & (3 << 2)) >> 2)) * 16,
-        y: (2 ** (data1 & 3)) * 16 
-      },
-      {
         x: (2 ** ((data1 & (3 << 6)) >> 6)) * 16,
         y: (2 ** ((data1 & (3 << 4)) >> 4)) * 16,
+      },
+      {
+        x: (2 ** ((data1 & (3 << 2)) >> 2)) * 16,
+        y: (2 ** (data1 & 3)) * 16 
       },
       {
         x: (2 ** ((data2 & (3 << 6)) >> 6)) * 16,
