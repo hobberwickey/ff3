@@ -29,8 +29,11 @@ class Application < Sinatra::Base
   #register Sinatra::R18n
   #register Sinatra::Partial
   #register Sinatra::Flash
-  
   get "/" do
+    erb :index
+  end
+
+  get "/map/:map" do
     @map_info = MapInfo.new :map_index => params[:map].to_i
     @map = Map.new :map_info => @map_info, :character => params[:character].to_i
     #erb :index
@@ -41,6 +44,30 @@ class Application < Sinatra::Base
     @battle = Battle.new
 
     erb :"tests/battle"
+  end
+
+  get "/loadMap/:index" do
+    @map_info = MapInfo.new :map_index => params[:index].to_i
+    @map = Map.new :map_info => @map_info, :character => params[:character].to_i
+    
+
+    resp = {
+      :palette => @map.palette,
+      :tiles => @map.tiles,
+      :map_data => @map.layer_data,
+      :dimensions => @map.info.dimensions,
+      :sprites => @map.sprite_info.sprites,
+      :character => @map.sprite_info.character,
+      :tile_properties => @map.tile_properties,
+      :layer_priorities => @map.info.layer_priorities,
+      :x_shift => @map_info.x_shift,
+      :y_shift => @map_info.y_shift,
+      :effects => @map.info.effects,
+      :sprite_positions => @map.sprite_info.sprite_positions,
+      :map_viewable_size => [ @map.map_info.map_viewable_size[:x], @map.map_info.map_viewable_size[:y] ]
+    }
+
+    return resp.to_json
   end
 end
 

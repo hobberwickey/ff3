@@ -148,9 +148,6 @@ class Map
 
     tiles = []
 
-    puts @map_info.tilesets[5]
-    puts chunks[0].to_json
-
     4.times do |o|
       h_flip = o == 1 || o == 3
       v_flip = o == 2 || o == 3
@@ -170,7 +167,7 @@ class Map
             y = (v_flip ? 7 - (k / 8).to_i : (k / 8).to_i) + y_offset
             x = (h_flip ? 7 - (k % 8) : k % 8) + x_offset
             
-            tile[x + (y * 16)] = chunks[tile_index][k] % 4 == 0 ? 0 : 17
+            tile[x + (y * 16)] = chunks[tile_index][k]
           end
         end
         

@@ -9,7 +9,7 @@
   
   <div id='screen_wrapper' style='position: relative; width: 512px; height: 512px; margin: -100px auto 0 auto; overflow: hidden;'>
     <!-- <div id='props' style='position: absolute; width: 512px;'></div> -->
-    <canvas moz-opaque id='screen' width='256' height='256' style='background-color: #fff; transform: scale(2); transform-origin: 0 0;'></canvas>
+    <canvas moz-opaque id='screen' width='256' height='256' style='background-color: #fff; transform: scale3d(2, 2, 2); transform-origin: 0 0;'></canvas>
   </div>
   
   <script>
@@ -65,7 +65,6 @@
         MAP_VIEWABLE_SIZE = [<%= @map.map_info.map_viewable_size[:x] %>, <%= @map.map_info.map_viewable_size[:y] %>];
         PHYSICAL_MAP = {};
 
-    console.log(X_SHIFT, Y_SHIFT)
     // var tile_props = document.getElementById("props");
     var ctx, dataObj, data, layers, scrollPos, scrollSpeed, animated_frame;
     var scrollL = scrollR = scrollU = scrollD = false;
@@ -84,7 +83,7 @@
         ]
     } else {
       var layers = [
-          { data: TILES[2], index: 2, x: X_SHIFT[0], x_offset: 0, y: Y_SHIFT[1], y_offset: 0, priority: 0, width: DIMENSIONS[2].x },
+          { data: TILES[2], index: 2, x: 0, x_offset: 0, y: Y_SHIFT[1], y_offset: 0, priority: 0 },
           { data: TILES[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 0 },
           { data: TILES[1].p, index: 1, x: X_SHIFT[1], x_offset: 0, y: Y_SHIFT[0], y_offset: 0, priority: 1 },
           { data: TILES[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 2 },
@@ -121,6 +120,30 @@
       animated_frame++;
       if (animated_frame >= 4) animated_frame = 0;
     }, false)
+
+    // every(2, function(){
+    //   layers[0].x_offset += 1;
+    //   if (layers[0].x_offset > 15){
+    //     layers[0].x += 1;
+    //     layers[0].x_offset = 0;
+
+    //     if (layers[0].x > DIMENSIONS[2].x - 1){
+    //       layers[0].x = 0;
+    //     }
+    //   }
+    // }, false)
+
+    // every(1, function(){
+    //   layers[0].y_offset += 1;
+    //   if (layers[0].y_offset > 15){
+    //     layers[0].y += 1;
+    //     layers[0].y_offset = 0;
+
+    //     if (layers[0].y > DIMENSIONS[2].y - 1){
+    //       layers[0].y = 0;
+    //     }
+    //   }
+    // }, false)
     
 
     var test = document.querySelector("#drawTime");
@@ -142,7 +165,7 @@
         checkActions();
         drawMap();
         drawSprites();
-        
+
         t[1] = (timestamp - t[0]) >> 4;
         t[3] = t[1] - t[2];
         t[2] = t[1];
@@ -172,49 +195,47 @@
           palette = window.PALETTE,
           pMap = window.pixelMap,
           tMap = window.transMap,
+          sPos = window.scrollPos,
+          blank = new Array(4),
+          a_frame = animated_frame,
           d = window.data;                   
 
-      for (var i=0; i<256; i++){
-        var x_offset = (i & 15) << 4,
-            y_offset = (i >> 4) << 4
-        
-        for (var j=0; j<256; j++){
-          var x = (j & 15) + x_offset,
-              y = (j >> 4) + y_offset;
 
-          var pixel = [0, 0, 0, 0], 
+      for (var y=0; y<256; y++){
+        for (var x=0; x<256; x++){
+          
+          var pixel = blank,
               index = (x << 2) + (y << 10),
               transColor = 0;
           
-          for (var z=0; z<layers_len;z++){
+          for (var z=0; z<layers_len; z++){
             var layer = layers[z],
                 layer_index = layer.index;
 
-            var overflow_x = ((j & 15) + layer.x_offset + scrollPos.x_offset > 15) | 0,
-                overflow_y = (j + ((layer.y_offset + scrollPos.y_offset) << 4) > 255) | 0,
-                pixel_offset = (j + layer.x_offset + scrollPos.x_offset + ((layer.y_offset + scrollPos.y_offset) << 4)) - (overflow_x << 4) - (overflow_y << 8);
-
-
-            var map_x = ((x_offset + layer.x) >> 4) + scrollPos.x + overflow_x,
-                map_y = ((y_offset + layer.y) >> 4) + scrollPos.y + overflow_y;
+            var pixel_x = x + sPos.x_offset + layer.x_offset,
+                pixel_y = y + sPos.y_offset + layer.y_offset,
+                
+                map_x = (((sPos.x << 4) + pixel_x + (layer.x << 4)) >> 4) & (map_size[layer_index].x - 1),
+                map_y = (((sPos.y << 4) + pixel_y + (layer.y << 4)) >> 4) & (map_size[layer_index].y - 1),
+                
+                pixel_offset = (pixel_x & 15) + ((pixel_y & 15) << 4);
+                
+            var map_index = map_x + (map_y * map_size[layer_index].x),
+                tile_index = m_data[layer_index][map_index];
             
-            var map_index = (map_x & (map_size[layer_index].x - 1)) + ((map_y & (map_size[layer_index].y - 1)) * map_size[layer_index].x),
-                tile_index = m_data[layer_index][map_index],
-                tile_data =  layer.data[tile_index]; //layer.data[i]; 
-          //try{
-            var animated_offset = pixel_offset + (animated_frame << 8),
+            var tile_data =  layer.data[tile_index]; //layer.data[i]; 
+            
+            var animated_offset = pixel_offset + (a_frame << 8),
                 color_index = tile_data[animated_offset] === void(0) ? tile_data[pixel_offset] : tile_data[animated_offset];
-          //} catch(e){
-          //  console.log(map_index)
-          //  throw "ERROR"
-          //}
+            
             pixel = palette[color_index];
             
-            
+            if (pixel[3] !== 0 && layer_index === 2){
+              transColor = pixel;
+              continue;
+            }
+
             if (pixel[3] !== 0){ 
-              if ((layer_index & 2) !== 0){
-                transColor = pixel;
-              } else {
                 if (transColor !== 0){
                   pixel = addColors(pixel, transColor);
                 }
@@ -223,24 +244,85 @@
                 tMap[x][y] = transColor;
                 transColor = 0;
                 break;
-              }
             }
           }
         
           drawPixel(d, pixel, index)
         }
       }
+      // for (var i=0; i<256; i++){
+      //   var x_offset = (i & 15) << 4,
+      //       y_offset = (i >> 4) << 4
+        
+      //   for (var j=0; j<256; j++){
+      //     var x = (j & 15) + x_offset,
+      //         y = (j >> 4) + y_offset;
+
+      //     var pixel = [0, 0, 0, 0], 
+      //         index = (x << 2) + (y << 10),
+      //         transColor = 0;
+          
+      //     for (var z=0; z<layers_len;z++){
+      //       var layer = layers[z],
+      //           layer_index = layer.index;
+
+      //       var overflow_x = ((j & 15) + layer.x_offset + sPos.x_offset > 15) | 0,
+      //           overflow_y = (j + ((layer.y_offset + sPos.y_offset) << 4) > 255) | 0,
+      //           pixel_offset = (j + layer.x_offset + sPos.x_offset + ((layer.y_offset + sPos.y_offset) << 4)) - (overflow_x << 4) - (overflow_y << 8);
+
+
+      //       var map_x = (((x_offset + (layer.x << 4)) >> 4) + sPos.x + overflow_x) & (map_size[layer_index].x - 1),
+      //           map_y = (((y_offset + (layer.y << 4)) >> 4) + sPos.y + overflow_y) & (map_size[layer_index].y - 1);
+            
+      //       var map_index = map_x + (map_y * map_size[layer_index].x),
+      //           tile_index = m_data[layer_index][map_index],
+      //           tile_data =  layer.data[tile_index]; //layer.data[i]; 
+      //     //try{
+      //       var animated_offset = pixel_offset + (animated_frame << 8),
+      //           color_index = tile_data[animated_offset] === void(0) ? tile_data[pixel_offset] : tile_data[animated_offset];
+      //     //} catch(e){
+      //     //  console.log(map_index)
+      //     //  throw "ERROR"
+      //     //}
+          
+      //       pixel = palette[color_index];
+      //     if (!pixel && pixel !== 0){
+      //       console.log(map_x, sPos.x, color_index)
+      //       throw "ERROR"
+      //     }
+            
+      //       if (pixel[3] !== 0){ 
+      //         if ((layer_index & 2) !== 0){
+      //           transColor = pixel;
+      //         } else {
+      //           if (transColor !== 0){
+      //             pixel = addColors(pixel, transColor);
+      //           }
+                
+      //           pMap[x][y] = layer.priority;
+      //           tMap[x][y] = transColor;
+      //           transColor = 0;
+      //           break;
+      //         }
+      //       }
+      //     }
+        
+      //     drawPixel(d, pixel, index)
+      //   }
+      // }
     }
 
     function addColors(o, n){
-      var alpha = 0.5;
+      var alpha = 0.5,
+          arr = new Array(4);
       
-      return [
-        alpha * n[0] + alpha * o[0],
-        alpha * n[1] + alpha * o[1],
-        alpha * n[2] + alpha * o[2],
-        255
-      ];
+      
+      arr[0] = alpha * n[0] + alpha * o[0];
+      arr[1] = alpha * n[1] + alpha * o[1];
+      arr[2] = alpha * n[2] + alpha * o[2];
+      arr[3] = 255;
+      
+      return arr;
           
       // results[0] = alpha * n[0] + alpha * o[0];
       // results[1] = alpha * n[1] + alpha * o[1];
@@ -267,10 +349,10 @@
       }
 
       for (var i=0; i<_sprites.length; i++){
-        drawCharacter(_sprites[i], mapBounds, _spritePositions, window.PHYSICAL_MAP);
+        drawCharacter(_sprites[i], mapBounds, _spritePositions, _pMap);
       }
 
-      drawCharacter(CHARACTER, mapBounds, _spritePositions, window.PHYSICAL_MAP);
+      drawCharacter(CHARACTER, mapBounds, _spritePositions, _pMap);
     }
 
     function drawCharacter(sprite, mapBounds, sprite_positions, pMap){
