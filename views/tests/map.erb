@@ -8,7 +8,7 @@
   <div id='priority'><a href='javascript:void(0)'>Toggle Priority</a></div>
   
   <div id='screen_wrapper' style='position: relative; width: 512px; height: 512px; margin: -100px auto 0 auto; overflow: hidden;'>
-    <!-- <div id='props' style='position: absolute; width: 512px;'></div> -->
+    <div id='props' style='position: absolute; width: 512px;'></div>
     <canvas moz-opaque id='screen' width='256' height='256' style='background-color: #fff; transform: scale3d(2, 2, 2); transform-origin: 0 0;'></canvas>
   </div>
   
@@ -65,7 +65,7 @@
         MAP_VIEWABLE_SIZE = [<%= @map.map_info.map_viewable_size[:x] %>, <%= @map.map_info.map_viewable_size[:y] %>];
         PHYSICAL_MAP = {};
 
-    // var tile_props = document.getElementById("props");
+    var tile_props = document.getElementById("props");
     var ctx, dataObj, data, layers, scrollPos, scrollSpeed, animated_frame;
     var scrollL = scrollR = scrollU = scrollD = false;
 
@@ -460,7 +460,7 @@
       
       s.x -= 1;
       s.x_offset = 15;
-      // tile_props.style.marginLeft = (s.x * -32) + "px";
+      tile_props.style.marginLeft = (s.x * -32) + "px";
       
 
       iterate(1, 14, function(){
@@ -476,7 +476,7 @@
       }, function(){ 
         scrollPos.x_offset = 0;
         scrollPos.x += 1; 
-        // tile_props.style.marginLeft = (scrollPos.x * -32) + "px";
+        tile_props.style.marginLeft = (scrollPos.x * -32) + "px";
       }, true)
     }
 
@@ -485,7 +485,7 @@
       
       s.y -= 1;
       s.y_offset = 15;
-      // tile_props.style.marginTop = (scrollPos.y * -32)  + "px";
+      tile_props.style.marginTop = (scrollPos.y * -32)  + "px";
       
       iterate(1, 14, function(){
         s.y_offset -= 1
@@ -500,7 +500,7 @@
       }, function(){ 
         scrollPos.y_offset = 0;
         scrollPos.y += 1; 
-        // tile_props.style.marginTop = (scrollPos.y * -32) + "px";
+        tile_props.style.marginTop = (scrollPos.y * -32) + "px";
       }, true)
     }
   </script>

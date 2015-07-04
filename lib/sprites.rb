@@ -60,7 +60,7 @@ class Sprite
 
   def to_json
     {
-      :coords => { :x => self.x_loc, :y => self.y_loc, :x_offset => 0, :y_offset => 0 },
+      :coords => { :x => self.x_loc, :y => self.y_loc, :x_offset => 0, :y_offset => 0, :moving => false },
       :sprite_index => self.gfx_set,
       :pal => self.pal,
       :tiles => self.gfx,
@@ -68,7 +68,7 @@ class Sprite
       :priority => 0,
       :position => 1,
       :mirror => 0,
-      :lastStep => 0 #Absolutely crazy that this is necessary
+      :lastStep => 0
     }
   end
 

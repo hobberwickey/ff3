@@ -9,7 +9,7 @@ var FF3 = function(){
   this.map = null;
 
   this.drawScreen = function(){};
-  this.paused = false;
+  this.paused = true;
   this.timing = [
     window.performance.now(), // start time
     0, // frames
@@ -46,7 +46,7 @@ FF3.prototype.loop = function(){
       self = this;
 
 
-  var test = document.querySelector("#test");
+  this.test = document.querySelector("#test");
 
   var draw = function(timestamp){
     ctx.putImageData(dataObj, 0, 0)
@@ -65,7 +65,7 @@ FF3.prototype.loop = function(){
     timing[3] = timing[1] - timing[2];
     timing[2] = timing[1];
 
-    test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "
+    self.test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "
 
     if (self.paused) clearInterval(timer);
   }

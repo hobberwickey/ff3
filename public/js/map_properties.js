@@ -8,15 +8,15 @@ function buildPhysicalMap(){
   
   //if (map_size[0] * map_size[1] < tiles.length) map_size = DIMENSIONS[2];
   
-  // var props_tiles = document.getElementById("props");
-  // props_tiles.style.width = (32 * map_size.x) + "px";
+  var props_tiles = document.getElementById("props");
+  props_tiles.style.width = (32 * map_size.x) + "px";
   for (var i=0; i<tiles.length; i++){
     
-    // var p = document.createElement("div");
+    var p = document.createElement("div");
 
-    // p.className = "prop"
-    // p.innerHTML = "<span>" + ((props[tiles[i]][0] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][0] & 15).toString(2) + "</span><span> " +  ((props[tiles[i]][1] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][1] & 15).toString(2) + "</span>";
-    // props_tiles.appendChild(p);
+    p.className = "prop"
+    p.innerHTML = "<span>" + ((props[tiles[i]][0] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][0] & 15).toString(2) + "</span><span> " +  ((props[tiles[i]][1] & 240) >> 4).toString(2) + "</span><span>" + (props[tiles[i]][1] & 15).toString(2) + "</span>";
+    props_tiles.appendChild(p);
     
     var x = i & (map_size.x - 1),
         y = ((i / map_size.x) | 0);
@@ -95,7 +95,7 @@ function buildPhysicalMap(){
         } else if ( (to[0] & 7) === 1) {
           results.layer_1 = true;
           results.layer_0 = results.stairs === 0 ? false : true;
-          results.priority = function(){ return (to[1] & 0x80) >> 7 }//return results.stairs === 0 ? 0 : (to[1] & 0x80) >> 7  };
+          results.priority = function(){ return (to[0] & 0x08) >> 3 }//return results.stairs === 0 ? 0 : (to[1] & 0x80) >> 7  };
         } else if ( (to[0] & 7) === 0) {
           results.layer_1 = false;
           results.layer_0 = true
@@ -176,7 +176,8 @@ function buildPhysicalMap(){
     map[x][y] = {
       mask: prop[0] === 0xf7 && prop[1] === 0xff ? 0 : (prop[0] & 4) >> 2,
       drawPriority: (prop[0] & 12) >> 2,
-      
+      stairs: ((prop[0] & 192) - 1),
+
       north: canMove(prop, n, 0),
       north_east: canMove(prop, ne, 2),
       east: canMove(prop, e, 2),
