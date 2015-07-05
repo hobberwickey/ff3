@@ -29,6 +29,7 @@ var FF3 = function(){
 }
 
 FF3.prototype.loadMap = function(index, coords, showName, facing){
+  this.test.innerHTML = "Loading"
   this.map = new Map(index, this);
   this.paused = true;
 
@@ -62,8 +63,6 @@ FF3.prototype.loop = function(){
     ctx.putImageData(dataObj, 0, 0)
     if (!self.paused){ 
       window.requestAnimationFrame(draw);
-    } else {
-      console.log("Paused")
     }
   }
 
