@@ -64,7 +64,8 @@ class Application < Sinatra::Base
       :y_shift => @map_info.y_shift,
       :effects => @map.info.effects,
       :sprite_positions => @map.sprite_info.sprite_positions,
-      :map_viewable_size => [ @map.map_info.map_viewable_size[:x], @map.map_info.map_viewable_size[:y] ]
+      :map_viewable_size => [ @map.map_info.map_viewable_size[:x], @map.map_info.map_viewable_size[:y] ],
+      :entrances => @map.map_info.entrances
     }
 
     return resp.to_json

@@ -1,5 +1,4 @@
 var Map = function(index, context){
-  console.log(context)
   this.index = index;
   this.context = context;
   this.character = this.context.ram.party[0];
@@ -22,6 +21,11 @@ var Map = function(index, context){
   
   this.width = null;
   this.height = null;
+
+  this.entrances = {}
+  this.treasure = {}
+  this.sprites = {}
+  this.events = {}
 
   this.loadMap();
 }
@@ -80,7 +84,7 @@ Map.prototype.prepareMap = function(){
   ]
 
   //TODO: layer priorities
-  //this.layers.unshift( { data: this.state.tiles[2], index: 2, x: this.state.x_shift[1], x_offset: 0, y: this.state.y_shift[1], y_offset: 0, priority: 0, trans: true})
+  // this.layers.unshift( { data: this.state.tiles[2], index: 2, x: this.state.x_shift[1], x_offset: 0, y: this.state.y_shift[1], y_offset: 0, priority: 0, trans: true})
 
   this.buildPhysicalMap();
 
@@ -93,6 +97,19 @@ Map.prototype.prepareMap = function(){
         map[i][j] = 0;
       }
     }
+  }
+
+  for (var i=0; i<this.state.entrances.length; i++){
+    var e = this.state.entrances[i];
+    if (this.entrances[e[0]] === void(0)) this.entrances[e[0]] = {};
+    
+    var self = this;
+    this.entrances[e[0]][e[1]] = (function(e){
+      return function(){
+        self.context.paused = true;
+        self.context.loadMap( (e[2] + (e[3] << 16) & 0x7ff), [e[4], e[5]], (e[3] & 8 >> 3) === 1, (e[3] & 48) >>  4)  
+      } 
+    })(e)
   }
 }
 
@@ -296,9 +313,13 @@ Map.prototype.buildPhysicalMap = function(){
 
     function getTile(x, y){
       if (x >= map_size.x - 1 || x < 1 || y >= map_size.y - 1 || y < 1){ 
-        return [0xf7, 0xff];
+        return [0xf7, 0xff, x, y];
       } else {
-        return props[tiles[x + (y * map_size.x)]]
+        var arr = props[tiles[x + (y * map_size.x)]];
+            arr.push(x)
+            arr.push(y)
+
+        return arr;
       }
     }
 
@@ -317,27 +338,12 @@ Map.prototype.buildPhysicalMap = function(){
       var results = {};
 
       //Solid block
-      if (to[0] === 0xf7 && to[1] === 0xff){
+      if (to[0] === 0xf7 && to[1] === 0xff ){
+        results.layer_0 = false;
+        results.layer_1 = false;
         return { layer_0: false, layer_1: false }
       }
-
-
-      //Directional settings
-      if (direction === 0 && ((from[1] & 8) !== 8)) {
-        return { layer_0: false, layer_1: false }
-      }
-
-      if (direction === 1 && ((from[1] & 4) !== 4)) {
-        return { layer_0: false, layer_1: false }
-      }
-
-      if (direction === 2 && ((from[1] & 1) !== 1)) {
-        return { layer_0: false, layer_1: false }
-      } 
-
-      if (direction === 3 && ((from[1] & 2) !== 2)) {
-        return { layer_0: false, layer_1: false }
-      }         
+     
 
       if ((from[0] & 0x40) === 0x40 && (to[0] & 0x40) === 0x40){
         if (direction === 2){
@@ -358,6 +364,25 @@ Map.prototype.buildPhysicalMap = function(){
       } else {
         results.stairs = 0
       }
+
+      if (results.stairs === 0){
+        //Directional settings
+        if (direction === 0 && ((from[1] & 8) !== 8)) {
+          return { layer_0: false, layer_1: false }
+        }
+
+        if (direction === 1 && ((from[1] & 4) !== 4)) {
+          return { layer_0: false, layer_1: false }
+        }
+
+        if (direction === 2 && ((from[1] & 1) !== 1)) {
+          return { layer_0: false, layer_1: false }
+        } 
+
+        if (direction === 3 && ((from[1] & 2) !== 2)) {
+          return { layer_0: false, layer_1: false }
+        }   
+      }  
 
       if ( (from[0] & 6) === 4 ) {
         results.walk_under = true;
@@ -439,8 +464,9 @@ Map.prototype.buildPhysicalMap = function(){
         }
       }
 
-      results.raw = to;
+      if ( (from[0] & 0x20) === 0x20 ) results.door = true;
 
+      results.raw = to; 
       return results;    
     }
 
@@ -450,7 +476,6 @@ Map.prototype.buildPhysicalMap = function(){
       mask: prop[0] === 0xf7 && prop[1] === 0xff ? 0 : (prop[0] & 4) >> 2,
       drawPriority: (prop[0] & 12) >> 2,
       stairs: ((prop[0] & 192) >> 6),
-
       north: canMove(prop, n, 0),
       north_east: canMove(prop, ne, 2),
       east: canMove(prop, e, 2),
@@ -463,21 +488,35 @@ Map.prototype.buildPhysicalMap = function(){
   }
 }
 
+Map.prototype.checkEvents = function(sprite, x, y){
+  if (sprite !== this.state.character){ 
+    return false;
+  }
+
+  if (this.entrances[x] !== void(0) && this.entrances[x][y] !== void(0)){
+    this.entrances[x][y]();
+    return true;
+  } else {
+    return false;
+  }
+}
+
 Map.prototype.canMoveLeft = function(sprite){
   // return true
   if (sprite.coords.x === 0) return false;
-
+  
   var map = this.physical_map,
       current = map[sprite.coords.x][sprite.coords.y],
       next = current.west,
       yes = sprite.priority === 0 ? next.layer_0 : next.layer_1;
 
   if (current.stairs !== 0 & !yes){
-    if (current.stairs === 1){
+    if (current.stairs === 1) {
       next = current.south_west,
       yes = next.stairs === 1;
 
       if ( yes ) this.southStairs(sprite);
+
     } else if (current.stairs === 2){
       next = current.north_west;
       yes = current.stairs === 2;
@@ -485,6 +524,9 @@ Map.prototype.canMoveLeft = function(sprite){
       if ( yes ) this.northStairs(sprite);
     }
   }
+  
+  if ( this.checkEvents(sprite, sprite.coords.x - 1, sprite.coords.y) ) return true;
+  if ( this.checkEvents(sprite, sprite.coords.x, sprite.coords.y) ) return true;
 
   if ( yes ){
     sprite.priority = next.priority(sprite);
@@ -497,7 +539,7 @@ Map.prototype.canMoveLeft = function(sprite){
 Map.prototype.canMoveRight = function(sprite){
   // return true
   if (sprite.coords.x === this.width - 1) return false;
-
+  
   var map = this.physical_map,
       current = map[sprite.coords.x][sprite.coords.y],
       next = current.east,
@@ -517,6 +559,9 @@ Map.prototype.canMoveRight = function(sprite){
     }
   }
 
+  if ( this.checkEvents(sprite, sprite.coords.x + 1, sprite.coords.y) ) return true;
+  if ( this.checkEvents(sprite, sprite.coords.x, sprite.coords.y) ) return true;
+
   if ( yes ){
     sprite.priority = next.priority(sprite);
     return true;
@@ -528,6 +573,7 @@ Map.prototype.canMoveRight = function(sprite){
 Map.prototype.canMoveUp = function(sprite){
   // return true
   if (sprite.coords.y === 0) return false;
+  if ( this.checkEvents(sprite, sprite.coords.x, sprite.coords.y - 1) ) return true;
 
   var map = this.physical_map,
       current = map[sprite.coords.x][sprite.coords.y].north,
@@ -544,6 +590,8 @@ Map.prototype.canMoveUp = function(sprite){
 Map.prototype.canMoveDown = function(sprite){
   // return true
   if (sprite.coords.y === this.height - 1) return false
+  if ( this.checkEvents(sprite, sprite.coords.x, sprite.coords.y + 1) ) return true;
+
 
   var map = this.physical_map,
       current = map[sprite.coords.x][sprite.coords.y].south,
@@ -558,8 +606,12 @@ Map.prototype.canMoveDown = function(sprite){
 }
 
 Map.prototype.moveRight = function(){
-  var sprite = this.state.character;
-  if ( this.walkRight(sprite, 1) && this.map_pos.x < this.width - 16 ) this.scrollRight(this.map_pos);
+  var sprite = this.state.character,
+      self = this;
+
+  if ( this.walkRight(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.x < this.width - 16 ){ 
+    this.scrollRight(this.map_pos);
+  }
 }
 
 Map.prototype.walkRight = function(sprite, speed, callback){
@@ -588,7 +640,9 @@ Map.prototype.walkRight = function(sprite, speed, callback){
 
 
 Map.prototype.moveLeft = function(){
-  var sprite = this.state.character;
+  var sprite = this.state.character,
+      self = this;
+
   if ( this.walkLeft(sprite, 1) && this.map_pos.x > 0 ) this.scrollLeft(this.map_pos);
 }
 
@@ -617,8 +671,12 @@ Map.prototype.walkLeft = function(sprite, speed, callback){
 }
 
 Map.prototype.moveDown = function(){
-  var sprite = this.state.character;
-  if ( this.walkDown(sprite, 1) && this.map_pos.y < this.height - 16 ) this.scrollDown(this.map_pos);
+  var sprite = this.state.character,
+      self = this;
+
+  if ( this.walkDown(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.y < this.height - 16 ){ 
+    this.scrollDown(this.map_pos);
+  }
 }
 
 Map.prototype.walkDown = function(sprite, speed, callback){
@@ -649,8 +707,12 @@ Map.prototype.walkDown = function(sprite, speed, callback){
 }
 
 Map.prototype.moveUp = function(){
-  var sprite = this.state.character;
-  if ( this.walkUp(sprite, 1) && this.map_pos.y > 0 ) this.scrollUp(this.map_pos);
+  var sprite = this.state.character,
+      self = this;
+
+  if ( this.walkUp(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.y > 0 ){ 
+    this.scrollUp(this.map_pos);
+  }
 }
 
 Map.prototype.walkUp = function(sprite, speed, callback){
@@ -737,5 +799,5 @@ Map.prototype.northStairs = function(sprite){
 
 Map.prototype.southStairs = function(sprite){
   this.scrollDown(sprite.coords, 1);
-  if (this.map_pos.y < this.height - 16) this.scrollDown(this.map_pos);
+  if (this.map_pos.y < this.height - 16 ) this.scrollDown(this.map_pos);
 }

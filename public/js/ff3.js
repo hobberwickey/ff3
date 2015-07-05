@@ -28,11 +28,21 @@ var FF3 = function(){
   this.loop()
 }
 
-FF3.prototype.loadMap = function(index){
+FF3.prototype.loadMap = function(index, coords, showName, facing){
   this.map = new Map(index, this);
+  this.paused = true;
 
   window.addEventListener('map-loaded', function mapLoaded(e){
     this.drawScreen = function(data){ this.map.runMap(data) };
+    var chr = this.map.state.character
+    if ( !!chr ){
+      chr.coords.x = coords[0];
+      chr.coords.y = coords[1];
+    }
+
+    this.map.map_pos.x = (Math.min(this.map.width - 16, Math.max(0, coords[0] - 7)));
+    this.map.map_pos.y = (Math.min(this.map.height - 16, Math.max(0, coords[1] - 7)));
+
     window.removeEventListener("map-loaded", mapLoaded);
   }.bind(this), false);
 }
@@ -65,9 +75,14 @@ FF3.prototype.loop = function(){
     timing[3] = timing[1] - timing[2];
     timing[2] = timing[1];
 
-    self.test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "
-
-    if (self.paused) clearInterval(timer);
+    
+    if (self.paused){ 
+      console.log("pausing")
+      clearInterval(timer);
+    } else {
+      self.test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "
+      // self.test.innerHTML = self.map.state.character.coords.x + " " + self.map.state.character.coords.y
+    }
   }
 
   var timer = setInterval(logic, fps);
