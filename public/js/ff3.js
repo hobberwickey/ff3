@@ -60,13 +60,21 @@ FF3.prototype.loop = function(){
 
   var draw = function(timestamp){
     ctx.putImageData(dataObj, 0, 0)
-    if (!self.paused) window.requestAnimationFrame(draw);
+    if (!self.paused){ 
+      window.requestAnimationFrame(draw);
+    } else {
+      console.log("Paused")
+    }
   }
 
   var fps = 1000 / 60;
 
   var logic = function(){
     var timestamp = window.performance.now();
+    if (self.paused){ 
+      clearInterval(timer);
+      return;
+    }
 
     self.checkActions();
     self.drawScreen(data);
@@ -75,14 +83,8 @@ FF3.prototype.loop = function(){
     timing[3] = timing[1] - timing[2];
     timing[2] = timing[1];
 
-    
-    if (self.paused){ 
-      console.log("pausing")
-      clearInterval(timer);
-    } else {
-      self.test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "
-      // self.test.innerHTML = self.map.state.character.coords.x + " " + self.map.state.character.coords.y
-    }
+    self.test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "
+    // self.test.innerHTML = self.map.state.character.coords.x + " " + self.map.state.character.coords.y
   }
 
   var timer = setInterval(logic, fps);
