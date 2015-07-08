@@ -16,7 +16,6 @@ class WorldMap
   end
 
   def get_data
-    puts "LEN: #{get_bytes(0x2F134F, 'S')}"
     @graphics = decompress( 0x2F134F, 0x10000)
     @tiles = decompress(0x2ED634, 0x10000)
     
