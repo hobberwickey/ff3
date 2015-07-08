@@ -24,15 +24,6 @@
 </div>
 
 <script>
-    var scale = 2,
-        xRotation = 45, //Mostly Constant
-        yRotation = 0, //Always 0
-        zRotation = 0, //Airship like rotation
-        xTranslation = 0,
-        yTranslation = 0,
-        zTranslation = 0;
-
-
     var wob = JSON.parse('<%= @wob.to_json %>'),
         tile_assembly = wob.graphics.splice(0, 1024),
         palette_indexes = wob.graphics.splice(-128, 128),

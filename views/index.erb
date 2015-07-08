@@ -4,9 +4,13 @@
 	<canvas moz-opaque id='screen' width='256' height='256' style='background-color: #00f; transform: scale3d(2, 2, 2); transform-origin: 0 0;'></canvas>
 </div>
 
+<canvas id='wob' width='4096' height='4096' hidden></canvas>
+<canvas id='wor' width='4096' height='4096' hidden></canvas>
+<canvas id='mode7' width='4096' height='4096' hidden></canvas>
+
 <script src='/js/ff3.js'></script>
 <script>
   var ff3 = new FF3();
 
-  ff3.loadMap(75, [2, 28], true, 2);
+  ff3.loadMap(0, [0, 2048], true, 2);
 </script>

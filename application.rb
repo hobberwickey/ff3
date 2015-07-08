@@ -76,6 +76,12 @@ class Application < Sinatra::Base
 
     return resp.to_json
   end
+
+  get "/loadWorldMap/" do
+    @wob = WorldMap.new
+
+    return @wob.to_json
+  end
 end
 
 Dir[File.dirname(__FILE__) + "/config/*.rb"].each { |file| require file }

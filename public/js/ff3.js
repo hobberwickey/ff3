@@ -8,6 +8,9 @@ var FF3 = function(){
   this.actions = {};
   this.map = null;
 
+  this.wobLoaded = false;
+  this.worLoaded = false;
+
   this.drawScreen = function(){};
   this.paused = true;
   this.timing = [
@@ -30,6 +33,15 @@ var FF3 = function(){
 
 FF3.prototype.loadMap = function(index, coords, showName, facing){
   this.test.innerHTML = "Loading"
+  
+  if (index === 0){
+    this.loadWorldMap('wob', coords)
+    return;
+  } else if (index === 1){
+    this.loadWorldMap("wor", coords)
+    return;
+  }
+
   this.map = new Map(index, this);
   this.paused = true;
 
@@ -43,6 +55,21 @@ FF3.prototype.loadMap = function(index, coords, showName, facing){
 
     this.map.map_pos.x = (Math.min(this.map.width - 16, Math.max(0, coords[0] - 7)));
     this.map.map_pos.y = (Math.min(this.map.height - 16, Math.max(0, coords[1] - 7)));
+
+    window.removeEventListener("map-loaded", mapLoaded);
+  }.bind(this), false);
+}
+
+FF3.prototype.loadWorldMap = function(map, coords){
+  this.test.innerHTML = "Loading"
+  this.map = new WorldMap(map, this);
+  this.paused = true;
+
+  window.addEventListener('world-map-loaded', function mapLoaded(e){
+    this.map.offset.x = coords[0],
+    this.map.offset.y = coords[1];
+
+    this.drawScreen = function(data){ this.map.runMap(data) };
 
     window.removeEventListener("map-loaded", mapLoaded);
   }.bind(this), false);
@@ -82,7 +109,7 @@ FF3.prototype.loop = function(){
     timing[3] = timing[1] - timing[2];
     timing[2] = timing[1];
 
-    self.test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "
+    // self.test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "
     // self.test.innerHTML = self.map.state.character.coords.x + " " + self.map.state.character.coords.y
   }
 
