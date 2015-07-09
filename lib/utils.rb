@@ -95,4 +95,37 @@ module Utils
 
     return tiles
   end
+
+  def assemble_4bit(gfx)
+    len = (gfx.length / 32).to_i
+    tiles = []
+
+    len.times do |index|
+      tile = []
+
+      tile_offset = index * 16
+      
+      8.times do |y|
+        byte1 = gfx[tile_offset + (y * 2)]
+        byte2 = gfx[tile_offset + 1 + (y * 2)]
+        byte3 = gfx[tile_offset + 16 + (y * 2)]
+        byte4 = gfx[tile_offset + 17 + (y * 2)]
+        
+        8.times do |x|
+          shift = 7 - x
+          color = (byte1 & 1 << shift) >> shift
+          color += ((byte2 & 1 << shift) >> shift) << 1
+          color += ((byte3 & 1 << shift) >> shift) << 2
+          color += ((byte4 & 1 << shift) >> shift) << 3
+          
+          color_index = x + (y * 8)
+          tile[color_index] = color
+        end
+      end
+
+      tiles << tile
+    end
+
+    return tiles
+  end
 end

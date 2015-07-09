@@ -2,6 +2,10 @@ var WorldMap = function(map, context){
   this.context = context;
   this.state = null;
   this.utils = new Utils();
+  this.vehicle = 2; //0: none, 1: chocobo, 2: airship
+  this.sprite_position = 0;
+  this.sprite_mirror = 0;
+  this.animated_index = 0;
 
   //For flying
   this.perspective = {
@@ -84,10 +88,14 @@ WorldMap.prototype.prepareMap = function(map){
   }
 
   this.ctx.putImageData(this.ctxDataObj, 0, 0)
+
+  var self = this;
+  this.context.every(4, function(){
+    self.animated_index = +(!self.animated_index);
+  }, false)
 }
 
 WorldMap.prototype.runMap = function(data){
-  this.test.innerHTML = "X: " + this.offset.x + " Y: " + this.offset.y;
   var p = this.perspective,
       o = this.offset;
 
@@ -120,6 +128,8 @@ WorldMap.prototype.runMap = function(data){
     }
   }
   
+  this.drawAirship(data);
+
   function calc_perspective(p, x, y, c, s){
     var px = x,
         py = y - p.horizon - p.fov, 
@@ -138,6 +148,74 @@ WorldMap.prototype.runMap = function(data){
   }    
 }
 
+WorldMap.prototype.drawAirship = function(data){
+  var airship = this.state.airship,
+      mirror = this.sprite_mirror;
+
+  var pos = this.sprite_position, 
+      posOffsets = [0, 4, 8, 14, 20, 24, 28, 34, 40, 44, 8, 14];
+
+  for (var y=0; y<4; y++){
+    for (var x=0; x<3; x++){
+      if (pos === 0 || pos === 2 || pos === 4){
+        var y_tile = y % 2,
+            x_tile = (x === 2 ? 0 : x) + (((y / 2) | 0) * 2),
+            h_flip = x === 2;
+      } else {
+        var y_tile = y % 2,
+            x_tile = x + (((x === 2) | 0) * ((y < 2) ? 2 : 1)) + (((y / 2) | 0) * 2),
+            h_flip = false;
+      }
+
+      var offset = posOffsets[(pos * 2) + this.animated_index],
+          tile_number = ((x_tile + offset) * 2) + (y_tile * 32);
+      
+      tile_number += (((offset + x_tile) / 16) | 0 ) * 32;
+      
+      var tile = airship.tiles[tile_number]
+
+      for (var i=0; i<64; i++){
+        var tile_x = h_flip ? 7 - (i % 8) : i % 8,
+            tile_y = (i / 8) | 0,
+            offset_x = tile_x + (x * 8);
+
+        var color = airship.palette[tile[i]];
+
+        if (mirror){
+          var index = ((24 - offset_x + 120) * 4) + ((tile_y + (y * 8) + 64) * 1024)
+        } else {
+          var index = ((offset_x + 120) * 4) + ((tile_y + (y * 8) + 64) * 1024)
+        }
+
+        if (color[3] !== 0){
+          data[index]     = color[0];
+          data[index + 1] = color[1];
+          data[index + 2] = color[2];
+          data[index + 3] = color[3];
+        }
+      }
+    }
+  }
+
+  // for (var i=0; i<airship.tiles.length; i+=2){
+  //   var x_offset = ((i % 32) * 8) / 2,
+  //       y_offset = ((i / 32) | 0) * 8;
+
+  //   for (var j=0; j<64; j++){
+  //     var x = j % 8,
+  //         y = (j / 8) | 0;
+
+  //     var color = airship.palette[airship.tiles[i][j]],
+  //         index = ((x + x_offset) * 4) + ((y + y_offset + 32) * 1024)
+
+  //     data[index]     = color[0];
+  //     data[index + 1] = color[1];
+  //     data[index + 2] = color[2];
+  //     data[index + 3] = color[3];
+  //   }
+  // }
+}
+
 WorldMap.prototype.setupControls = function(){
   var self = this,
       ctx = this.context,
@@ -145,10 +223,12 @@ WorldMap.prototype.setupControls = function(){
       buttons = controls.state;
 
   var actions = {
-    left: function(){ self.perspective.angle -= 0.02 },
+    left: function(){ 
+      self.perspective.angle -= 0.02 
+    },
     up: function(){ 
       self.perspective.scaling -= 2.5; 
-      if (self.perspective.scaling < 1) self.perspective.scaling = 1 
+      if (self.perspective.scaling < 1) self.perspective.scaling = 1;
     },
     right: function(){ self.perspective.angle += 0.02 },
     down: function(){ self.perspective.scaling += 2.5 },
@@ -174,5 +254,32 @@ WorldMap.prototype.setupControls = function(){
     if (buttons.down){ actions.down(); }
     if (buttons.a){ actions.a(); }
 
+    self.positionSprite(buttons);
   }, false)
+}
+
+WorldMap.prototype.positionSprite = function(buttons){
+  if (this.vehicle === 2){
+    var pos = 0;
+    
+    if (buttons.down){
+      pos = 2;
+    } 
+
+    if (buttons.up){
+      pos = 4;
+    }
+
+    if (buttons.left || buttons.right){
+      pos += 1;
+    } 
+
+    if (buttons.right){
+      this.sprite_mirror = true;
+    } else {
+      this.sprite_mirror = false;
+    }
+
+    this.sprite_position = pos;
+  }
 }
