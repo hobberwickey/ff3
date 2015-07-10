@@ -10,6 +10,7 @@ var FF3 = function(){
 
   this.wobLoaded = false;
   this.worLoaded = false;
+  this.menuOpened = false;
 
   this.drawScreen = function(){};
   this.paused = true;
@@ -28,6 +29,7 @@ var FF3 = function(){
   this.pixelData = this.ctxData.data;
 
   this.controls = new Controls(this);
+  this.menus = new Menus(this);
   this.loop()
 }
 
@@ -75,6 +77,30 @@ FF3.prototype.loadWorldMap = function(map, coords){
   }.bind(this), false);
 }
 
+FF3.prototype.pause = function(){
+  this.paused = true;
+}
+
+FF3.prototype.resume = function(){
+  if (!this.menuOpened){
+    this.paused = false;
+    this.loop();
+  }
+}
+
+FF3.prototype.clearScreen = function(){
+  for (var y=0; y<256; y++){
+    for (var x=0; x<256; x++){
+      var index = (x * 4) + (y * 1024);
+
+      this.pixelData[index]         = 0;
+      this.pixelData[index + 1]     = 0;
+      this.pixelData[index + 2]     = 0;
+      this.pixelData[index + 3]     = 255;
+    }
+  }
+}
+
 FF3.prototype.loop = function(){
   var ctx = this.ctx,
       dataObj = this.ctxData,
@@ -109,7 +135,7 @@ FF3.prototype.loop = function(){
     timing[3] = timing[1] - timing[2];
     timing[2] = timing[1];
 
-    // self.test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "
+    self.test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "
     // self.test.innerHTML = self.map.state.character.coords.x + " " + self.map.state.character.coords.y
   }
 

@@ -65,12 +65,19 @@ Map.prototype.setupControls = function(){
   this.context.every(1, function(){
     if (self.moving) return;
 
+    if (buttons.x){ 
+      self.context.menus.openMain('main-menu');
+      return;
+    }
+
     var current = controls.currentMovement;
     if (current !== null & buttons[current]){  actions[current](); return }
     if (buttons.left){ actions.left(); return; }
     if (buttons.up){ actions.up(); return; }
     if (buttons.right){ actions.right(); return; }
     if (buttons.down){ actions.down(); return; }
+
+
 
   }, false)
 }

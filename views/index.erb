@@ -1,7 +1,8 @@
 <div id='test'>Loading</div>
 
-<div wrapper>
-	<canvas moz-opaque id='screen' width='256' height='256' style='background-color: #00f; transform: scale3d(2, 2, 2); transform-origin: 0 0;'></canvas>
+<div id='screen_wrapper' style='width: 240px; height: 208px; overflow: hidden; transform: scale3d(2, 2, 2); transform-origin: 0 0;'>
+	<canvas moz-opaque id='screen' width='256' height='256' style='background-color: #00f; transform: translate3d(-16px, -8px, 0px); transform-origin: 0 0;'></canvas>
+  <div id='menu'></div>
 </div>
 
 <canvas id='wob' width='4096' height='4096' hidden></canvas>
@@ -12,5 +13,31 @@
 <script>
   var ff3 = new FF3();
 
-  ff3.loadMap(0, [0, 2048], true, 2);
+  ff3.loadMap(75, [2, 28], true, 2);
+
+  window.addEventListener("resize", function(){
+    resizeScreen();
+   }, false)
+
+  function resizeScreen(){
+    var viewport = document.querySelector('html'),
+        height = viewport.offsetHeight, 
+        width = viewport.offsetWidth,
+        hScale = width / 240,
+        vScale = height / 208,
+        scale = vScale > hScale ? hScale : vScale,
+        leftShift = (((width / scale) / 2) - (120)),
+        transformation = "scale3d(" + scale + "," + scale + "," + scale + ")" + " translateX(" + leftShift + "px)";
+
+    document.querySelector("#screen_wrapper").style.transform = transformation;
+  }
+
+  resizeScreen();
+
+  document.querySelector("#menu").addEventListener("transitionend", function(e){
+    if (e.target.dataset.opened === 0){
+      e.target.innerHTML = "";
+      e.target.style.display = "none";
+    }
+  }, false);
 </script>

@@ -23,7 +23,7 @@
     "tests"
   ],
   "dependencies": {
-    "polymer": "Polymer/polymer#~0.5.4",
+    "polymer": "Polymer/polymer#^1.0.0",
     "polymer-rails-forms": "~0.1.10"
   }
 }

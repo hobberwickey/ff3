@@ -1,3 +1,48 @@
+html {
+	width: 100%;
+	height: 100%;
+}
+
+body {
+	margin: 0px;
+	background-color: black;
+}
+
+#test {
+	position: absolute;
+	color: white;
+	background-color: black;
+	z-index: 1;
+}
+
+#menu {
+	position: absolute;
+	width: 240px;
+	height: 204px;
+	left: 0px;
+	top: 0px;
+	display: none;
+	opacity: 0;
+	transition: opacity 300ms ease;
+}
+
+
+$bg_gradien_top: #00f;
+$bg_gradient_bottom: #008;
+
+#menu /deep/ .content {
+	position: absolute;
+  border: groove 3px #ccc;
+  border-radius: 2px;
+  box-sizing: border-box;
+
+  background: -webkit-gradient(linear, 0% 0%, 0% 100%, from($bg_gradien_top), to($bg_gradient_bottom));
+  background: -webkit-linear-gradient(top, $bg_gradien_top, $bg_gradient_bottom);
+  background: -moz-linear-gradient(top, $bg_gradien_top, $bg_gradient_bottom);
+  background: -ms-linear-gradient(top, $bg_gradien_top, $bg_gradient_bottom);
+  background: -o-linear-gradient(top, $bg_gradien_top, $bg_gradient_bottom);
+}
+
 a {
 	text-decoration: none;
 	color: #333788;
@@ -15,22 +60,4 @@ core-header-panel {
 			
 		}
 	}
-}
-
-#props .prop {
-	position: relative;
-	width: 32px;
-	height: 32px;
-	float: left;
-	font-size: 8px;
-	line-height: 95%;
-	border: solid 1px;
-	margin: -1px;
-}
-
-#props .prop span {
-	display: block;
-	width: 100%;
-	position: relative;
-	text-align: center;
 }

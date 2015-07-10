@@ -28,8 +28,11 @@ var WorldMap = function(map, context){
 }
 
 WorldMap.prototype.loadMap = function(map){
+  this.context.clearScreen();
+
   if (this.context[map + "Loaded"]){
     this.setupControls();
+    this.context.resume();
     return;
   }
 
@@ -41,11 +44,9 @@ WorldMap.prototype.loadMap = function(map){
     this.setupControls();
     
     this.context[map + "Loaded"] = true;
-    
     window.dispatchEvent( new Event("world-map-loaded"));
 
-    this.context.paused = false;
-    this.context.loop();
+    this.context.resume();
   }.bind(this));
 }
 
