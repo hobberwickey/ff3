@@ -34,6 +34,7 @@ var FF3 = function(){
 }
 
 FF3.prototype.loadMap = function(index, coords, showName, facing){
+  console.log(index, coords)
   this.test.innerHTML = "Loading"
   
   if (index === 0){

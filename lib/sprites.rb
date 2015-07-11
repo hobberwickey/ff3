@@ -25,11 +25,11 @@ class Sprites
   end
 
   def sprites
-    @sprites.map { |s| s.to_json }
+    @sprites.map { |s| s.to_hash }
   end
 
   def character
-    @character.to_json
+    @character.to_hash
   end
 
   def sprite_positions
@@ -58,7 +58,7 @@ class Sprite
     self.gfx
   end
 
-  def to_json
+  def to_hash
     {
       :coords => { :x => self.x_loc, :y => self.y_loc, :x_offset => 0, :y_offset => 0, :moving => false },
       :sprite_index => self.gfx_set,
@@ -70,6 +70,10 @@ class Sprite
       :mirror => 0,
       :lastStep => 0
     }
+  end
+
+  def to_json
+    to_hash.to_json
   end
 
   def event_address
@@ -184,5 +188,20 @@ class Character < Sprite
     @event_address = 655871
 
     self.gfx
+  end
+
+  def character_positions
+    return @character_positions if defined? @character_positions
+
+    @character_positions = []
+    58.times do |i|
+      pos = []
+      6.times do |j|
+        pos << (get_bytes(53306 + (j* 2) + (i * 12), "S") / 32).to_i  
+      end
+      @character_positions << pos
+    end
+
+    return @character_positions
   end
 end

@@ -71,7 +71,8 @@ class Application < Sinatra::Base
       :effects => @map.info.effects,
       :sprite_positions => @map.sprite_info.sprite_positions,
       :map_viewable_size => [ @map.map_info.map_viewable_size[:x], @map.map_info.map_viewable_size[:y] ],
-      :entrances => @map.map_info.entrances
+      :entrances => @map.map_info.entrances,
+      :long_entrances => @map.map_info.long_entrances
     }
 
     return resp.to_json
@@ -81,6 +82,15 @@ class Application < Sinatra::Base
     @wob = WorldMap.new
 
     return @wob.to_json
+  end
+
+  get "/loadCharacter/:index" do
+    @character = Character.new(params[:index].to_i)
+    
+    return {
+      :character => @character.to_hash,
+      :positions => @character.character_positions
+    }.to_json
   end
 end
 

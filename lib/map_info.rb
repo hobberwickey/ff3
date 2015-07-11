@@ -401,4 +401,22 @@ class MapInfo
 
     return @entrances
   end
+
+  def long_entrances
+    first = get_bytes(0x2df680 + (@map_index * 2), "S")
+    last = get_bytes(0x2df682 + (@map_index * 2), "S")
+    num = ((last - first) / 7).to_i
+
+    @long_entrances = []
+    num.times do |i|
+      entrance = []
+      7.times do |j|
+        entrance << get_bytes(0x2df680 + first + (i * 7) + j, "C")
+      end
+
+      @long_entrances << entrance
+    end
+
+    return @long_entrances
+  end
 end

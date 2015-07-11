@@ -1,7 +1,7 @@
 class WorldMap
   include Utils
 
-  def initialize
+  def initialize()
     get_data
   end
 

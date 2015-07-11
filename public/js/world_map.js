@@ -2,18 +2,20 @@ var WorldMap = function(map, context){
   this.context = context;
   this.state = null;
   this.utils = new Utils();
-  this.vehicle = 2; //0: none, 1: chocobo, 2: airship
+  this.vehicle = 2; //0: none, 1: chocobo, 2: airship, 3: esper Terra, nothing
+  this.sprite = null;
+  this.sprite_positions = null;
+
   this.sprite_position = 0;
   this.sprite_mirror = 0;
   this.animated_index = 0;
 
   //For flying
-  this.perspective = {
-    horizon: -125,
-    fov: 300,
-    scaling: 300,
-    angle: 0
-  }
+  this.perspectives = [
+    { horizon: -325, fov: 300, scaling: 250, angle: 0 },
+    { horizon: -125, fov: 300, scaling: 300, angle: 0 },
+    { horizon: -125, fov: 300, scaling: 300, angle: 0 }
+  ]
 
   this.offset = {
     x: 0, 
@@ -21,7 +23,7 @@ var WorldMap = function(map, context){
   };
 
   //For flying
-  this.startRow = 64;
+  this.startRows = [0, 0, 64]
   this.test = document.getElementById("test");
 
   this.loadMap(map);
@@ -29,6 +31,15 @@ var WorldMap = function(map, context){
 
 WorldMap.prototype.loadMap = function(map){
   this.context.clearScreen();
+
+  if (this.context.ram.party.length > 0){
+    this.utils.retrieve("/loadCharacter/" + this.context.ram.party[0], function(resp){
+      this.sprite = resp.character;
+      this.sprite_positions = resp.positions;
+
+      console.log(resp)
+    }.bind(this));
+  }
 
   if (this.context[map + "Loaded"]){
     this.setupControls();
@@ -97,14 +108,15 @@ WorldMap.prototype.prepareMap = function(map){
 }
 
 WorldMap.prototype.runMap = function(data){
-  var p = this.perspective,
+  var p = this.perspectives[this.vehicle],
       o = this.offset;
 
   var cos = Math.cos(p.angle),
       sin = Math.sin(p.angle),
-      mode7 = this.ctxData;
+      mode7 = this.ctxData,
+      startRow = this.startRows[this.vehicle];
 
-  for (var y=this.startRow; y<256; y++){
+  for (var y=startRow; y<256; y++){
     for (var x=0; x<256; x++){
       var coords = calc_perspective(p, x - 128, y - 128, cos, sin);
       
@@ -129,7 +141,18 @@ WorldMap.prototype.runMap = function(data){
     }
   }
   
-  this.drawAirship(data);
+  var self = this,
+      vehicles = [
+        function(d){ self.drawCharacter(d) },
+        function(d){ self.drawChocobo(d) },
+        function(d){ self.drawAirship(d) },
+        function(d){ self.drawEsper(d) },
+        function(){}    
+      ];
+
+
+
+  vehicles[self.vehicle](data);
 
   function calc_perspective(p, x, y, c, s){
     var px = x,
@@ -147,6 +170,44 @@ WorldMap.prototype.runMap = function(data){
 
     return [rotatedX | 0, rotatedY | 0]
   }    
+}
+
+WorldMap.prototype.drawCharacter = function(data){
+  if (!this.sprite) return;
+
+  var sprite = this.sprite,
+      back_edge = 16 << 3,
+      top_edge = 12 << 3,
+      spritePos = this.sprite_positions[this.sprite_position],
+      full_mirror = sprite.mirror,
+      partial_mirror = full_mirror & (sprite.position === 0 || sprite.position === 2) 
+      utils = this.utils;
+
+  for (var b=0; b<6; b++){
+    var x_offset = (b & 1) << 3,
+        y_offset = (b >> 1) << 3; 
+
+    var mirror = ( b < 4 & partial_mirror === 1 ) ? 0 : full_mirror;
+
+    for (var y=0; y<8; y++){
+      for (var x=0; x<8; x++){
+        var color = sprite.tiles[spritePos[b]][x + (y << 3)],
+            x_pixel = mirror === 0 ? x + x_offset : 15 - (x + x_offset),
+            data_x = back_edge + x_pixel,
+            data_y = top_edge + y + y_offset;
+
+        if (color[3] === 0) continue
+        
+        var data_offset = ((data_x) + ((data_y) * 256)) * 4;
+
+        utils.drawPixel(data, color, data_offset);
+      }
+    }
+  }
+}
+
+WorldMap.prototype.drawChocobo = function(data){
+
 }
 
 WorldMap.prototype.drawAirship = function(data){
@@ -197,24 +258,10 @@ WorldMap.prototype.drawAirship = function(data){
       }
     }
   }
+}
 
-  // for (var i=0; i<airship.tiles.length; i+=2){
-  //   var x_offset = ((i % 32) * 8) / 2,
-  //       y_offset = ((i / 32) | 0) * 8;
-
-  //   for (var j=0; j<64; j++){
-  //     var x = j % 8,
-  //         y = (j / 8) | 0;
-
-  //     var color = airship.palette[airship.tiles[i][j]],
-  //         index = ((x + x_offset) * 4) + ((y + y_offset + 32) * 1024)
-
-  //     data[index]     = color[0];
-  //     data[index + 1] = color[1];
-  //     data[index + 2] = color[2];
-  //     data[index + 3] = color[3];
-  //   }
-  // }
+WorldMap.prototype.drawEsper = function(data){
+  
 }
 
 WorldMap.prototype.setupControls = function(){
@@ -223,37 +270,47 @@ WorldMap.prototype.setupControls = function(){
       controls = ctx.controls,
       buttons = controls.state;
 
-  var actions = {
-    left: function(){ 
-      self.perspective.angle -= 0.02 
-    },
-    up: function(){ 
-      self.perspective.scaling -= 2.5; 
-      if (self.perspective.scaling < 1) self.perspective.scaling = 1;
-    },
-    right: function(){ self.perspective.angle += 0.02 },
-    down: function(){ self.perspective.scaling += 2.5 },
-    a: function(){
-      self.offset.x += Math.round(Math.sin(self.perspective.angle) * 4);
-      self.offset.y -= Math.round(Math.cos(self.perspective.angle) * 4);
+  var actions = [
+    {
 
-      if (self.offset.x < 0) self.offset.x = 4095;
-      if (self.offset.x > 4095) self.offset.x = 0;
+    },
+    {
 
-      if (self.offset.y < 0) self.offset.y = 4095;
-      if (self.offset.y > 4095) self.offset.y = 0;
+    },
+    {
+      left: function(){ 
+        self.perspectives[self.vehicle].angle -= 0.02 
+      },
+      up: function(){ 
+        self.perspectives[self.vehicle].scaling -= 2.5; 
+        if (self.perspectives[self.vehicle].scaling < 1) self.perspectives[self.vehicle].scaling = 1;
+      },
+      right: function(){ self.perspectives[self.vehicle].angle += 0.02 },
+      down: function(){ self.perspectives[self.vehicle].scaling += 2.5 },
+      a: function(){
+        self.offset.x += Math.round(Math.sin(self.perspectives[self.vehicle].angle) * 4);
+        self.offset.y -= Math.round(Math.cos(self.perspectives[self.vehicle].angle) * 4);
+
+        if (self.offset.x < 0) self.offset.x = 4095;
+        if (self.offset.x > 4095) self.offset.x = 0;
+
+        if (self.offset.y < 0) self.offset.y = 4095;
+        if (self.offset.y > 4095) self.offset.y = 0;
+      }
     }
-  }
+  ]
 
   this.context.every(1, function(){
-    var current = controls.currentMovement;
+    var current = controls.currentMovement,
+        vehicle = self.vehicle;
+
     if (current !== null & buttons[current]){  actions[current](); return }
     
-    if (buttons.left){ actions.left(); }
-    if (buttons.up){ actions.up(); }
-    if (buttons.right){ actions.right(); }
-    if (buttons.down){ actions.down(); }
-    if (buttons.a){ actions.a(); }
+    if (buttons.left){ actions[vehicle].left(); }
+    if (buttons.up){ actions[vehicle].up(); }
+    if (buttons.right){ actions[vehicle].right(); }
+    if (buttons.down){ actions[vehicle].down(); }
+    if (buttons.a){ actions[vehicle].a(); }
 
     self.positionSprite(buttons);
   }, false)

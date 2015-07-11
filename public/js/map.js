@@ -106,6 +106,10 @@ Map.prototype.prepareMap = function(){
     }
   }
 
+  this.loadEntrances();
+}
+
+Map.prototype.loadEntrances = function(){
   for (var i=0; i<this.state.entrances.length; i++){
     var e = this.state.entrances[i];
     if (this.entrances[e[0]] === void(0)) this.entrances[e[0]] = {};
@@ -118,6 +122,38 @@ Map.prototype.prepareMap = function(){
       } 
     })(e)
   }
+
+  for (var i=0; i<this.state.long_entrances.length; i++){
+    var e = this.state.long_entrances[i],
+        len = e[2] & 127,
+        vert = e[2] & 128 === 128;
+    
+    for (var j=0; j<len; j++){
+      var x = vert ? e[0] : e[0] + j,
+          y = vert ? e[1] + j : e[1];
+
+      if (this.entrances[x] === void(0)) this.entrances[x] = {};
+      
+      var self = this;
+      this.entrances[x][y] = (function(e){
+        return function(){
+          self.context.pause(0);
+
+          var map_index = (e[3] + (e[4] << 8) & 0x1ff),
+              destination_x = e[5],
+              destination_y = e[6];
+
+          if (map_index === 0x1ff){
+            map_index = (e[4] & 2) >> 1;
+            destination_x = destination_x << 4;
+            destination_y = destination_y << 4;
+          }
+
+          self.context.loadMap( map_index, [destination_x, destination_y], (e[4] & 8 >> 3) === 1, (e[4] & 48) >>  4)  
+        } 
+      })(e)
+    }
+  }  
 }
 
 Map.prototype.setupSpriteMovement = function(){
@@ -616,7 +652,7 @@ Map.prototype.moveRight = function(){
   var sprite = this.state.character,
       self = this;
 
-  if ( this.walkRight(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.x < this.width - 16 ){ 
+  if ( this.walkRight(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.x < this.width - 16 && sprite.coords.x - this.map_pos.x >= 8){ 
     this.scrollRight(this.map_pos);
   }
 }
@@ -650,7 +686,7 @@ Map.prototype.moveLeft = function(){
   var sprite = this.state.character,
       self = this;
 
-  if ( this.walkLeft(sprite, 1) && this.map_pos.x > 0 ) this.scrollLeft(this.map_pos);
+  if ( this.walkLeft(sprite, 1) && this.map_pos.x > 0 && sprite.coords.x - this.map_pos.x <= 8) this.scrollLeft(this.map_pos);
 }
 
 Map.prototype.walkLeft = function(sprite, speed, callback){
@@ -681,7 +717,7 @@ Map.prototype.moveDown = function(){
   var sprite = this.state.character,
       self = this;
 
-  if ( this.walkDown(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.y < this.height - 16 ){ 
+  if ( this.walkDown(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.y < this.height - 16 && sprite.coords.y - this.map_pos.y >= 6){ 
     this.scrollDown(this.map_pos);
   }
 }
@@ -717,7 +753,7 @@ Map.prototype.moveUp = function(){
   var sprite = this.state.character,
       self = this;
 
-  if ( this.walkUp(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.y > 0 ){ 
+  if ( this.walkUp(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.y > 0 && sprite.coords.y - this.map_pos.y <= 6){ 
     this.scrollUp(this.map_pos);
   }
 }
