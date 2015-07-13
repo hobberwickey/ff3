@@ -383,40 +383,4 @@ class MapInfo
       (data3 & 1008) / 16
     ]
   end
-
-  def entrances
-    first = get_bytes(0x1FBD00 + (@map_index * 2), "S")
-    last = get_bytes(0x1FBD02 + (@map_index * 2), "S")
-    num = ((last - first) / 6).to_i
-    
-    @entrances = []
-    num.times do |i|
-      entrance = []
-      6.times do |j|
-        entrance << get_bytes(0x1FBD00 + first + (i * 6) + j, "C")
-      end
-
-      @entrances << entrance
-    end
-
-    return @entrances
-  end
-
-  def long_entrances
-    first = get_bytes(0x2df680 + (@map_index * 2), "S")
-    last = get_bytes(0x2df682 + (@map_index * 2), "S")
-    num = ((last - first) / 7).to_i
-
-    @long_entrances = []
-    num.times do |i|
-      entrance = []
-      7.times do |j|
-        entrance << get_bytes(0x2df680 + first + (i * 7) + j, "C")
-      end
-
-      @long_entrances << entrance
-    end
-
-    return @long_entrances
-  end
 end

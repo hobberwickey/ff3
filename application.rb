@@ -56,7 +56,6 @@ class Application < Sinatra::Base
     @map_info = MapInfo.new :map_index => params[:index].to_i
     @map = Map.new :map_info => @map_info, :character => params[:character].to_i
     
-
     resp = {
       :palette => @map.palette,
       :tiles => @map.tiles,
@@ -71,8 +70,8 @@ class Application < Sinatra::Base
       :effects => @map.info.effects,
       :sprite_positions => @map.sprite_info.sprite_positions,
       :map_viewable_size => [ @map.map_info.map_viewable_size[:x], @map.map_info.map_viewable_size[:y] ],
-      :entrances => @map.map_info.entrances,
-      :long_entrances => @map.map_info.long_entrances
+      :entrances => @map.map_info.entrances(params[:index].to_i),
+      :long_entrances => @map.map_info.long_entrances(params[:index].to_i)
     }
 
     return resp.to_json

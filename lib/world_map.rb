@@ -3,6 +3,8 @@ class WorldMap
 
   def initialize()
     get_data
+    entrances(0)
+    long_entrances(0)
   end
 
   def to_json
@@ -16,7 +18,9 @@ class WorldMap
         :tiles => @airship,
         :palette => @airship_palette,
         :shadow => @airship_shadow
-      }
+      },
+      :entrances => @entrances,
+      :long_entrances => @long_entrances
     }.to_json
   end
 

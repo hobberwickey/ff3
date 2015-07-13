@@ -1,6 +1,6 @@
 var Controls = function(context){
   this.context = context;
-  this.utils = new Utils();
+  this.utils = new Utils(context);
   this.moving = false;
 
   this.state = {
@@ -63,8 +63,12 @@ var Controls = function(context){
     Pausing
    */
   window.addEventListener("start-end", function(){
-    self.context.paused = !self.context.paused;
-    if (!self.context.paused) self.context.loop();
+    if (self.context.paused){
+      self.context.resume(0);
+    } else {
+      console.log("start-end pause");
+      self.context.pause(0.5, 0)
+    }
   }, false)
 }
 

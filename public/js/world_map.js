@@ -1,7 +1,7 @@
 var WorldMap = function(map, context){
   this.context = context;
   this.state = null;
-  this.utils = new Utils();
+  this.utils = new Utils(context);
   this.vehicle = 2; //0: none, 1: chocobo, 2: airship, 3: esper Terra, nothing
   this.sprite = null;
   this.sprite_positions = null;
@@ -9,6 +9,8 @@ var WorldMap = function(map, context){
   this.sprite_position = 0;
   this.sprite_mirror = 0;
   this.animated_index = 0;
+
+  this.entrances = {};
 
   //For flying
   this.perspectives = [
@@ -30,22 +32,22 @@ var WorldMap = function(map, context){
 }
 
 WorldMap.prototype.loadMap = function(map){
+  for (var x in this.context.actions) delete this.context.actions[x];
   this.context.clearScreen();
 
   if (this.context.ram.party.length > 0){
     this.utils.retrieve("/loadCharacter/" + this.context.ram.party[0], function(resp){
       this.sprite = resp.character;
       this.sprite_positions = resp.positions;
-
-      console.log(resp)
     }.bind(this));
   }
 
-  if (this.context[map + "Loaded"]){
-    this.setupControls();
-    this.context.resume();
-    return;
-  }
+  // TODO: The world maps could be cached
+  // if (this.context[map + "Loaded"]){
+  //   this.setupControls();
+  //   this.context.resume();
+  //   return;
+  // }
 
   for (var x in this.context.actions) delete this.context.actions[x];
 
@@ -53,11 +55,10 @@ WorldMap.prototype.loadMap = function(map){
     this.state = resp;
     this.prepareMap(map);
     this.setupControls();
+    this.entrances = this.utils.loadEntrances(resp.entrances, resp.long_entrances, this.context)
     
     this.context[map + "Loaded"] = true;
     window.dispatchEvent( new Event("world-map-loaded"));
-
-    this.context.resume();
   }.bind(this));
 }
 
@@ -150,9 +151,9 @@ WorldMap.prototype.runMap = function(data){
         function(){}    
       ];
 
-
-
   vehicles[self.vehicle](data);
+
+  self.checkEvents(o.x, o.y);
 
   function calc_perspective(p, x, y, c, s){
     var px = x,
@@ -339,5 +340,18 @@ WorldMap.prototype.positionSprite = function(buttons){
     }
 
     this.sprite_position = pos;
+  }
+}
+
+WorldMap.prototype.checkEvents = function(x, y){
+  var x = x >> 4,
+      y = y >> 4;
+
+  this.test.innerHTML = x + ", " + y;
+  if (this.entrances[x] !== void(0) && this.entrances[x][y] !== void(0)){
+    this.entrances[x][y]();
+    return true;
+  } else {
+    return false;
   }
 }

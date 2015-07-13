@@ -4,7 +4,7 @@ var Map = function(index, context){
   this.character = this.context.ram.party[0];
   this.state = null;
 
-  this.utils = new Utils();
+  this.utils = new Utils(context);
   this.physical_map = {};
   this.animated_frame = 0;
   this.map_pos = {
@@ -43,9 +43,6 @@ Map.prototype.loadMap = function(){
     this.height = resp.dimensions[0].y > resp.dimensions[1].y ? resp.dimensions[0].y : resp.dimensions[1].y;
 
     window.dispatchEvent( new Event("map-loaded"));
-
-    this.context.paused = false;
-    this.context.loop();
   }.bind(this));
 }
 
@@ -106,54 +103,7 @@ Map.prototype.prepareMap = function(){
     }
   }
 
-  this.loadEntrances();
-}
-
-Map.prototype.loadEntrances = function(){
-  for (var i=0; i<this.state.entrances.length; i++){
-    var e = this.state.entrances[i];
-    if (this.entrances[e[0]] === void(0)) this.entrances[e[0]] = {};
-    
-    var self = this;
-    this.entrances[e[0]][e[1]] = (function(e){
-      return function(){
-        self.context.paused = true;
-        self.context.loadMap( (e[2] + (e[3] << 16) & 0x7ff), [e[4], e[5]], (e[3] & 8 >> 3) === 1, (e[3] & 48) >>  4)  
-      } 
-    })(e)
-  }
-
-  for (var i=0; i<this.state.long_entrances.length; i++){
-    var e = this.state.long_entrances[i],
-        len = e[2] & 127,
-        vert = e[2] & 128 === 128;
-    
-    for (var j=0; j<len; j++){
-      var x = vert ? e[0] : e[0] + j,
-          y = vert ? e[1] + j : e[1];
-
-      if (this.entrances[x] === void(0)) this.entrances[x] = {};
-      
-      var self = this;
-      this.entrances[x][y] = (function(e){
-        return function(){
-          self.context.pause(0);
-
-          var map_index = (e[3] + (e[4] << 8) & 0x1ff),
-              destination_x = e[5],
-              destination_y = e[6];
-
-          if (map_index === 0x1ff){
-            map_index = (e[4] & 2) >> 1;
-            destination_x = destination_x << 4;
-            destination_y = destination_y << 4;
-          }
-
-          self.context.loadMap( map_index, [destination_x, destination_y], (e[4] & 8 >> 3) === 1, (e[4] & 48) >>  4)  
-        } 
-      })(e)
-    }
-  }  
+  this.entrances = this.utils.loadEntrances(this.state.entrances, this.state.long_entrances, this.context);
 }
 
 Map.prototype.setupSpriteMovement = function(){
@@ -268,7 +218,8 @@ Map.prototype.drawSprite = function(data, sprite, mapBounds, sprite_positions, p
 }
 
 Map.prototype.drawMap = function(data){
-  var layers = this.layers,
+  var context = this.context,
+      layers = this.layers,
       layers_len = layers.length,
       map_size = this.state.dimensions,
       m_data = this.state.map_data,
@@ -278,7 +229,6 @@ Map.prototype.drawMap = function(data){
       tMap = this.trans_map,
       sPos = this.map_pos,
       animated_frame = this.animated_frame;                 
-
 
   for (var y=0; y<256; y++){
     for (var x=0; x<256; x++){

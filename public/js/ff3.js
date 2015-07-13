@@ -11,6 +11,8 @@ var FF3 = function(){
   this.wobLoaded = false;
   this.worLoaded = false;
   this.menuOpened = false;
+  this.loading = false;
+
 
   this.drawScreen = function(){};
   this.paused = true;
@@ -30,13 +32,17 @@ var FF3 = function(){
 
   this.controls = new Controls(this);
   this.menus = new Menus(this);
+  this.utils = new Utils(this);
+  this.effects = new Effects(this)
+
   this.loop()
 }
 
 FF3.prototype.loadMap = function(index, coords, showName, facing){
-  console.log(index, coords)
   this.test.innerHTML = "Loading"
-  
+  if (this.loading) return;
+
+  this.loading = true;
   if (index === 0){
     this.loadWorldMap('wob', coords)
     return;
@@ -45,10 +51,12 @@ FF3.prototype.loadMap = function(index, coords, showName, facing){
     return;
   }
 
-  this.map = new Map(index, this);
-  this.paused = true;
+  var map = new Map(index, this);
+  this.pause(0, 300)
 
   window.addEventListener('map-loaded', function mapLoaded(e){
+    this.map = map;
+
     this.drawScreen = function(data){ this.map.runMap(data) };
     var chr = this.map.state.character
     if ( !!chr ){
@@ -60,33 +68,47 @@ FF3.prototype.loadMap = function(index, coords, showName, facing){
     this.map.map_pos.y = (Math.min(this.map.height - 16, Math.max(0, coords[1] - 7)));
 
     window.removeEventListener("map-loaded", mapLoaded);
+    
+    this.loading = false;
+    this.resume(300);
   }.bind(this), false);
 }
 
 FF3.prototype.loadWorldMap = function(map, coords){
   this.test.innerHTML = "Loading"
-  this.map = new WorldMap(map, this);
-  this.paused = true;
+  
+  var map = new WorldMap(map, this);
+  this.pause(0, 300);
 
   window.addEventListener('world-map-loaded', function mapLoaded(e){
+    this.map = map;
     this.map.offset.x = coords[0],
     this.map.offset.y = coords[1];
 
     this.drawScreen = function(data){ this.map.runMap(data) };
 
-    window.removeEventListener("map-loaded", mapLoaded);
+    window.removeEventListener("world-map-loaded", mapLoaded);
+      
+    this.loading = false;
+    this.resume(300);
   }.bind(this), false);
 }
 
-FF3.prototype.pause = function(){
-  this.paused = true;
+FF3.prototype.pause = function(opacity, duration){
+  var self = this;
+    
+  this.effects.fade(opacity, duration, function(){
+      self.paused = true;
+  })
 }
 
-FF3.prototype.resume = function(){
-  if (!this.menuOpened){
-    this.paused = false;
-    this.loop();
-  }
+FF3.prototype.resume = function(duration){
+  this.paused = false;
+  this.loop();
+
+  this.effects.fade(1, duration, function(){ 
+    this.paused = false
+  }.bind(this));
 }
 
 FF3.prototype.clearScreen = function(){
