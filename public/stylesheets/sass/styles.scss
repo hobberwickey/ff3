@@ -12,7 +12,15 @@ body {
 	position: absolute;
 	color: white;
 	background-color: black;
-	z-index: 1;
+  top: 0;
+}
+
+#info {
+  position: absolute;
+  color: white;
+  background-color: black;
+
+  top: 1em;
 }
 
 #menu {
