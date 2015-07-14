@@ -27,9 +27,9 @@ Utils.prototype.addColors = function(o, n){
 Utils.prototype.drawPixel = function (data, pal, index){
       var masks = this.context.effects.masks
 
-      data[index] = (pal[0] * masks.black) | 0;
-      data[index + 1] = (pal[1] * masks.black) | 0;
-      data[index + 2] = (pal[2] * masks.black) | 0;
+      data[index] = (pal[0] * masks.black * masks.red) | 0;
+      data[index + 1] = (pal[1] * masks.black * masks.green) | 0;
+      data[index + 2] = (pal[2] * masks.black * masks.blue) | 0;
       data[index + 3] = pal[3]
 }
 

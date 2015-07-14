@@ -66,7 +66,6 @@ var Controls = function(context){
     if (self.context.paused){
       self.context.resume(0);
     } else {
-      console.log("start-end pause");
       self.context.pause(0.5, 0)
     }
   }, false)

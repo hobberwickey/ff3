@@ -32,7 +32,6 @@ var WorldMap = function(map, context){
 }
 
 WorldMap.prototype.loadMap = function(map){
-  for (var x in this.context.actions) delete this.context.actions[x];
   this.context.clearScreen();
 
   if (this.context.ram.party.length > 0){
@@ -52,6 +51,8 @@ WorldMap.prototype.loadMap = function(map){
   for (var x in this.context.actions) delete this.context.actions[x];
 
   this.utils.retrieve("/loadWorldMap/?map=" + map, function(resp){
+    for (var x in this.context.actions) delete this.context.actions[x];
+  
     this.state = resp;
     this.prepareMap(map);
     this.setupControls();
@@ -91,6 +92,7 @@ WorldMap.prototype.prepareMap = function(map){
 
           var index = ((x * 16) + (y * 65536) + (x_offset + (j % 8)) + ((y_offset + ((j / 8) | 0)) * 4096)) * 4;
 
+
           this.ctxData[index] = color[0];
           this.ctxData[index + 1] = color[1];
           this.ctxData[index + 2] = color[2];
@@ -115,7 +117,8 @@ WorldMap.prototype.runMap = function(data){
   var cos = Math.cos(p.angle),
       sin = Math.sin(p.angle),
       mode7 = this.ctxData,
-      startRow = this.startRows[this.vehicle];
+      startRow = this.startRows[this.vehicle],
+      masks = this.context.effects.masks;
 
   for (var y=startRow; y<256; y++){
     for (var x=0; x<256; x++){
@@ -135,10 +138,10 @@ WorldMap.prototype.runMap = function(data){
       var data_index = (real_x * 4) + (real_y * 4096 * 4),
           screen_index = (x * 4) + (y * 1024);
 
-      data[screen_index] = mode7[data_index];   
-      data[screen_index + 1] = mode7[data_index + 1];   
-      data[screen_index + 2] = mode7[data_index + 2];   
-      data[screen_index + 3] = mode7[data_index + 3];   
+      data[screen_index]            = (mode7[data_index] * masks.black * masks.red) | 0;   
+      data[screen_index + 1]        = (mode7[data_index + 1] * masks.black * masks.green) | 0;   
+      data[screen_index + 2]        = (mode7[data_index + 2] * masks.black * masks.blue) | 0;   
+      data[screen_index + 3]        = mode7[data_index + 3];   
     }
   }
   

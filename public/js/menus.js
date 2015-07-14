@@ -6,7 +6,7 @@ var Menus = function(context){
 Menus.prototype.openMain = function(type){
   console.log(this.opening);
   this.opening = true;
-  this.context.pause();
+  this.context.pause(0, 200);
 
   var wrapper = document.querySelector("#menu"),
       menu = document.createElement(type);
@@ -29,5 +29,5 @@ Menus.prototype.closeMain = function(){
       wrapper.dataset.opened = 0;
 
   window.dispatchEvent( new Event('menu-close') );
-  this.context.resume();
+  this.context.resume(200);
 }

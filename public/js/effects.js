@@ -3,7 +3,7 @@ var Effects = function(context){
   this.masks = { black: 1, blue: 1, red: 1, green: 1, }
 }
 
-Effects.prototype.fade = function(opacity, duration, callback){
+Effects.prototype.fade = function(keys, opacity, duration, callback){
   opacity = opacity || 0;
   duration = duration || 0;
   callback = callback || function(){ };
@@ -12,13 +12,16 @@ Effects.prototype.fade = function(opacity, duration, callback){
       frames = (duration / 1000) * 60;
   
   var self = this,
-      i = 0,
-      frameTime = 1000 / 60;
+      iterations = 0,
+      frameTime = 1000 / 60,
+      len = keys.length;
 
-  var huh = this.context.iterate(1, frames, function(){
-    var delta = Math.min(1, Math.max(0, (i * frameTime) / duration));
-    self.masks.black = self.linearTransition(current, opacity, delta);
-    i++;
+  this.context.iterate(1, frames, function(){
+    var delta = Math.min(1, Math.max(0, (iterations * frameTime) / duration));
+    for (var i=0; i<len; i++){
+      self.masks[keys[i]] = self.linearTransition(current, opacity, delta);
+    }
+    iterations++;
   }, function(){
     callback();
   }, true)

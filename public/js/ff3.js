@@ -97,7 +97,7 @@ FF3.prototype.loadWorldMap = function(map, coords){
 FF3.prototype.pause = function(opacity, duration){
   var self = this;
     
-  this.effects.fade(opacity, duration, function(){
+  this.effects.fade(['black'], opacity, duration, function(){
       self.paused = true;
   })
 }
@@ -106,7 +106,7 @@ FF3.prototype.resume = function(duration){
   this.paused = false;
   this.loop();
 
-  this.effects.fade(1, duration, function(){ 
+  this.effects.fade(['black'], 1, duration, function(){ 
     this.paused = false
   }.bind(this));
 }

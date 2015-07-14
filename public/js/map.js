@@ -31,9 +31,9 @@ var Map = function(index, context){
 }
 
 Map.prototype.loadMap = function(){
-  for (var x in this.context.actions) delete this.context.actions[x];
-
   this.utils.retrieve("/loadMap/" + this.index + "?character=" + this.character, function(resp){
+    for (var x in this.context.actions) delete this.context.actions[x];
+
     this.state = resp;
     this.prepareMap();
     this.setupControls();
