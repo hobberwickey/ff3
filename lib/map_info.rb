@@ -383,4 +383,28 @@ class MapInfo
       (data3 & 1008) / 16
     ]
   end
+
+  def entrance_event
+    @entrance_event = get_pointer(0x11FC00 + (@map_index * 3))
+  end
+
+  def events
+    @events = []
+
+    first = get_bytes(0x040000 + (@map_index * 2), "S")
+    last = get_bytes(0x040002 + (@map_index * 2), "S")
+    num = (last - first) / 5
+
+    num.times do |i|
+      @events << {
+        x: get_bytes(0x40000 + first + (i * 5), "C"),
+        y: get_bytes(0x40000 + first + (i * 5) + 1, "C"),
+        pntr: get_pointer(0x40000 + first + (i * 5) + 2)
+      }
+    end 
+  end
+
+  def treasure
+    @treasure = []
+  end
 end

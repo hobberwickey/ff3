@@ -5,6 +5,10 @@
 
 <div id='test'>Loading</div>
 
+<div id='upload-rom'>
+  <polyrhythm-form id='upload-form' options='{"submitText":null}'></polyrhythm-form>
+</div>
+
 <div id='info'>
   <h4>Controls</h4>
   <ul style='list-style-type: none; margin: 0; padding: 0;'>
@@ -26,13 +30,34 @@
 
 <script src='/js/ff3.js'></script>
 <script>
-  var ff3 = new FF3();
+  //var ff3 = new FF3();
+  var ff3;
 
-  ff3.loadMap(75, [2, 28], true, 2);
+  window.addEventListener("WebComponentsReady", function(){
+    var form = document.querySelector('#upload-form');
+
+    form.structure = [{ key: "rom", type: "file", label: "Upload a valid FF3/6 ROM" }];
+    form.querySelector(".rom input").addEventListener("change", function(e){
+      var file = e.target.files[0],
+          live = new FileReader(),
+          store = new FileReader();
+
+      live.onload = function(){ 
+        ff3 = new FF3(live.result);
+      }
+
+      store.onload = function(){ 
+        window.localStorage.rom = store.result 
+      }
+      
+      live.readAsBinaryString(file)
+      store.readAsDataURL(file);
+    }, false);
+  }, false);
 
   window.addEventListener("resize", function(){
     resizeScreen();
-   }, false)
+  }, false)
 
   function resizeScreen(){
     var viewport = document.querySelector('html'),
@@ -55,4 +80,8 @@
       e.target.style.display = "none";
     }
   }, false);
+  
+  
+
+
 </script>

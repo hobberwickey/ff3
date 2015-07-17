@@ -1,0 +1,31 @@
+<script>
+  PolyrhythmFormComponents = {
+
+    createSubmitButton: function(){
+      var button = this.createWithAttributes( "input", { type: "button", "class": "submit-button", value: this.options.submitText } )
+          button.addEventListener('click', function(){
+            this.submit();
+          }.bind(this), false)
+
+      return button
+    },
+
+    createAddButton: function(wrap, structure, data, key, scope){
+      var button = this.createWithAttributes( "input", { type: "button", "class": "add-button", value: "Add " + this.capitalize(structure.label || key)})
+          button.addEventListener("click", function(){
+            data.push(new ObservedObject());
+          }, false)    
+
+      wrap.appendChild(button)
+    },
+
+    createRemoveButton: function(wrap, data, index, min){
+      var button = this.createWithAttributes( "input", { type: "button", "class": "remove-button", value: "Remove" } );
+          button.addEventListener("click", function(){      
+            if (!min || data.length > min) data.splice(index, 1);
+          }, false);
+
+      wrap.appendChild(button)
+    }
+  }
+</script>

@@ -1,9 +1,13 @@
-var FF3 = function(){
+var FF3 = function(rom){
+  this.rom = rom;
   this.ram = {
-    party: [0],
-    flags: {},
+    party: [5],
     characters: []
   };
+
+  this.sram = {
+
+  }
 
   this.actions = {};
   this.map = null;
@@ -33,7 +37,8 @@ var FF3 = function(){
   this.controls = new Controls(this);
   this.menus = new Menus(this);
   this.utils = new Utils(this);
-  this.effects = new Effects(this)
+  this.effects = new Effects(this);
+  this.events = new Events(this);
 
   this.loop()
 }
@@ -71,6 +76,7 @@ FF3.prototype.loadMap = function(index, coords, showName, facing){
     
     this.loading = false;
     this.resume(300);
+    this.events.executeCue(this.map.state.entrance_event)
   }.bind(this), false);
 }
 

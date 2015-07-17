@@ -1,0 +1,244 @@
+<script src='observables.js'></script>
+<script>
+  (function(){
+    var $, $$;
+  
+    function scopeFieldData(structure, data, key){
+      if (structure.type !== 'html'){
+        if (data[key] === void(0)) data[key] = structure.value || null;
+        return data;
+      }
+    }
+
+    function scopeNestData(structure, data, key){
+      //console.log("nest", key, data[key]);
+      if (structure.multiple){
+        if (data[key] === void(0)){
+          if (structure.allowAdd) {
+            data[key] = new ObservedArray();
+            if (!!structure.minItems){
+              for (var i=0; i<structure.minItems; i++) data[key].push(new ObservedObject());
+            }
+          } else {
+            data[key] = new ObservedArray([ new ObservedObject() ]);
+          }
+        }
+
+      } else {
+        if (data[key] === void(0)) data[key] = new ObservedObject();
+      }
+
+      return data[key];
+    }
+
+    function addIndex(scope, index){
+      return scope + "[" + index + "]";
+    }
+
+    updateScope = function(structure, scope){
+      if (scope === null) return null;
+
+      scope = structure.unscoped ? structure.key : scope + "[" + structure.key + "_attributes]";      
+      return scope;
+    }
+
+    PolyrhythmFormCore = {
+      properties: {
+        scope: { type: String, value: "" },
+        action: { type: String, value: null },
+        method: { type: String, value: "POST" },
+        structure: { type: Array, value: [], observer: "buildForm" },
+        data: { type: Object, value: {} },
+        unscopedData: { type: Object, value: { data: this.data } },
+        xhr: { type: Boolean, value: false },
+        expose: { type: Boolean, value: false },
+
+        options: {
+          type: Object,
+          value: {
+            submitText: "Submit"
+          }
+        }
+      },
+
+      ready: function(){
+        this.structure = new ObservedArray(this.structure);
+        this.data = new ObservedObject(this.data);
+        this.unscopedData.data = this.data;
+        this.unscopedData = new ObservedObject(this.unscopedData);
+
+        var form = this.createWithAttributes("form", { action: this.action, method: this.method }),
+            inputs = this.createWithAttributes("div", { "class": "inputs-wrapper"}),
+            submit = this.createSubmitButton();
+
+        var root = this.expose ? this : this.root;
+        $ = Polymer.dom(root).querySelector.bind(this);
+        $$ = Polymer.dom(root).querySelectorAll.bind(this);
+        
+        if (this.options.submitText !== null){
+          this.adopt(form, [inputs, submit]);
+        } else {
+          this.adopt(form, [inputs]);
+        }
+
+        Polymer.dom(root).appendChild(form);
+        this.buildForm();
+      },
+
+      buildForm: function(){
+        if (this.structure.length === 0) return;
+
+        var wrapper = $(".inputs-wrapper"),
+            self = this;
+
+        while (wrapper.childNodes.length) wrapper.childNodes.pop();
+
+        if (!Array.isArray(this.structure)) return;
+
+        this.buildStructure(this.structure, this.data, wrapper, this.scope);
+
+        this.steps = wrapper.querySelectorAll(".step.form-step");
+        if (this.steps.length > 0){
+          this.addClass(this.shadowRoot.querySelector("form"), "stepped");
+          this.showStep(0);
+
+          this.steps[this.steps.length - 1].querySelector(".next-button").style.display = 'none';
+        }
+      },
+
+      updateStructureDOM: function(splices, structure, data, wrapper, scope, dom, domKeys){
+        var self = this,
+            items = wrapper.querySelectorAll(".list-group");
+
+        for (var i=0; i<splices.length; i++){
+          /* delete removed children */
+          for (var j=0; j<splices[i].removed.length; j++){
+            var key = splices[i].removed[j].key,
+                element = domKeys[key];
+
+            element.parentNode.removeChild(element),
+            dom.splice(dom.indexOf(element), 1);
+
+            delete dom[key];
+            delete data[key];
+          }
+
+          /* add new children */
+          for (var j=0; j<splices[i].addedCount; j++){
+            var index = splices[i].index + j,
+                previousElement = dom[index -1],
+                field = self.createField(structure[index], data, scope);
+
+            if (!previousElement){
+              wrapper.appendChild(field);
+            } else {
+              previousElement.parentNode.insertBefore(field, previousElement.nextSibling);
+            }
+
+            dom.push(field);
+            domKeys[structure[index].key] = field;
+          }
+        }
+      },
+
+      buildStructure: function(structure, data, wrapper, scope){
+        /* handling DOM insertion and removal */
+        var dom = [],
+            domKeys = {},
+            self = this;
+
+        if (!structure.hasOwnProperty('observe')) structure = new ObservedArray(structure)
+
+        structure.observe(function(splices){
+          self.updateStructureDOM(splices, structure, data, wrapper, scope, dom, domKeys);
+          self.fire("structure-changed", { ref: this });
+        });
+        
+        /* actually building the form */
+        for (var i=0; i<structure.length; i++){
+          var field = self.createField(structure[i], data, scope)
+          wrapper.appendChild(field);
+          
+          dom.push(field);
+          domKeys[structure[i].key] = field;
+
+          if ((structure[i].type === "nest") && structure[i].multiple){
+            var watched_data = !!structure[i].unscoped ? this.unscopedData[structure[i].key] : data[structure[i].key];
+            watched_data.observe( (function(s, f){
+              return function(splices){
+                var nField = self.createField(s, data, scope);
+                f.parentNode.insertBefore(nField, f);
+                f.parentNode.removeChild(f);
+                f = nField; 
+
+                self.fire("data-inserted", {ref: this}); 
+              };
+            })(structure[i], field) );
+          }
+        }
+
+        return wrapper;
+      },
+
+      createField: function(structure, data, scope){
+        var key = structure.key,
+            self = this;
+        
+        if (structure.type === "group"){
+          var wrap = this.createWithAttributes("div", {"class": ["group", structure.key, structure.additionalClasses].join(" ")}),
+              contents = this.buildStructure(structure.structure, data, wrap, scope);
+
+          return wrap;
+        } else if (structure.type === "step") { 
+          var wrap = this.createWithAttributes("div", {"class": ["step form-step", structure.key, structure.additionalClasses].join(" ")}),
+              next_button = this.createWithAttributes("paper-button", { "class": "next-button", text: (structure.nextText || "Next"), raised: true }),
+              back_button = this.createWithAttributes("paper-button", { "class": "back-button", text: (structure.backText || "Back"), raised: true }),
+              contents = this.buildStructure(structure.structure, data, wrap, scope);
+
+          next_button.addEventListener("click", function(){ this.nextStep(); }.bind(this), false);
+          back_button.addEventListener("click", function(){ this.previousStep(); }.bind(this), false);
+
+          wrap.appendChild(back_button);
+          wrap.appendChild(next_button);
+          
+          return wrap;
+        } else if (structure.type === "nest"){
+          var wrap = self.createWithAttributes("div", {"class": "nest " + key}),
+              nested_data = scopeNestData(structure, structure.unscoped ? this.unscopedData : data, key),
+              nested_scope = updateScope(structure, scope);
+                  
+          if (structure.multiple){
+            if (structure.allowAdd) this.createAddButton(wrap, structure, nested_data, key, scope) 
+          
+            for (var i=0; i<nested_data.length; i++){
+              var item_wrapper = this.createWithAttributes("div", {"class": "list-group"});
+              this.buildStructure(structure.structure, nested_data[i], item_wrapper, addIndex(nested_scope, i));
+              if (structure.allowAdd) this.createRemoveButton(item_wrapper, nested_data, i, structure.minItems)
+              
+              wrap.appendChild(item_wrapper);
+              //this.checkForBlank(item_wrapper);
+            }
+          } else {
+            self.buildStructure(structure.structure, nested_data, wrap, nested_scope);
+          }
+
+          return wrap;
+
+        } else {
+          //TODO: set defaults here
+          var options = structure.options || {},
+              fieldData = scopeFieldData(structure, structure.unscoped ? this.unscopedData : data, key),
+              wrap = self.createWithAttributes("div", {"class": "input " + structure.type + " " + key}),
+              inputElement = self.createInput(structure, fieldData, scope);
+
+          wrap.appendChild(inputElement);
+          return wrap;
+        }
+      },
+
+      submit: function(){
+        console.log(this.unscopedData)
+      }
+    }
+  })();
+</script>

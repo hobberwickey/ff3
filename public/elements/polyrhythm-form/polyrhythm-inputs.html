@@ -1,0 +1,149 @@
+<script>
+  (function(){
+    function scopeToClass(structure, scope){
+      if (scope === null) return structure.key;
+
+      if (structure.unscoped){
+        var className = structure.key
+      } else {
+        var className = scope.replace(/\[/g, "_").replace(/\]/g, "") + "_" + structure.key;
+      }
+      return className;
+    }
+
+    function updateFieldScope(structure, scope){
+      if (scope === null) return structure.key;
+      return structure.unscoped ? structure.key : scope + "[" + structure.key + "]"
+    }
+
+
+    PolyrhythmFormInputs = {
+    	wrapInput: function(input, fieldStructure){
+        if (fieldStructure.label !== null){
+          var wrapper = this.createWithAttributes("div", { "class": "input-wrapper" }),
+              label = this.createWithAttributes("label", { text: fieldStructure.label || this.capitalize(fieldStructure.key) });
+
+          this.adopt(wrapper, [label, input]);
+          return wrapper;
+        } else {
+          return input;
+        }
+      },
+
+      createBoundInput: function(fieldStructure, data, scope){
+        var scopeClass = scopeToClass(fieldStructure, scope),
+            attributes = fieldStructure.attributes || {};
+
+        attributes["class"] = attributes["class"] === void(0) ? scopeClass : scopeClass + " " + attributes["class"]; 
+        attributes["name"] = updateFieldScope(fieldStructure, scope);
+        attributes["value"] = data[fieldStructure.key] || fieldStructure.value || ""
+
+        var types = {
+          "hidden": "input",
+          "string": "input",
+          "text": "textarea",
+          "select": "select",
+          "json": "textarea",
+          "checkbox": "input",
+          "radio": "input",
+          "file": "input",
+        }
+
+        var input = this.createWithAttributes(types[fieldStructure.type], attributes);
+        
+        data.observe(function(){ input.value = data[fieldStructure.key] }, fieldStructure.key);
+        input.addEventListener("input", function(){ data[fieldStructure.key] = input.value });
+
+        return input;
+      },
+
+      capitalize: function(str){
+          return str.toLowerCase().replace(/_/gi, " ").replace( /\b\w/g, function (m) {
+              return m.toUpperCase();
+          });
+      },
+
+      inputs: {
+  	    string: function(fieldStructure, data, scope){
+          var input = this.createBoundInput(fieldStructure, data, scope)
+          return this.wrapInput(input, fieldStructure);
+        },
+
+        text: function(fieldStructure, data, scope){
+          var input = this.createBoundInput(fieldStructure, data, scope)
+          return this.wrapInput(input, fieldStructure);
+        },
+
+        select: function(fieldStructure, data, scope){
+          var input = this.createBoundInput(fieldStructure, data, scope),
+              self = this;
+
+          function createOption(values){
+            var option = self.createWithAttributes( "option", {value: values[0], text: values[1]} );
+            input.appendChild(option);
+          }
+
+          if (!!fieldStructure.blank) createOption([null, ""]);
+          for (var i=0; i< fieldStructure.values.length; i++) createOption(fieldStructure.values[i]);
+
+          return this.wrapInput(input, fieldStructure);
+        },
+
+        hidden: function(fieldStructure, data, scope){
+          var input = this.createBoundInput(fieldStructure, data, scope)
+              input.type = "hidden";
+
+          return input;
+        },
+
+        checkbox: function(fieldStructure, data, scope){
+          var wrapper = this.createWithAttributes("div", { "class": "checkbox-wrapper" } ),
+              hidden = this.createBoundInput(fieldStructure, data, scope),
+              checkbox = this.createWithAttributes("input", { type: "checkbox", checked: !!hidden.value, id: hidden.className }),
+              label = this.createWithAttributes("label", { "for": hidden.className, text: fieldStructure.label || this.capitalize(fieldStructure.key) })
+
+          hidden.type = "hidden";
+
+          checkbox.addEventListener("change", function(){ hidden.value = checkbox.checked ? true : false }, false);
+          this.adopt(wrapper, [hidden, label, checkbox]);
+
+          return wrapper;
+        },
+
+        radio: function(fieldStructure, data, scope){
+          var wrapper = this.createWithAttributes("div", { "class": "radio-wrapper" } ),
+              input = this.createBoundInput(fieldStructure, data, scope),
+              label = this.createWithAttributes("label", { text: fieldStructure.label || this.capitalize(fieldStructure.key) }),
+              radio_wrapper = this.createWithAttributes('div', { "class": "radio-buttons-wrapper"});
+
+          input.type = "hidden";
+          this.adopt(wrapper, [input, label, radio_wrapper]);
+
+          for (var i=0; i<fieldStructure.values.length; i++){
+            var l = this.createWithAttributes("label", {text: fieldStructure.values[i][1]}),
+                r = this.createWithAttributes("input", { type: "radio", name: input.className, value: fieldStructure.values[i][0] });
+            
+            this.adopt(radio_wrapper, [l, r]);
+          }
+
+          radio_wrapper.addEventListener("click", function(e){
+            if (e.target.tagName.toLowerCase() === 'input') data.set([fieldStructure.key, e.target.value]);
+          }, false)
+
+          return wrapper;
+        },
+
+        file: function(fieldStructure, data, scope){
+          var input = this.createBoundInput(fieldStructure, data, scope)
+              input.type = 'file';
+              
+          return this.wrapInput(input, fieldStructure);
+        },
+
+        json: function(){
+
+        }
+  		}
+    }
+  })();
+</script>

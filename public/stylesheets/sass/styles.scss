@@ -15,12 +15,19 @@ body {
   top: 0;
 }
 
+#upload-rom {
+  position: absolute;
+  width: 12em;
+  top: 2.5em;
+  color: white;
+}
+
 #info {
   position: absolute;
   color: white;
   background-color: black;
 
-  top: 1em;
+  top: 5em;
 }
 
 #menu {
@@ -32,6 +39,8 @@ body {
 	display: none;
 	opacity: 0;
 	transition: opacity 300ms ease;
+
+  font-family: 'Source Code Pro', ;
 }
 
 

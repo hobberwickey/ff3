@@ -71,10 +71,24 @@ class Application < Sinatra::Base
       :sprite_positions => @map.sprite_info.sprite_positions,
       :map_viewable_size => [ @map.map_info.map_viewable_size[:x], @map.map_info.map_viewable_size[:y] ],
       :entrances => @map.map_info.entrances(params[:index].to_i),
-      :long_entrances => @map.map_info.long_entrances(params[:index].to_i)
+      :long_entrances => @map.map_info.long_entrances(params[:index].to_i),
+      :entrance_event => @map.map_info.entrance_event,
+      :events => @map.map_info.events
     }
 
     return resp.to_json
+  end
+
+  get "/loadEventCode/" do 
+    @code = []
+    offset = 0xa0200
+
+    while offset < 0xCE800
+      @code << Application::FF3.unpack("@#{offset}C")[0]
+      offset += 1
+    end
+
+    return @code.to_json
   end
 
   get "/loadWorldMap/" do
