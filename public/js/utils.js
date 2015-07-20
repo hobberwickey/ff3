@@ -111,12 +111,12 @@ Utils.prototype.decompress = function(offset, max){
       pos = offset + 2,
       win = 0;
 
-  while(true){
-    flag_byte = this.context.rom[pos]
-    pos += 1;
+  while(pos - offset < len){
+    var flag_byte = this.context.rom[pos];
+        pos += 1;
 
     for (var i=0; i<8; i++) {
-      if ( ( flag_byte & (1 << i) >> i ) === 1 ){
+      if ( (( flag_byte & (1 << i)) >> i ) === 1 ){
         if (pos - offset >= len) break;
 
         output.push( this.context.rom[pos] );
@@ -129,8 +129,7 @@ Utils.prototype.decompress = function(offset, max){
             bytes_to_fetch = ((info & (31 << 11)) >> 11) + 3;
             fetch_offset = (info & 2047) - 2014;
         
-        while (true) {
-          if (fetch_offset + 2048 >= win) break;
+        while (fetch_offset + 2048 < win) {
           fetch_offset += 2048;
         }
 
@@ -143,11 +142,8 @@ Utils.prototype.decompress = function(offset, max){
         pos += 2
       }
     }
-
-    if (pos - offset >= len) break;
   }
 
-  console.log(offset, output.length);
   return output
 }
 
@@ -165,10 +161,10 @@ Utils.prototype.assemble_4bit = function(tile_offset, hFlip, vFlip){
 
     for (var x=0; x<8; x++){
       var shift = 7 - x,
-          color = (byte1 & 1 << shift) >> shift;
-          color += ((byte2 & 1 << shift) >> shift) << 1;
-          color += ((byte3 & 1 << shift) >> shift) << 2;
-          color += ((byte4 & 1 << shift) >> shift) << 3;
+          color = (byte1 & (1 << shift)) >> shift;
+          color += ((byte2 & (1 << shift)) >> shift) << 1;
+          color += ((byte3 & (1 << shift)) >> shift) << 2;
+          color += ((byte4 & (1 << shift)) >> shift) << 3;
       
       var x_offset = hFlip ? 7 - x : x;
 

@@ -253,8 +253,8 @@ Map.prototype.drawMap = function(data){
             pixel_offset = (pixel_x & 15) + ((pixel_y & 15) << 4);
             
         var map_index = map_x + (map_y * map_size[layer_index].x),
-            tile_index = (x & 15) + ((y & 15) << 4); //m_data[layer_index][map_index];
-        
+            tile_index = (x >> 4) + ((y >> 4) << 4); //m_data[layer_index][map_index];
+
         var tile_data = layer.data[tile_index]; //layer.data[i]; 
         
         var animated_offset = pixel_offset + (animated_frame << 8),
@@ -959,8 +959,8 @@ MapData.prototype.assembleTileset = function(formation, tilesets){
         tile_p = [];
 
     for (var j=0; j<4; j++){
-      var chunk = data[j + (256 * j)],
-          info = data[j + (256 * j) + 1024];
+      var chunk = data[i + (256 * j)],
+          info = data[i + (256 * j) + 1024];
 
       var x_offset = j % 2 === 0 ? 0 : 8,
           y_offset = ((j / 2) | 0) === 0 ? 0 : 8;
@@ -995,10 +995,10 @@ MapData.prototype.assemble_chunk = function(tile_r, tile_p, chunk, info, tile_da
     var tile_offset = (t_index * 32) + tile_data_offsets[tileset]
   }
 
-  var priority = (info & 32) == 32,
+  var priority = (info & 32) === 32,
       pal = (info & 28) >> 2,
-      h_flip = (info & 64) == 64,
-      v_flip = (info & 128) == 128;
+      h_flip = (info & 64) === 64,
+      v_flip = (info & 128) === 128;
 
   var frames = tileset == 4 ? 4 : 1;
 
