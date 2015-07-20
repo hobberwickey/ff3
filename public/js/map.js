@@ -931,6 +931,7 @@ MapData.prototype.assembleTileset = function(formation, tilesets){
   var pnt1 = this.utils.getValue(0x1fbc00 + (formation * 3), 3),
       data = this.utils.decompress(pnt1 + 0x1e0200);
 
+  console.log(pnt1 + 0x1e0200, data);
   var animated_data_pointer = this.utils.getValue(0x93d5 + (tilesets[4] * 2), 2),
       animated_pointers = [];
 
@@ -959,8 +960,8 @@ MapData.prototype.assembleTileset = function(formation, tilesets){
         tile_p = [];
 
     for (var j=0; j<4; j++){
-      var chunk = data[i + (256 * j)],
-          info = data[i + (256 * j) + 1024];
+      var chunk = data[i ],
+          info = data[i  + 1024];
 
       var x_offset = j % 2 === 0 ? 0 : 8,
           y_offset = ((j / 2) | 0) === 0 ? 0 : 8;
