@@ -821,7 +821,7 @@ var MapData = function(index, context){
 MapData.prototype.getSpecs = function(){
   var rom = this.context.rom,
       offset = this.offset,
-      formations = this.utils.getValue(offset + 10, 3),
+      formations = this.utils.getValue(offset + 11, 3),
       map_data = this.utils.getValue(offset + 13, 3),
       tilesets = this.utils.getValue(offset + 7, 4);
 
@@ -880,7 +880,7 @@ MapData.prototype.getSpecs = function(){
     formations: [
       (formations & 0x1fc) >> 2,
       (formations & 0xfe00) >> 9,
-      (formations & 0x3f0) >> 4
+      (this.utils.getValue(offset + 10, 2) & (63 << 4)) >> 4
     ],
     map_data: [
       (map_data & 0x3ff),
@@ -931,7 +931,7 @@ MapData.prototype.assembleTileset = function(formation, tilesets){
   var pnt1 = this.utils.getValue(0x1fbc00 + (formation * 3), 3),
       data = this.utils.decompress(pnt1 + 0x1e0200);
 
-  console.log(pnt1 + 0x1e0200, data);
+  console.log(formation, pnt1 + 0x1e0200, data);
   var animated_data_pointer = this.utils.getValue(0x93d5 + (tilesets[4] * 2), 2),
       animated_pointers = [];
 
@@ -960,8 +960,8 @@ MapData.prototype.assembleTileset = function(formation, tilesets){
         tile_p = [];
 
     for (var j=0; j<4; j++){
-      var chunk = data[i ],
-          info = data[i  + 1024];
+      var chunk = data[i + (j * 256)],
+          info = data[i + (j * 256) + 1024];
 
       var x_offset = j % 2 === 0 ? 0 : 8,
           y_offset = ((j / 2) | 0) === 0 ? 0 : 8;
