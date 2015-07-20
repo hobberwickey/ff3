@@ -33,6 +33,16 @@ Utils.prototype.drawPixel = function (data, pal, index){
       data[index + 3] = pal[3]
 }
 
+Utils.prototype.getValue = function(offset, bytes){
+  var val = 0;
+  for (var i=bytes - 1; i>=0; i--){
+    val += (this.context.rom[offset + i] << (i * 8))
+  }
+
+  return val;
+}
+
+
 //TODO: move this to map utils
 Utils.prototype.loadEntrances = function(short, long, context){
   var entrances = {};
@@ -91,4 +101,81 @@ Utils.prototype.loadEntrances = function(short, long, context){
   }
 
   return entrances;  
+}
+
+Utils.prototype.decompress = function(offset, max){
+  max = max || 8192;
+
+  var output = [],
+      len = this.getValue(offset, 2),
+      pos = offset + 2,
+      win = 0;
+
+  while(true){
+    flag_byte = this.context.rom[pos]
+    pos += 1;
+
+    for (var i=0; i<8; i++) {
+      if ( ( flag_byte & (1 << i) >> i ) === 1 ){
+        if (pos - offset >= len) break;
+
+        output.push( this.context.rom[pos] );
+        pos += 1;
+        win += 1;
+      } else {
+        if ( pos - offset >= len ) break;
+
+        var info = this.getValue(pos, 2),
+            bytes_to_fetch = ((info & (31 << 11)) >> 11) + 3;
+            fetch_offset = (info & 2047) - 2014;
+        
+        while (true) {
+          if (fetch_offset + 2048 >= win) break;
+          fetch_offset += 2048;
+        }
+
+        for (var j=0; j<bytes_to_fetch; j++) {
+          if ( win > max ) break;
+          output.push( fetch_offset + j < 0 ? 0 : output[fetch_offset + j] )
+          win += 1
+        }
+
+        pos += 2
+      }
+    }
+
+    if (pos - offset >= len) break;
+  }
+
+  console.log(offset, output.length);
+  return output
+}
+
+Utils.prototype.assemble_4bit = function(tile_offset, hFlip, vFlip){
+  var gfx = this.context.rom,
+      tile = [];
+
+  for (var y=0; y<8; y++){
+    var byte1 = gfx[tile_offset + (y * 2)],
+        byte2 = gfx[tile_offset + 1 + (y * 2)],
+        byte3 = gfx[tile_offset + 16 + (y * 2)],
+        byte4 = gfx[tile_offset + 17 + (y * 2)];
+    
+    var y_offset = vFlip ? 7 - y : y;
+
+    for (var x=0; x<8; x++){
+      var shift = 7 - x,
+          color = (byte1 & 1 << shift) >> shift;
+          color += ((byte2 & 1 << shift) >> shift) << 1;
+          color += ((byte3 & 1 << shift) >> shift) << 2;
+          color += ((byte4 & 1 << shift) >> shift) << 3;
+      
+      var x_offset = hFlip ? 7 - x : x;
+
+      color_index = x_offset + (y_offset * 8)
+      tile[color_index] = color
+    }
+  }
+
+  return tile;
 }

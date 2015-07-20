@@ -27,23 +27,25 @@ var Map = function(index, context){
   this.sprites = {}
   this.events = {}
 
-  this.loadMap();
+  this.mapData = new MapData(index, context);
 }
 
 Map.prototype.loadMap = function(){
-  this.utils.retrieve("/loadMap/" + this.index + "?character=" + this.character, function(resp){
-    for (var x in this.context.actions) delete this.context.actions[x];
+  
+  // this.utils.retrieve("/loadMap/" + this.index + "?character=" + this.character, function(resp){
+  //   for (var x in this.context.actions) delete this.context.actions[x];
 
-    this.state = resp;
-    this.prepareMap();
-    this.setupControls();
-    this.setupSpriteMovement();
+  //   this.state = resp;
+  this.prepareMap();
+  this.setupControls();
+  //   this.setupSpriteMovement();
+  var specs = this.mapData.specs;
 
-    this.width = resp.dimensions[0].x > resp.dimensions[1].x ? resp.dimensions[0].x : resp.dimensions[1].x;
-    this.height = resp.dimensions[0].y > resp.dimensions[1].y ? resp.dimensions[0].y : resp.dimensions[1].y;
+  this.width = specs.size[0].x > specs.size[1].x ? specs.size[0].x : specs.size[1].x;
+  this.height = specs.size[0].y > specs.size[1].y ? specs.size[0].y : specs.size[1].y;
 
-    window.dispatchEvent( new Event("map-loaded"));
-  }.bind(this));
+  window.dispatchEvent( new Event("map-loaded") );
+  // }.bind(this));
 }
 
 Map.prototype.setupControls = function(){
@@ -80,17 +82,19 @@ Map.prototype.setupControls = function(){
 }
 
 Map.prototype.prepareMap = function(){
+  var data = this.mapData;
+
   this.layers = [
-    { data: this.state.tiles[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 0, trans: false },
-    { data: this.state.tiles[1].p, index: 1, x: this.state.x_shift[0], x_offset: 0, y: this.state.y_shift[0], y_offset: 0, priority: 1, trans: false },
-    { data: this.state.tiles[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 2, trans: false },
-    { data: this.state.tiles[1].r, index: 1, x: this.state.x_shift[0], x_offset: 0, y: this.state.y_shift[0], y_offset: 0, priority: 3, trans: false }
+    { data: data.tilesets[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 0, trans: false },
+    //{ data: data.tilesets[1].p, index: 1, x: data.specs.layer2_shift[0], x_offset: 0, y: data.specs.layer2_shift[1], y_offset: 0, priority: 1, trans: false },
+    { data: data.tilesets[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 2, trans: false },
+    //{ data: data.tilesets[1].r, index: 1, x: data.specs.layer2_shift[0], x_offset: 0, y: data.specs.layer2_shift[1], y_offset: 0, priority: 3, trans: false }
   ]
 
   //TODO: layer priorities
   // this.layers.unshift( { data: this.state.tiles[2], index: 2, x: this.state.x_shift[1], x_offset: 0, y: this.state.y_shift[1], y_offset: 0, priority: 0, trans: true})
 
-  this.buildPhysicalMap();
+  //this.buildPhysicalMap();
 
   var maps = [this.pixel_map, this.trans_map]
   for (var m=0; m<2; m++){
@@ -103,7 +107,7 @@ Map.prototype.prepareMap = function(){
     }
   }
 
-  this.entrances = this.utils.loadEntrances(this.state.entrances, this.state.long_entrances, this.context);
+  //this.entrances = this.utils.loadEntrances(this.state.entrances, this.state.long_entrances, this.context);
 }
 
 Map.prototype.setupSpriteMovement = function(){
@@ -139,7 +143,7 @@ Map.prototype.moveRandom = function(sprite, recurse){
 
 Map.prototype.runMap = function(data){
   this.drawMap(data);
-  this.drawSprites(data);
+  //this.drawSprites(data);
 }
 
 Map.prototype.drawSprites = function(data){
@@ -221,9 +225,9 @@ Map.prototype.drawMap = function(data){
   var context = this.context,
       layers = this.layers,
       layers_len = layers.length,
-      map_size = this.state.dimensions,
-      m_data = this.state.map_data,
-      palette = this.state.palette,
+      map_size = this.mapData.specs.size,
+      m_data = this.mapData.map_data,
+      palette = this.mapData.palette,
       utils = this.utils,
       pMap = this.pixel_map,
       tMap = this.trans_map,
@@ -249,11 +253,10 @@ Map.prototype.drawMap = function(data){
             pixel_offset = (pixel_x & 15) + ((pixel_y & 15) << 4);
             
         var map_index = map_x + (map_y * map_size[layer_index].x),
-            tile_index = m_data[layer_index][map_index];
+            tile_index = (x & 15) + ((y & 15) << 4); //m_data[layer_index][map_index];
         
-        var tile_data =  layer.data[tile_index]; //layer.data[i]; 
+        var tile_data = layer.data[tile_index]; //layer.data[i]; 
         
-
         var animated_offset = pixel_offset + (animated_frame << 8),
             color_index = tile_data[animated_offset] === void(0) ? tile_data[pixel_offset] : tile_data[animated_offset];
         
@@ -794,3 +797,244 @@ Map.prototype.southStairs = function(sprite){
   this.scrollDown(sprite.coords, 1);
   if (this.map_pos.y < this.height - 16 ) this.scrollDown(this.map_pos);
 }
+
+var MapData = function(index, context){
+  this.index = index;
+  this.context = context;
+  this.specs = {
+    palette: 0
+  }
+  
+  this.utils = new Utils(context);
+  this.offset = 0x2d9100 + (index * 33);
+  
+  this.getSpecs();
+
+  this.palette = this.getPalette();
+  this.map_data = this.getMapData();
+  this.tilesets = this.getTilesets();
+  
+  this.getEvents();
+  this.getTreasure();
+}
+
+MapData.prototype.getSpecs = function(){
+  var rom = this.context.rom,
+      offset = this.offset,
+      formations = this.utils.getValue(offset + 10, 3),
+      map_data = this.utils.getValue(offset + 13, 3),
+      tilesets = this.utils.getValue(offset + 7, 4);
+
+
+  this.specs = {   
+    palette: rom[offset + 25],
+    has_monsters: (rom[offset + 5] & 128) === 128,
+    monster_set: rom[0xf5801 + this.index],
+    battle_bg: rom[offset + 2] & 127,
+    song: rom[offset + 28],
+    layer_priorities: rom[offset + 32],
+    scroll_index: rom[offset + 22],
+    tile_properties: rom[offset + 4],
+    layer2_shift: [
+      rom[offset + 18],
+      rom[offset + 19]
+    ],
+    layer3_shift: [
+      rom[offset + 20],
+      rom[offset + 21]
+    ],
+    effects: {
+      layer3_ripple: (rom[offset + 1] & 0x04) === 0x04,
+      layer2_ripple: (rom[offset + 1] & 0x08) === 0x08,
+      layer1_ripple: (rom[offset + 1] & 0x10) === 0x10,
+      search_lights: (rom[offset + 1] & 0x20) === 0x20,
+      layer3_animation: (rom[offset + 25] & 0x1f),
+      layer3_animation: (rom[offset + 25] & 0xe0) >> 5
+    },
+    size: [
+      {
+        x: (rom[offset + 23] & 0xc0) >> 2,
+        y: (rom[offset + 23] & 30)
+      },
+      {
+        x: (rom[offset + 23] & 0x0c) << 2,
+        y: (rom[offset + 23] & 0x03) << 4
+      },
+      {
+        x: (rom[offset + 24] & 0xc0) >> 2,
+        y: (rom[offset + 24] & 30)
+      } 
+    ],
+    viewable_size: {
+      x: rom[offset + 30],
+      y: rom[offset + 31]
+    },
+    tilesets: [
+      (tilesets & 0x7f),
+      (tilesets & (0x7f << 7)) >> 7,
+      (tilesets & (0x7f << 14) >> 14),
+      (tilesets & (0x7f << 21) >> 21),
+      (rom[offset + 27] & 31), //animated tiles
+      (tilesets & 0x3f0) >> 4 //layer 3 tiles
+    ],
+    formations: [
+      (formations & 0x1fc) >> 2,
+      (formations & 0xfe00) >> 9,
+      (formations & 0x3f0) >> 4
+    ],
+    map_data: [
+      (map_data & 0x3ff),
+      (map_data & (0x3ff << 10)) >> 10,
+      (map_data & (0x3ff << 20)) >> 20,
+    ]
+  }
+}
+
+MapData.prototype.getEvents = function(){
+  this.entrance_event = this.utils.getValue(0x11fc00 + (this.index * 3), 3);
+  this.events = [];
+
+  var first = this.utils.getValue(0x040000 + (this.index * 2), 2),
+      last = this.utils.getValue(0x040002 + (this.index * 2), 2),
+      num = (last - first) / 5;
+
+  for (var i=0; i<num; i++){
+    events.push({
+      x: this.context.rom[0x40000 + first + (i * 5), 1],
+      y: this.context.rom[0x40000 + first + (i * 5) + 1],
+      pntr: this.utils.getValue(0x40000 + first + (i * 5) + 2, 3)
+    });
+  } 
+}
+
+MapData.prototype.getTreasure = function(){
+  this.treasure = [];
+}
+
+MapData.prototype.getPalette = function(){
+  var pal = []
+  
+  for (var i=0; i<256; i++){
+    var bytes = this.utils.getValue( 0x2dc680 + ( this.specs.palette * 256 ) + (i * 2), 2 ),
+        r = bytes & 31,
+        g = (bytes & ( 31 << 5 )) >> 5, 
+        b = (bytes & ( 31 << 10 )) >> 10, 
+        a = i < 16 ? (i % 4 == 0 ? 0 : 255) : (i % 16 == 0 ? 0 : 255);
+
+    pal.push( [r * 8, g * 8, b * 8, a] );
+  }
+
+  return pal;
+}
+
+MapData.prototype.assembleTileset = function(formation, tilesets){
+  var pnt1 = this.utils.getValue(0x1fbc00 + (formation * 3), 3),
+      data = this.utils.decompress(pnt1 + 0x1e0200);
+
+  var animated_data_pointer = this.utils.getValue(0x93d5 + (tilesets[4] * 2), 2),
+      animated_pointers = [];
+
+  for (var j=0; j<4; j++){
+    var frames = [];
+    for (var i=0; i<32; i++){
+      var offset = this.utils.getValue(0x9401 + (animated_data_pointer) + (i * 10) + (j * 2), 2);
+      for (var k=0; k<4; k++){
+        frames.push( offset + 0x260200 + (k * 32) );
+      }
+    }
+    animated_pointers.push(frames);
+  }
+  
+  var tile_data_offsets = [
+    this.utils.getValue(0x1fdc00 + (3 * tilesets[0]), 3) + 0x1fdd00,
+    this.utils.getValue(0x1fdc00 + (3 * tilesets[1]), 3) + 0x1fdd00,
+    this.utils.getValue(0x1fdc00 + (3 * tilesets[2]), 3) + 0x1fdd00,
+    this.utils.getValue(0x1fdc00 + (3 * tilesets[3]), 3) + 0x1fdd00,
+    animated_pointers
+  ]
+
+  var tiles = { r: [], p: [] }
+  for (var i=0; i<256; i++){
+    var tile_r = [],
+        tile_p = [];
+
+    for (var j=0; j<4; j++){
+      var chunk = data[j + (256 * j)],
+          info = data[j + (256 * j) + 1024];
+
+      var x_offset = j % 2 === 0 ? 0 : 8,
+          y_offset = ((j / 2) | 0) === 0 ? 0 : 8;
+
+      this.assemble_chunk(tile_r, tile_p, chunk, info, tile_data_offsets, x_offset, y_offset);
+    }
+
+    tiles.r.push(tile_r);
+    tiles.p.push(tile_p);
+  }
+
+  return tiles;
+}
+
+MapData.prototype.assemble_chunk = function(tile_r, tile_p, chunk, info, tile_data_offsets, x_offset, y_offset){
+  if ((info & 3) == 0){
+    var tileset = 0,
+        t_index = chunk;
+  } else {
+    if (chunk > 127){
+      var t_index = chunk - 128,
+          tileset = (info & 3) == 1 ? 2 : 4;
+    } else {
+      var t_index = chunk,
+          tileset = (info & 3) == 2 ? 3 : info & 3;
+    }
+  }
+
+  if (tileset == 4){
+    var tile_offset = tile_data_offsets[4][0][t_index];
+  } else {
+    var tile_offset = (t_index * 32) + tile_data_offsets[tileset]
+  }
+
+  var priority = (info & 32) == 32,
+      pal = (info & 28) >> 2,
+      h_flip = (info & 64) == 64,
+      v_flip = (info & 128) == 128;
+
+  var frames = tileset == 4 ? 4 : 1;
+
+  for (var a=0; a<frames; a++){         
+    var tile_offset = tileset == 4 ? tile_data_offsets[4][a][t_index] : tile_offset,
+        tile = this.utils.assemble_4bit(tile_offset, h_flip, v_flip);
+
+    for (var y=0; y<8; y++){
+      for (var x=0; x<8; x++){      
+        var color_index = (x + x_offset) + ((y + y_offset) * 16) + (a * 256),
+            color = tile[x + (y * 8)];
+        
+        if (priority) {
+          tile_p[color_index] = color + (16 * pal)
+          tile_r[color_index] = 0 
+        } else {
+          tile_r[color_index] = color + (16 * pal)
+          tile_p[color_index] = 0
+        }
+      }
+    }
+  }
+}
+
+MapData.prototype.getTilesets = function(){
+  return [
+    this.assembleTileset(this.specs.formations[0], this.specs.tilesets),
+    this.assembleTileset(this.specs.formations[1], this.specs.tilesets)
+  ];
+}
+
+MapData.prototype.getMapData = function(){
+  return [
+    this.utils.decompress(this.utils.getValue( 0x19cf90 + (this.specs.map_data[0] * 3), 3 ) + 0x19d3b0),  
+    this.utils.decompress(this.utils.getValue( 0x19cf90 + (this.specs.map_data[1] * 3), 3 ) + 0x19d3b0),  
+    this.utils.decompress(this.utils.getValue( 0x19cf90 + (this.specs.map_data[2] * 3), 3 ) + 0x19d3b0)  
+  ]
+}
+

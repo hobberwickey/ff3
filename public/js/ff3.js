@@ -1,5 +1,5 @@
 var FF3 = function(rom){
-  this.rom = rom;
+  this.rom = new Uint8ClampedArray(rom);
   this.ram = {
     party: [5],
     characters: []
@@ -38,9 +38,11 @@ var FF3 = function(rom){
   this.menus = new Menus(this);
   this.utils = new Utils(this);
   this.effects = new Effects(this);
-  this.events = new Events(this);
+  //this.events = new Events(this);
 
   this.loop()
+
+  window.dispatchEvent( new Event('rom-running'));
 }
 
 FF3.prototype.loadMap = function(index, coords, showName, facing){
@@ -56,14 +58,13 @@ FF3.prototype.loadMap = function(index, coords, showName, facing){
     return;
   }
 
-  var map = new Map(index, this);
-  this.pause(0, 300)
+  this.pause(0, 300);
 
+  this.map = new Map(index, this);
   window.addEventListener('map-loaded', function mapLoaded(e){
-    this.map = map;
-
+    console.log(this.map);
     this.drawScreen = function(data){ this.map.runMap(data) };
-    var chr = this.map.state.character
+    var chr = null //this.map.state.character
     if ( !!chr ){
       chr.coords.x = coords[0];
       chr.coords.y = coords[1];
@@ -76,8 +77,11 @@ FF3.prototype.loadMap = function(index, coords, showName, facing){
     
     this.loading = false;
     this.resume(300);
-    this.events.executeCue(this.map.state.entrance_event)
+    //this.events.executeCue(this.map.state.entrance_event)
   }.bind(this), false);
+  
+  this.map.loadMap();
+  
 }
 
 FF3.prototype.loadWorldMap = function(map, coords){
