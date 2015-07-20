@@ -33,7 +33,7 @@ var Map = function(index, context){
 Map.prototype.loadMap = function(){
   
   // this.utils.retrieve("/loadMap/" + this.index + "?character=" + this.character, function(resp){
-  //   for (var x in this.context.actions) delete this.context.actions[x];
+  for (var x in this.context.actions) delete this.context.actions[x];
 
   //   this.state = resp;
   this.prepareMap();
@@ -86,9 +86,9 @@ Map.prototype.prepareMap = function(){
 
   this.layers = [
     { data: data.tilesets[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 0, trans: false },
-    //{ data: data.tilesets[1].p, index: 1, x: data.specs.layer2_shift[0], x_offset: 0, y: data.specs.layer2_shift[1], y_offset: 0, priority: 1, trans: false },
+    { data: data.tilesets[1].p, index: 1, x: data.specs.layer2_shift[0], x_offset: 0, y: data.specs.layer2_shift[1], y_offset: 0, priority: 1, trans: false },
     { data: data.tilesets[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 2, trans: false },
-    //{ data: data.tilesets[1].r, index: 1, x: data.specs.layer2_shift[0], x_offset: 0, y: data.specs.layer2_shift[1], y_offset: 0, priority: 3, trans: false }
+    { data: data.tilesets[1].r, index: 1, x: data.specs.layer2_shift[0], x_offset: 0, y: data.specs.layer2_shift[1], y_offset: 0, priority: 3, trans: false }
   ]
 
   //TODO: layer priorities
@@ -106,6 +106,12 @@ Map.prototype.prepareMap = function(){
       }
     }
   }
+
+  var self = this;
+  this.context.every(8, function(){
+    self.animated_frame += 1;
+    if (self.animated_frame > 3) self.animated_frame = 0;
+  }, false)
 
   //this.entrances = this.utils.loadEntrances(this.state.entrances, this.state.long_entrances, this.context);
 }
@@ -253,7 +259,7 @@ Map.prototype.drawMap = function(data){
             pixel_offset = (pixel_x & 15) + ((pixel_y & 15) << 4);
             
         var map_index = map_x + (map_y * map_size[layer_index].x),
-            tile_index = (x >> 4) + ((y >> 4) << 4); //m_data[layer_index][map_index];
+            tile_index = m_data[layer_index][map_index]; //(x >> 4) + ((y >> 4) << 4); 
 
         var tile_data = layer.data[tile_index]; //layer.data[i]; 
         
@@ -825,7 +831,7 @@ MapData.prototype.getSpecs = function(){
       map_data = this.utils.getValue(offset + 13, 3),
       tilesets = this.utils.getValue(offset + 7, 4);
 
-
+  console.log("TILESETS", tilesets);
   this.specs = {   
     palette: rom[offset + 25],
     has_monsters: (rom[offset + 5] & 128) === 128,
@@ -853,16 +859,16 @@ MapData.prototype.getSpecs = function(){
     },
     size: [
       {
-        x: (rom[offset + 23] & 0xc0) >> 2,
-        y: (rom[offset + 23] & 30)
+        x: Math.pow((rom[offset + 23] & (3 << 6)) >> 6, 2) << 16,
+        y: Math.pow((rom[offset + 23] & (3 << 4)) >> 4, 2) << 16
       },
       {
-        x: (rom[offset + 23] & 0x0c) << 2,
-        y: (rom[offset + 23] & 0x03) << 4
+        x: Math.pow((rom[offset + 23] & (3 << 2)) >> 2, 2) << 4,
+        y: Math.pow((rom[offset + 23] & (3 << 0)) >> 0, 2) << 4
       },
       {
-        x: (rom[offset + 24] & 0xc0) >> 2,
-        y: (rom[offset + 24] & 30)
+        x: Math.pow((rom[offset + 24] & (3 << 6)) >> 6, 2) << 4,
+        y: Math.pow((rom[offset + 24] & (3 << 4)) >> 4, 2) << 4
       } 
     ],
     viewable_size: {
@@ -872,8 +878,8 @@ MapData.prototype.getSpecs = function(){
     tilesets: [
       (tilesets & 0x7f),
       (tilesets & (0x7f << 7)) >> 7,
-      (tilesets & (0x7f << 14) >> 14),
-      (tilesets & (0x7f << 21) >> 21),
+      (tilesets & (0x7f << 14)) >> 14,
+      (tilesets & (0x7f << 21)) >> 21,
       (rom[offset + 27] & 31), //animated tiles
       (tilesets & 0x3f0) >> 4 //layer 3 tiles
     ],
@@ -977,16 +983,16 @@ MapData.prototype.assembleTileset = function(formation, tilesets){
 }
 
 MapData.prototype.assemble_chunk = function(tile_r, tile_p, chunk, info, tile_data_offsets, x_offset, y_offset){
-  if ((info & 3) == 0){
+  if ((info & 3) === 0){
     var tileset = 0,
         t_index = chunk;
   } else {
     if (chunk > 127){
       var t_index = chunk - 128,
-          tileset = (info & 3) == 1 ? 2 : 4;
+          tileset = (info & 3) === 1 ? 2 : 4;
     } else {
       var t_index = chunk,
-          tileset = (info & 3) == 2 ? 3 : info & 3;
+          tileset = (info & 3) === 2 ? 3 : info & 3;
     }
   }
 
