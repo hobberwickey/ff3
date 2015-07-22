@@ -26,7 +26,7 @@ Sprites.prototype.getSprites = function(){
       num = (end - start) / 9;
 
   for (var i=0; i<num; i++){
-    var offset = 0x41c10 + (i * 9);
+    var offset = 0x41c10 + start + (i * 9);
         bytes = this.context.rom.subarray(offset, offset + 9);
     console.log(JSON.stringify(bytes))
     var data = {
@@ -92,7 +92,9 @@ var Sprite = function(data, context){
   this.facing = data.facing || 0;
 
   this.priority = 0;
-  this.position = (this.facing * 3) + 1;
+  this.position = {0: 4, 1: 6, 2: 1, 3: 6}[this.facing];
+  this.mirror = (this.facing === 1) | 0;
+  this.lastStep = 0;
 
   this.gfx = this.loadSprite()
 } 

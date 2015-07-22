@@ -630,7 +630,7 @@ Map.prototype.walkRight = function(sprite, speed, callback){
   
   sprite.position = 7;
   sprite.mirror = 1;
-  console.log(self.canMoveRight(sprite))
+  
   if ( !self.canMoveRight(sprite) ) return false;
 
   self.scrollRight(sprite.coords, 1);
