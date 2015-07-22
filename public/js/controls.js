@@ -66,7 +66,7 @@ var Controls = function(context){
     if (self.context.paused){
       self.context.resume(0);
     } else {
-      self.context.pause(1, 0)
+      self.context.pause(0.5, 0)
     }
   }, false)
 }

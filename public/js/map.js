@@ -32,10 +32,8 @@ var Map = function(index, context){
 
 Map.prototype.loadMap = function(){
   
-  // this.utils.retrieve("/loadMap/" + this.index + "?character=" + this.character, function(resp){
   for (var x in this.context.actions) delete this.context.actions[x];
 
-  //   this.state = resp;
   this.prepareMap();
   this.setupControls();
   //   this.setupSpriteMovement();
@@ -45,7 +43,6 @@ Map.prototype.loadMap = function(){
   this.height = specs.size[0].y > specs.size[1].y ? specs.size[0].y : specs.size[1].y;
 
   window.dispatchEvent( new Event("map-loaded") );
-  // }.bind(this));
 }
 
 Map.prototype.setupControls = function(){
@@ -259,7 +256,7 @@ Map.prototype.drawMap = function(data){
             pixel_offset = (pixel_x & 15) + ((pixel_y & 15) << 4);
             
         var map_index = map_x + (map_y * map_size[layer_index].x),
-            tile_index = m_data[layer_index][map_index]; //(x >> 4) + ((y >> 4) << 4); 
+            tile_index = m_data[layer_index][map_index]; //
 
         var tile_data = layer.data[tile_index]; //layer.data[i]; 
         
@@ -286,6 +283,7 @@ Map.prototype.drawMap = function(data){
       }
     
       utils.drawPixel(data, pixel, index)
+
     }
   }
 }
@@ -831,7 +829,6 @@ MapData.prototype.getSpecs = function(){
       map_data = this.utils.getValue(offset + 13, 3),
       tilesets = this.utils.getValue(offset + 7, 4);
 
-  console.log("TILESETS", tilesets);
   this.specs = {   
     palette: rom[offset + 25],
     has_monsters: (rom[offset + 5] & 128) === 128,
@@ -859,8 +856,8 @@ MapData.prototype.getSpecs = function(){
     },
     size: [
       {
-        x: Math.pow((rom[offset + 23] & (3 << 6)) >> 6, 2) << 16,
-        y: Math.pow((rom[offset + 23] & (3 << 4)) >> 4, 2) << 16
+        x: Math.pow((rom[offset + 23] & (3 << 6)) >> 6, 2) << 4,
+        y: Math.pow((rom[offset + 23] & (3 << 4)) >> 4, 2) << 4
       },
       {
         x: Math.pow((rom[offset + 23] & (3 << 2)) >> 2, 2) << 4,
@@ -937,7 +934,6 @@ MapData.prototype.assembleTileset = function(formation, tilesets){
   var pnt1 = this.utils.getValue(0x1fbc00 + (formation * 3), 3),
       data = this.utils.decompress(pnt1 + 0x1e0200);
 
-  console.log(formation, pnt1 + 0x1e0200, data);
   var animated_data_pointer = this.utils.getValue(0x93d5 + (tilesets[4] * 2), 2),
       animated_pointers = [];
 
