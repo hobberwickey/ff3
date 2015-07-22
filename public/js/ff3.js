@@ -63,7 +63,7 @@ FF3.prototype.loadMap = function(index, coords, showName, facing){
   this.map = new Map(index, this);
   window.addEventListener('map-loaded', function mapLoaded(e){
     this.drawScreen = function(data){ this.map.runMap(data) };
-    var chr = null //this.map.state.character
+    var chr = this.map.character
     if ( !!chr ){
       chr.coords.x = coords[0];
       chr.coords.y = coords[1];

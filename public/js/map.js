@@ -1,11 +1,12 @@
 var Map = function(index, context){
   this.index = index;
   this.context = context;
-  this.character = this.context.ram.party[0];
-  this.state = null;
+  this.character_index = this.context.ram.party[0];
+  this.character = null;
 
   this.utils = new Utils(context);
   this.physical_map = {};
+  
   this.animated_frame = 0;
   this.map_pos = {
     x: 0,
@@ -22,9 +23,16 @@ var Map = function(index, context){
   this.width = null;
   this.height = null;
 
+  this.spriteController = new Sprites(this.index, this.context);
+  this.sprites = this.spriteController.sprites;
+  
+  if (!!this.character_index){
+    this.character = new Sprite( { gfx_set: this.character_index, coords: { x: 0, y: 0 }, isCharacter: true }, this.context );
+    this.sprites.push( this.character );
+  }
+
   this.entrances = {}
   this.treasure = {}
-  this.sprites = {}
   this.events = {}
 
   this.mapData = new MapData(index, context);
@@ -91,7 +99,7 @@ Map.prototype.prepareMap = function(){
   //TODO: layer priorities
   // this.layers.unshift( { data: this.state.tiles[2], index: 2, x: this.state.x_shift[1], x_offset: 0, y: this.state.y_shift[1], y_offset: 0, priority: 0, trans: true})
 
-  //this.buildPhysicalMap();
+  this.buildPhysicalMap();
 
   var maps = [this.pixel_map, this.trans_map]
   for (var m=0; m<2; m++){
@@ -146,13 +154,13 @@ Map.prototype.moveRandom = function(sprite, recurse){
 
 Map.prototype.runMap = function(data){
   this.drawMap(data);
-  //this.drawSprites(data);
+  this.drawSprites(data);
 }
 
 Map.prototype.drawSprites = function(data){
-  var sprites = this.state.sprites,
+  var sprites = this.sprites,
       scrollPos = this.map_pos,
-      spritePositions = this.state.sprite_positions,
+      spritePositions = this.spriteController.sprite_positions,
       pMap = this.physical_map,
       self = this;
 
@@ -167,7 +175,7 @@ Map.prototype.drawSprites = function(data){
     self.drawSprite(data, sprites[i], mapBounds, spritePositions, pMap, false);
   }
 
-  if (self.character !== void(0)) self.drawSprite(data, self.state.character, mapBounds, spritePositions, pMap, true);
+  //if (self.character !== null) self.drawSprite(data, self.character, mapBounds, spritePositions, pMap, true);
 }
 
 Map.prototype.drawSprite = function(data, sprite, mapBounds, sprite_positions, pMap, main){
@@ -179,7 +187,8 @@ Map.prototype.drawSprite = function(data, sprite, mapBounds, sprite_positions, p
       full_mirror = sprite.mirror,
       partial_mirror = full_mirror & (sprite.position === 0 || sprite.position === 2) 
       tMap = this.trans_map,
-      pixelMap = this.pixel_map,
+      pMap = this.pixel_map,
+      palettes = this.spriteController.palettes;
       utils = this.utils;
 
   for (var b=0; b<6; b++){
@@ -190,7 +199,8 @@ Map.prototype.drawSprite = function(data, sprite, mapBounds, sprite_positions, p
 
     for (var y=0; y<8; y++){
       for (var x=0; x<8; x++){
-        var color = sprite.tiles[spritePos[b]][x + (y << 3)],
+        var color_index = sprite.gfx[spritePos[b]][x + (y << 3)],
+            color = palettes[sprite.palette][color_index],
             x_pixel = mirror === 0 ? x + x_offset : 15 - (x + x_offset),
             data_x = (back_edge - mapBounds.x1) + x_pixel,
             data_y = (y + (top_edge - mapBounds.y1)) + y_offset;
@@ -210,7 +220,7 @@ Map.prototype.drawSprite = function(data, sprite, mapBounds, sprite_positions, p
           if (mask){
             //if (pixelMap[data_x][data_y] === 2) drawPixel(data, color, data_offset)
           } else {
-            if (pixelMap[data_x][data_y] !== 1 && pixelMap[data_x][data_y] !== 0){ 
+            if (pMap[data_x][data_y] !== 1 && pMap[data_x][data_y] !== 0){ 
               if (tMap[data_x][data_y] !== 0) color = utils.addColors(color, tMap[data_x][data_y])
                 utils.drawPixel(data, color, data_offset)
             }
@@ -289,12 +299,12 @@ Map.prototype.drawMap = function(data){
 }
 
 Map.prototype.buildPhysicalMap = function(){
-  var props = this.state.tile_properties,
-      tiles = this.state.map_data[0],
-      map_size = this.state.dimensions[0],
+  var props = this.mapData.tile_properties,
+      tiles = this.mapData.map_data[0],
+      map_size = this.mapData.specs.size[0],
       map = this.physical_map;
 
-  if (map_size.x * map_size.y > tiles.length) map_size = this.state.dimensions[1];
+  if (map_size.x * map_size.y > tiles.length) map_size = this.mapData.specs.size[1];
   
   //if (map_size[0] * map_size[1] < tiles.length) map_size = DIMENSIONS[2];
   
@@ -489,7 +499,7 @@ Map.prototype.buildPhysicalMap = function(){
 }
 
 Map.prototype.checkEvents = function(sprite, x, y){
-  if (sprite !== this.state.character){ 
+  if (sprite !== this.character){ 
     return false;
   }
 
@@ -606,7 +616,7 @@ Map.prototype.canMoveDown = function(sprite){
 }
 
 Map.prototype.moveRight = function(){
-  var sprite = this.state.character,
+  var sprite = this.character,
       self = this;
 
   if ( this.walkRight(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.x < this.width - 16 && sprite.coords.x - this.map_pos.x >= 8){ 
@@ -620,6 +630,7 @@ Map.prototype.walkRight = function(sprite, speed, callback){
   
   sprite.position = 7;
   sprite.mirror = 1;
+  console.log(self.canMoveRight(sprite))
   if ( !self.canMoveRight(sprite) ) return false;
 
   self.scrollRight(sprite.coords, 1);
@@ -640,7 +651,7 @@ Map.prototype.walkRight = function(sprite, speed, callback){
 
 
 Map.prototype.moveLeft = function(){
-  var sprite = this.state.character,
+  var sprite = this.character,
       self = this;
 
   if ( this.walkLeft(sprite, 1) && this.map_pos.x > 0 && sprite.coords.x - this.map_pos.x <= 8) this.scrollLeft(this.map_pos);
@@ -671,7 +682,7 @@ Map.prototype.walkLeft = function(sprite, speed, callback){
 }
 
 Map.prototype.moveDown = function(){
-  var sprite = this.state.character,
+  var sprite = this.character,
       self = this;
 
   if ( this.walkDown(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.y < this.height - 16 && sprite.coords.y - this.map_pos.y >= 6){ 
@@ -707,7 +718,7 @@ Map.prototype.walkDown = function(sprite, speed, callback){
 }
 
 Map.prototype.moveUp = function(){
-  var sprite = this.state.character,
+  var sprite = this.character,
       self = this;
 
   if ( this.walkUp(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.y > 0 && sprite.coords.y - this.map_pos.y <= 6){ 
@@ -817,6 +828,7 @@ var MapData = function(index, context){
   this.palette = this.getPalette();
   this.map_data = this.getMapData();
   this.tilesets = this.getTilesets();
+  this.tile_properties = this.getTileProperties();
   
   this.getEvents();
   this.getTreasure();
@@ -1041,3 +1053,15 @@ MapData.prototype.getMapData = function(){
   ]
 }
 
+MapData.prototype.getTileProperties = function(){
+  var props = [];
+
+  var pntr = this.utils.getValue(0x19cf10 + (this.specs.tile_properties * 2), 2) + 0x19aa00;
+      data = this.utils.decompress(pntr);
+
+  for (var i=0; i<data.length / 2; i++){
+    props.push( [ data[i], data[i + 256] ] );
+  }    
+
+  return props;
+}
