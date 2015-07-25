@@ -43,6 +43,27 @@ var FF3 = function(rom){
   this.loop()
 
   window.dispatchEvent( new Event('rom-running'));
+  window.addEventListener('map-loaded', function mapLoaded(e){    
+    this.drawScreen = function(data){ this.map.runMap(data) };
+    // var chr = this.map.character
+    // if ( !!chr ){
+    //   chr.coords.x = coords[0];
+    //   chr.coords.y = coords[1];
+    // }
+
+    // this.map.map_pos.x = (Math.min(this.map.width - 16, Math.max(0, coords[0] - 7)));
+    // this.map.map_pos.y = (Math.min(this.map.height - 16, Math.max(0, coords[1] - 7)));
+
+    // window.removeEventListener("map-loaded", mapLoaded);
+    
+    this.loading = false;
+    this.resume(300);
+    //this.events.executeCue(this.map.state.entrance_event)
+  }.bind(this), false);
+}
+
+FF3.prototype.clearActions = function(){
+  for (var x in this.actions) delete this.actions[x];
 }
 
 FF3.prototype.loadMap = function(index, coords, showName, facing){
@@ -58,29 +79,10 @@ FF3.prototype.loadMap = function(index, coords, showName, facing){
     return;
   }
 
-  this.pause(0, 300);
-
-  this.map = new Map(index, this);
-  window.addEventListener('map-loaded', function mapLoaded(e){
-    this.drawScreen = function(data){ this.map.runMap(data) };
-    var chr = this.map.character
-    if ( !!chr ){
-      chr.coords.x = coords[0];
-      chr.coords.y = coords[1];
-    }
-
-    this.map.map_pos.x = (Math.min(this.map.width - 16, Math.max(0, coords[0] - 7)));
-    this.map.map_pos.y = (Math.min(this.map.height - 16, Math.max(0, coords[1] - 7)));
-
-    window.removeEventListener("map-loaded", mapLoaded);
-    
-    this.loading = false;
-    this.resume(300);
-    //this.events.executeCue(this.map.state.entrance_event)
-  }.bind(this), false);
-  
-  this.map.loadMap();
-  
+  this.pause(0, 300, function(){
+    this.clearActions();
+    this.map = new Map(index, this, coords, facing);
+  }.bind(this));
 }
 
 FF3.prototype.loadWorldMap = function(map, coords){
@@ -103,20 +105,22 @@ FF3.prototype.loadWorldMap = function(map, coords){
   }.bind(this), false);
 }
 
-FF3.prototype.pause = function(opacity, duration){
+FF3.prototype.pause = function(opacity, duration, callback){
   var self = this;
     
   this.effects.fade(['black'], opacity, duration, function(){
       self.paused = true;
+      if (callback) callback();
   })
 }
 
-FF3.prototype.resume = function(duration){
+FF3.prototype.resume = function(duration, callback){
   this.paused = false;
   this.loop();
 
   this.effects.fade(['black'], 1, duration, function(){ 
     this.paused = false
+    if (callback) callback();
   }.bind(this));
 }
 

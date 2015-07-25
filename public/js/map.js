@@ -1,4 +1,4 @@
-var Map = function(index, context){
+var Map = function(index, context, coords, facing){
   this.index = index;
   this.context = context;
   this.character_index = this.context.ram.party[0];
@@ -28,6 +28,8 @@ var Map = function(index, context){
   
   if (!!this.character_index){
     this.character = new Sprite( { gfx_set: this.character_index, coords: { x: 0, y: 0 }, isCharacter: true }, this.context );
+    this.character.coords.x = !!coords? coords[0] : 0;
+    this.character.coords.y = !!coords? coords[1] : 0;
     this.sprites.push( this.character );
   }
 
@@ -35,20 +37,23 @@ var Map = function(index, context){
   this.treasure = {}
   this.events = {}
 
-  this.mapData = new MapData(index, context);
+  this.map_objects = new MapObjects(index, context);
+  this.map_data = new MapData(index, context);
+
+  this.loadMap(coords, facing);
 }
 
-Map.prototype.loadMap = function(){
-  
-  for (var x in this.context.actions) delete this.context.actions[x];
-
+Map.prototype.loadMap = function(coords, facing){
   this.prepareMap();
   this.setupControls();
   //   this.setupSpriteMovement();
-  var specs = this.mapData.specs;
+  var specs = this.map_data.specs;
 
   this.width = specs.size[0].x > specs.size[1].x ? specs.size[0].x : specs.size[1].x;
   this.height = specs.size[0].y > specs.size[1].y ? specs.size[0].y : specs.size[1].y;
+
+  this.map_pos.x = (Math.min(this.width - 16, Math.max(0, coords[0] - 7)));
+  this.map_pos.y = (Math.min(this.height - 16, Math.max(0, coords[1] - 7)));
 
   window.dispatchEvent( new Event("map-loaded") );
 }
@@ -87,7 +92,7 @@ Map.prototype.setupControls = function(){
 }
 
 Map.prototype.prepareMap = function(){
-  var data = this.mapData;
+  var data = this.map_data;
 
   this.layers = [
     { data: data.tilesets[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 0, trans: false },
@@ -118,7 +123,7 @@ Map.prototype.prepareMap = function(){
     if (self.animated_frame > 3) self.animated_frame = 0;
   }, false)
 
-  //this.entrances = this.utils.loadEntrances(this.state.entrances, this.state.long_entrances, this.context);
+  this.entrances = this.utils.loadEntrances(this.map_objects);
 }
 
 Map.prototype.setupSpriteMovement = function(){
@@ -238,9 +243,9 @@ Map.prototype.drawMap = function(data){
   var context = this.context,
       layers = this.layers,
       layers_len = layers.length,
-      map_size = this.mapData.specs.size,
-      m_data = this.mapData.map_data,
-      palette = this.mapData.palette,
+      map_size = this.map_data.specs.size,
+      m_data = this.map_data.map_data,
+      palette = this.map_data.palette,
       utils = this.utils,
       pMap = this.pixel_map,
       tMap = this.trans_map,
@@ -299,12 +304,13 @@ Map.prototype.drawMap = function(data){
 }
 
 Map.prototype.buildPhysicalMap = function(){
-  var props = this.mapData.tile_properties,
-      tiles = this.mapData.map_data[0],
-      map_size = this.mapData.specs.size[0],
+  var props = this.map_data.tile_properties,
+      tiles = this.map_data.map_data[0],
+      map_size = this.map_data.specs.size[0],
       map = this.physical_map;
 
-  if (map_size.x * map_size.y > tiles.length) map_size = this.mapData.specs.size[1];
+  console.log(this.map_data)
+  if (map_size.x * map_size.y > tiles.length) map_size = this.map_data.specs.size[1];
   
   //if (map_size[0] * map_size[1] < tiles.length) map_size = DIMENSIONS[2];
   
@@ -325,11 +331,15 @@ Map.prototype.buildPhysicalMap = function(){
       if (x >= map_size.x - 1 || x < 1 || y >= map_size.y - 1 || y < 1){ 
         return [0xf7, 0xff, x, y];
       } else {
-        var arr = props[tiles[x + (y * map_size.x)]];
-            arr.push(x)
-            arr.push(y)
+        try{
+          var arr = props[tiles[x + (y * map_size.x)]];
+              arr.push(x)
+              arr.push(y)
 
-        return arr;
+          return arr;
+        } catch(e){
+          console.log("error", x + (y * map_size.x))
+        }
       }
     }
 
@@ -868,16 +878,16 @@ MapData.prototype.getSpecs = function(){
     },
     size: [
       {
-        x: Math.pow((rom[offset + 23] & (3 << 6)) >> 6, 2) << 4,
-        y: Math.pow((rom[offset + 23] & (3 << 4)) >> 4, 2) << 4
+        x: Math.pow(2, (rom[offset + 23] & (3 << 6)) >> 6) << 4,
+        y: Math.pow(2, (rom[offset + 23] & (3 << 4)) >> 4) << 4
       },
       {
-        x: Math.pow((rom[offset + 23] & (3 << 2)) >> 2, 2) << 4,
-        y: Math.pow((rom[offset + 23] & (3 << 0)) >> 0, 2) << 4
+        x: Math.pow(2, (rom[offset + 23] & (3 << 2)) >> 2) << 4,
+        y: Math.pow(2, (rom[offset + 23] & (3 << 0)) >> 0) << 4
       },
       {
-        x: Math.pow((rom[offset + 24] & (3 << 6)) >> 6, 2) << 4,
-        y: Math.pow((rom[offset + 24] & (3 << 4)) >> 4, 2) << 4
+        x: Math.pow(2, (rom[offset + 24] & (3 << 6)) >> 6) << 4,
+        y: Math.pow(2, (rom[offset + 24] & (3 << 4)) >> 4) << 4
       } 
     ],
     viewable_size: {

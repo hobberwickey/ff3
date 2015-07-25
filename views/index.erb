@@ -44,7 +44,7 @@
 
       live.onload = function(){ 
         ff3 = new FF3(live.result);
-        ff3.loadMap(75, [2, 28]);
+        ff3.map = new Map(75, ff3, [2, 28], 0);
       }
 
       store.onload = function(){ 
@@ -58,7 +58,6 @@
 
   window.addEventListener('map-loaded', function(){
     console.log("running");
-    console.log(ff3);
   }, false);
 
   window.addEventListener("resize", function(){

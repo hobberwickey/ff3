@@ -44,17 +44,18 @@ Utils.prototype.getValue = function(offset, bytes){
 
 
 //TODO: move this to map utils
-Utils.prototype.loadEntrances = function(short, long, context){
-  var entrances = {};
+Utils.prototype.loadEntrances = function(map_objects){
+  var shorts = map_objects.entrances,
+      longs = map_objects.long_entrances,
+      context = this.context,
+      entrances = {};
 
-  for (var i=0; i<short.length; i++){
-    var e = short[i];
+  for (var i=0; i<shorts.length; i++){
+    var e = shorts[i];
     if (entrances[e[0]] === void(0)) entrances[e[0]] = {};
     
     entrances[e[0]][e[1]] = (function(e){
       return function(){
-        context.pause(0, 300);
-        
         var map_index = (e[2] + (e[3] << 8) & 0x1ff),
             destination_x = e[4],
             destination_y = e[5];
@@ -64,16 +65,18 @@ Utils.prototype.loadEntrances = function(short, long, context){
           destination_x = destination_x << 4;
           destination_y = destination_y << 4;
         }
+
         context.loadMap( map_index, [destination_x, destination_y], (e[3] & 8 >> 3) === 1, (e[3] & 48) >>  4)  
       } 
     })(e)
   }
 
-  for (var i=0; i<long.length; i++){
-    var e = long[i],
+  for (var i=0; i<longs.length; i++){
+    var e = longs[i],
         len = e[2] & 127,
         vert = (e[2] & 128) === 128;
     
+    console.log(vert, len, e)
     for (var j=0; j<len; j++){
       var x = vert ? e[0] : e[0] + j,
           y = vert ? e[1] + j : e[1];
@@ -82,9 +85,7 @@ Utils.prototype.loadEntrances = function(short, long, context){
       
       entrances[x][y] = (function(e){
         return function(){
-          context.pause(0, 300);
-
-          var map_index = (e[3] + (e[4] << 8) & 0x1ff),
+          var map_index = (e[3] + (e[4] << 8)) & 0x1ff,
               destination_x = e[5],
               destination_y = e[6];
 
@@ -94,7 +95,7 @@ Utils.prototype.loadEntrances = function(short, long, context){
             destination_y = destination_y << 4;
           }
 
-          context.loadMap( map_index, [destination_x, destination_y], (e[4] & 8 >> 3) === 1, (e[4] & 48) >>  4)  
+          context.loadMap( map_index, [destination_x, destination_y], ((e[4] & 8) >> 3) === 1, (e[4] & 48) >>  4)  
         } 
       })(e)
     }

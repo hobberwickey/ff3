@@ -65,14 +65,10 @@ Events.prototype.getValue = function(offset, bytes){
 }
 
 Events.prototype.executeCue = function(offset){
-  
-  console.log((offset + 0xA0200).toString(16))
-
   if (this.code[offset] !== 0xfe && this.code[offset] !== 0xff){
     if (this.translations[this.code[offset].toString(16)] !== void(0)){
       this.translations[this.code[offset].toString(16)](offset);
     } else {
-      console.log("unlisted", this.code[offset].toString(16))
       this.executeCue(offset + 1);
     }
      

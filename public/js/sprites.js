@@ -28,7 +28,7 @@ Sprites.prototype.getSprites = function(){
   for (var i=0; i<num; i++){
     var offset = 0x41c10 + start + (i * 9);
         bytes = this.context.rom.subarray(offset, offset + 9);
-    console.log(JSON.stringify(bytes))
+
     var data = {
       event_address: ((bytes[2] & 3) << 16) + (bytes[1] << 8) + bytes[0] + 0xa01ff,
       palette: (bytes[2] & 28) >> 2,
