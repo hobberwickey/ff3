@@ -4,7 +4,6 @@ var Menus = function(context){
 }
 
 Menus.prototype.openMain = function(type){
-  console.log(this.opening);
   this.opening = true;
   this.context.pause(0, 200);
 
@@ -20,7 +19,7 @@ Menus.prototype.openMain = function(type){
   wrapper.dataset.opened = 1;
 
   this.context.menuOpened = true;
-},
+}
 
 Menus.prototype.closeMain = function(){
   this.context.menuOpened = false;
@@ -30,4 +29,29 @@ Menus.prototype.closeMain = function(){
 
   window.dispatchEvent( new Event('menu-close') );
   this.context.resume(200);
+}
+
+Menus.prototype.openDialog = function(){
+  var wrapper = document.querySelector("#menu"),
+      menu = document.createElement('dialog-menu');
+
+  menu.context = this.context;
+
+  wrapper.innerHTML = "";
+  wrapper.appendChild(menu);
+
+  // wrapper.style.display = 'block';
+  wrapper.style.opacity = 1;
+  wrapper.dataset.opened = 1;
+
+  this.context.map.flags.dialogOpened = true;
+}
+
+Menus.prototype.closeDialog = function(){
+  var wrapper = document.querySelector("#menu");
+      wrapper.style.opacity = 0;
+      wrapper.dataset.opened = 0;
+
+  this.context.map.flags.dialogOpened = false;
+  window.dispatchEvent( new Event('dialog-close') );
 }

@@ -132,3 +132,27 @@ Events.prototype.and_conditional = function(num, offset){
 Events.prototype.or_conditional = function(num, offset){
 
 }
+
+Events.prototype.show_dialog = function(offset){
+  var message = "Event at " + offset; //this.get_message();
+
+  this.context.menus.openDialog();
+
+  var cntr = 0,
+      len = message.length
+
+  //TODO: lock a button
+  var wrapper = document.querySelector("#menu"),
+      content = wrapper.querySelector("dialog-menu .content");
+
+      wrapper.addEventListener("transitionend", function write(){
+        this.context.iterate(2, len, function(){
+          content.innerHTML = message.substring(0, cntr);
+          cntr += 1;
+        }, function(){
+
+        }, true);
+
+        wrapper.removeEventListener("transitionend", write);
+      }.bind(this), false);
+}

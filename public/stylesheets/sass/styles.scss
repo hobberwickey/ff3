@@ -36,11 +36,18 @@ body {
 	height: 204px;
 	left: 0px;
 	top: 0px;
-	display: none;
+	
 	opacity: 0;
 	transition: opacity 300ms ease;
 
   font-family: 'Source Code Pro', ;
+  color: white;
+  font-size: 12px;
+}
+
+#menu dialog-menu .content {
+  padding: 4px;
+  overflow: hidden;
 }
 
 

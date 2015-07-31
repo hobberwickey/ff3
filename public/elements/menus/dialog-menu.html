@@ -1,0 +1,39 @@
+<link rel='import' href='../../components/polymer/polymer.html'>
+<link rel='import' href='../../components/iron-selector/iron-selector.html'>
+
+<link rel='import' href='menu-base.html'>
+
+<dom-module id='dialog-menu'>
+  <template>
+    <div class='content'>
+      
+    </div>
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "dialog-menu",
+    
+    properties: {
+      height: { type: Number, value: 9 }
+    },
+
+    ready: function(){
+      var self = this;
+
+      window.addEventListener("a-end", function _close(){
+        console.log("close");
+        self.context.menus.closeDialog();
+        
+        //Cleanup
+        window.addEventListener("dialog-close", function _listen(){
+          window.removeEventListener("a-end", _close);
+          window.removeEventListener("dialog-close", _listen);
+        }, false)
+      }, false)
+    },
+
+    behaviors: [MenuBase]
+  })
+</script>

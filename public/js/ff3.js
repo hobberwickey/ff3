@@ -27,8 +27,6 @@ var FF3 = function(rom){
     0  // advanced
   ]
 
-  this.text = {};
-  this.events = {};
 
   this.ctx = document.querySelector("#screen").getContext("2d");
   this.ctxData = this.ctx.getImageData(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
@@ -38,7 +36,7 @@ var FF3 = function(rom){
   this.menus = new Menus(this);
   this.utils = new Utils(this);
   this.effects = new Effects(this);
-  //this.events = new Events(this);
+  this.events = new Events(this);
 
   this.loop()
 

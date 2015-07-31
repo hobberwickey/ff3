@@ -31,6 +31,8 @@ var Map = function(index, context, coords, facing){
     this.character.coords.x = !!coords? coords[0] : 0;
     this.character.coords.y = !!coords? coords[1] : 0;
     this.sprites.push( this.character );
+
+    this.spriteController.character = this.character;
   }
 
   this.entrances = {}
@@ -41,6 +43,9 @@ var Map = function(index, context, coords, facing){
   this.map_data = new MapData(index, context);
 
   this.loadMap(coords, facing);
+  this.flags = {
+    dialogOpened: false
+  }
 }
 
 Map.prototype.loadMap = function(coords, facing){
@@ -71,12 +76,27 @@ Map.prototype.setupControls = function(){
     down: function(){ self.moveDown() },
   }
 
+  var aCheck = false
   this.context.every(1, function(){
     if (self.moving) return;
 
     if (buttons.x){ 
       self.context.menus.openMain('main-menu');
       return;
+    }
+
+    if (buttons.a){
+      console.log(aCheck, self.flags.dialogOpened);
+      if (aCheck || self.flags.dialogOpened) return; 
+      
+      aCheck = true;
+      console.log("a")
+      window.addEventListener("a-end", function open(){
+        window.removeEventListener("a-end", open);        
+        
+        self.spriteController.checkForNPC();
+        aCheck = false;
+      }, false);
     }
 
     var current = controls.currentMovement;
@@ -227,13 +247,17 @@ Map.prototype.drawSprite = function(data, sprite, mapBounds, sprite_positions, p
           } else {
             if (pMap[data_x][data_y] !== 1 && pMap[data_x][data_y] !== 0){ 
               if (tMap[data_x][data_y] !== 0) color = utils.addColors(color, tMap[data_x][data_y])
-                utils.drawPixel(data, color, data_offset)
+              utils.drawPixel(data, color, data_offset)
+
+              pMap[data_x][data_y] = 0;
             }
           }
         } else {
           if (tMap[data_x][data_y] !== 0) color = utils.addColors(color, tMap[data_x][data_y])
-            utils.drawPixel(data, color, data_offset)
-        } 
+          utils.drawPixel(data, color, data_offset)
+
+          pMap[data_x][data_y] = 0;
+        }
       }
     }
   }

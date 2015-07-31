@@ -76,7 +76,6 @@ Utils.prototype.loadEntrances = function(map_objects){
         len = e[2] & 127,
         vert = (e[2] & 128) === 128;
     
-    console.log(vert, len, e)
     for (var j=0; j<len; j++){
       var x = vert ? e[0] : e[0] + j,
           y = vert ? e[1] + j : e[1];

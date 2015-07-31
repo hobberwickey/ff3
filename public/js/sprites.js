@@ -6,6 +6,7 @@ var Sprites = function(map_index, context){
   this.sprite_positions = [];
   this.palettes = [];
   this.sprite_coords = {};
+  this.character = null;
 
   for (var x=0; x<256; x++){
     this.sprite_coords[x] = {};
@@ -42,8 +43,10 @@ Sprites.prototype.getSprites = function(){
       isCharacter: false
     }
 
-    this.sprite_coords[data.coords.x][data.coords.y] = 1;
-    this.sprites.push( new Sprite(data, this.context) );
+    var sprite = new Sprite(data, this.context);
+
+    this.sprite_coords[data.coords.x][data.coords.y] = sprite;
+    this.sprites.push( sprite );
   }
 }
 
@@ -72,6 +75,29 @@ Sprites.prototype.getPalettes = function(){
     }
 
     this.palettes.push( pal )
+  }
+}
+
+Sprites.prototype.checkForNPC = function(){
+  var chr = this.character;
+  if ([0, 1, 2].indexOf(chr.position) !== -1){
+    var pos = {x: chr.coords.x, y: chr.coords.y + 1};
+  } else if ([3, 4, 5].indexOf(chr.position) != -1){
+    var pos = {x: chr.coords.x, y: chr.coords.y - 1};
+  } else if ([6, 7, 8].indexOf(chr.position) != -1){
+    if (chr.mirror === 0){
+      var pos = {x: chr.coords.x - 1, y: chr.coords.y};
+    } else {
+      var pos = {x: chr.coords.x + 1, y: chr.coords.y};
+    }
+  }
+
+  var sprite = this.sprite_coords[pos.x][pos.y];
+    
+  if (sprite !== 0){
+    this.context.events.show_dialog(sprite.event)
+  } else {
+    console.log('nothing!')
   }
 }
 
@@ -114,7 +140,11 @@ Sprite.prototype.loadSprite = function(){
 }
 
 Sprite.prototype.getEvent = function(offset){
-
+  if (offset){
+    return offset.toString(16);
+  } else {
+    return null;
+  }
 }
 
 
