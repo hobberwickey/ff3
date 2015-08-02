@@ -36,6 +36,7 @@
   window.addEventListener("WebComponentsReady", function(){
     var form = document.querySelector('#upload-form');
 
+
     form.structure = [{ key: "rom", type: "file", label: "Upload a valid FF3/6 ROM" }];
     form.querySelector(".rom input").addEventListener("change", function(e){
       var file = e.target.files[0],
@@ -52,12 +53,20 @@
       }
       
       live.readAsArrayBuffer(file)
-      //store.readAsDataURL(file);
+      store.readAsDataURL(file);
     }, false);
-  }, false);
 
-  window.addEventListener('map-loaded', function(){
-    console.log("running");
+    if (!!window.localStorage.rom){
+      var blob = dataURLtoBlob(window.localStorage.rom),
+          live = new FileReader();
+      
+      live.onload = function() {
+          ff3 = new FF3(live.result);
+          ff3.map = new Map(75, ff3, [2, 28], 0);
+      };
+      live.readAsArrayBuffer(blob);
+    }
+    
   }, false);
 
   window.addEventListener("resize", function(){
@@ -75,6 +84,15 @@
         transformation = "scale3d(" + scale + "," + scale + "," + scale + ")" + " translateX(" + leftShift + "px)";
 
     document.querySelector("#screen_wrapper").style.transform = transformation;
+  }
+
+  function dataURLtoBlob(dataurl) {
+      var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+          bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+      while(n--){
+          u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new Blob([u8arr], {type:mime});
   }
 
   resizeScreen();
