@@ -86,16 +86,19 @@ Events.prototype.executeCue = function(offset){
 
 Events.prototype.getText = function(index){
   var start = this.utils.getValue(0x0CE802 + (index * 2), 2),
-      pages = [""],
+      pages = [{dialog: "", hex: []}],
       page = 0;
 
   while (this.context.rom[0x0D0200 + start] !== 0){
     if (this.context.rom[0x0D0200 + start].toString(16) === "13"){
       page++;
-      pages[page] = "";
+      pages[page] = {dialog: "", hex: []};
     } else {
-      letter = Tables.text[this.context.rom[0x0D0200 + start].toString(16)] || this.context.rom[0x0D0200 + start].toString(16);
-      pages[page] += letter;
+      var letter = Tables.text[this.context.rom[0x0D0200 + start].toString(16)] || this.context.rom[0x0D0200 + start].toString(16),
+          hex = this.context.rom[0x0D0200 + start].toString(16);
+
+      pages[page].dialog += letter;
+      pages[page].hex.push(hex);
     }
 
     start++;
@@ -161,27 +164,8 @@ Events.prototype.or_conditional = function(num, offset){
 
 Events.prototype.show_dialog = function(offset, halt){
   var index = this.utils.getValue(offset + 1, 2) & 0x3fff,
-      message = this.getText(index)[0];
+      pages = this.getText(index);
 
 
-  console.log(message);
-  this.context.menus.openDialog();
-
-  var cntr = 0,
-      len = message.length
-
-  //TODO: lock a button
-  var wrapper = document.querySelector("#menu"),
-      content = wrapper.querySelector("dialog-menu .content");
-
-      wrapper.addEventListener("transitionend", function write(){
-        this.context.iterate(2, len, function(){
-          content.innerHTML = message.substring(0, cntr);
-          cntr += 1;
-        }, function(){
-
-        }, true);
-
-        wrapper.removeEventListener("transitionend", write);
-      }.bind(this), false);
+  this.context.menus.openDialog(pages);
 }

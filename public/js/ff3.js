@@ -86,21 +86,14 @@ FF3.prototype.loadMap = function(index, coords, showName, facing){
 FF3.prototype.loadWorldMap = function(map, coords){
   this.test.innerHTML = "Loading"
   
-  var map = new WorldMap(map, this);
-  this.pause(0, 300);
-
-  window.addEventListener('world-map-loaded', function mapLoaded(e){
-    this.map = map;
-    this.map.offset.x = coords[0],
-    this.map.offset.y = coords[1];
-
+  this.pause(0, 300, function(){
+    this.clearActions();
+    this.map = new WorldMap(map, this, coords);
+  
     this.drawScreen = function(data){ this.map.runMap(data) };
-
-    window.removeEventListener("world-map-loaded", mapLoaded);
-      
     this.loading = false;
     this.resume(300);
-  }.bind(this), false);
+  }.bind(this));
 }
 
 FF3.prototype.pause = function(opacity, duration, callback){

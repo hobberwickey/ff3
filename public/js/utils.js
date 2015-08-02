@@ -24,6 +24,22 @@ Utils.prototype.addColors = function(o, n){
   return arr;
 }
 
+Utils.prototype.buildPalette = function(offset){
+  var palette = []
+  
+  for (var i=0; i<16; i++){
+    var bytes = this.getValue( offset + (i * 2), 2 ),
+        r = bytes & 31,
+        g = (bytes & ( 31 << 5 )) >> 5, 
+        b = (bytes & ( 31 << 10 )) >> 10 ,
+        a = i % 16 == 0 ? 0 : 255;
+
+    palette.push( [r * 8, g * 8, b * 8, a] );
+  }
+
+  return palette
+}
+
 Utils.prototype.drawPixel = function (data, pal, index){
       var masks = this.context.effects.masks
 
@@ -147,8 +163,8 @@ Utils.prototype.decompress = function(offset, max){
   return output
 }
 
-Utils.prototype.assemble_4bit = function(tile_offset, hFlip, vFlip){
-  var gfx = this.context.rom,
+Utils.prototype.assemble_4bit = function(tile_offset, hFlip, vFlip, bytes){
+  var gfx = bytes || this.context.rom,
       tile = [];
 
   for (var y=0; y<8; y++){

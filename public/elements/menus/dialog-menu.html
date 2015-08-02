@@ -5,8 +5,17 @@
 
 <dom-module id='dialog-menu'>
   <template>
+    <style>
+      .visible {
+        color: white;
+      }
+
+      .invisible {
+        color: transparent;
+      }
+    </style>
     <div class='content'>
-      
+      <span class='visible'></span><span class='invisible'></span>
     </div>
   </template>
 </dom-module>
@@ -16,22 +25,60 @@
     is: "dialog-menu",
     
     properties: {
-      height: { type: Number, value: 9 }
+      height: { type: Number, value: 9 },
+      pages: { type: Array, value: [] },
+      page: { type: Number, value: 0 }
     },
 
-    ready: function(){
-      var self = this;
+    attached: function(){
+      var self = this,
+          wrapper = document.querySelector("#menu");
+      
+      wrapper.addEventListener("transitionend", function _write(){
+        self.showPage();
+        wrapper.removeEventListener("transitionend", _write);
+      }, false);
 
-      window.addEventListener("a-end", function _close(){
-        console.log("close");
-        self.context.menus.closeDialog();
-        
-        //Cleanup
-        window.addEventListener("dialog-close", function _listen(){
+      window.addEventListener("text-ready", function _can_close(){
+        window.addEventListener("a-end", function _close(){
+          if (self.page + 1 < self.pages.length){
+            self.page += 1;
+            self.showPage();
+          } else {
+            self.context.menus.closeDialog();
+            window.removeEventListener("text-ready", _can_close);
+          }
+
           window.removeEventListener("a-end", _close);
-          window.removeEventListener("dialog-close", _listen);
-        }, false)
-      }, false)
+        }, false);
+      }, false);
+    },
+
+    showPage: function(){
+      var message = this.pages[this.page],
+          text = message.dialog,
+          cntr = 0,
+          len = message.hex.length
+
+      var visible = this.$(".visible"),
+          hidden = this.$(".invisible"),
+          soFar = "";
+
+      console.log(text);
+      hidden.innerHTML = text;
+      this.context.iterate(2, len, function(){
+        var letter = Tables.text[message.hex[cntr]] || (message.hex[cntr] || "");
+
+        soFar += letter;
+        text = text.replace(letter, "");
+
+        visible.innerHTML = soFar;
+        hidden.innerHTML = text;
+
+        cntr += 1;
+      }, function(){
+        window.dispatchEvent(new Event("text-ready"));
+      }, true);
     },
 
     behaviors: [MenuBase]

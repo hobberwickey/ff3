@@ -31,9 +31,10 @@ Menus.prototype.closeMain = function(){
   this.context.resume(200);
 }
 
-Menus.prototype.openDialog = function(){
+Menus.prototype.openDialog = function(pages){
   var wrapper = document.querySelector("#menu"),
       menu = document.createElement('dialog-menu');
+      menu.pages = pages
 
   menu.context = this.context;
 

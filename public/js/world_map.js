@@ -1,4 +1,4 @@
-var WorldMap = function(map, context){
+var WorldMap = function(map, context, coords){
   this.context = context;
   this.state = null;
   this.utils = new Utils(context);
@@ -11,7 +11,10 @@ var WorldMap = function(map, context){
   this.animated_index = 0;
 
   this.entrances = {};
+  this.events = {};
 
+  this.map_objects = new MapObjects(0, context);
+  
   //For flying
   this.perspectives = [
     { horizon: -325, fov: 300, scaling: 250, angle: 0 },
@@ -20,8 +23,8 @@ var WorldMap = function(map, context){
   ]
 
   this.offset = {
-    x: 0, 
-    y: 0
+    x: coords[0], 
+    y: coords[1]
   };
 
   //For flying
@@ -32,35 +35,67 @@ var WorldMap = function(map, context){
 }
 
 WorldMap.prototype.loadMap = function(map){
-  this.context.clearScreen();
-
-  if (this.context.ram.party.length > 0){
-    this.utils.retrieve("/loadCharacter/" + this.context.ram.party[0], function(resp){
-      this.sprite = resp.character;
-      this.sprite_positions = resp.positions;
-    }.bind(this));
+  console.log(1)
+  this.state = {
+    graphics: this.utils.decompress(0x2F134F, 0x10000),
+    tiles: this.utils.decompress(0x2ED634, 0x10000),
+    properties: this.context.rom.subarray(0x2E9D14, 0x2E9D14 + 0x100),
+    palettes: getPalettes(),
+    airship: {
+      palette: this.utils.buildPalette(0x12F000),
+      tiles: getAirship(),
+      shadow: getAirshipShadow()
+    }
   }
 
-  // TODO: The world maps could be cached
-  // if (this.context[map + "Loaded"]){
-  //   this.setupControls();
-  //   this.context.resume();
-  //   return;
+  function getPalettes(){
+    var palettes = []
+
+    for (var i=0; i<256; i++){
+      palettes.push( this.utils.buildPalette(0x12EE00 + (i * 32)) ); 
+    }
+
+    return palettes;
+  }
+
+  function getAirship(){
+    var data = this.utils.decompress(0x2ec902),
+        tiles = [];
+
+    for (var i=0; i<data.length / 32; i++){
+      tiles.push( this.utils.assemble_4bit(i * 16, false, false, data) );
+    }
+
+    return tiles;
+  }
+
+  function getAirshipShadow(){
+    return [];
+  }
+  
+  this.context.clearScreen();
+  
+  this.prepareMap(map);
+  this.setupControls();
+  this.entrances = this.utils.loadEntrances(this.map_objects);
+  // if (this.context.ram.party.length > 0){
+  //   this.utils.retrieve("/loadCharacter/" + this.context.ram.party[0], function(resp){
+  //     this.sprite = resp.character;
+  //     this.sprite_positions = resp.positions;
+  //   }.bind(this));
   // }
 
-  for (var x in this.context.actions) delete this.context.actions[x];
-
-  this.utils.retrieve("/loadWorldMap/?map=" + map, function(resp){
-    for (var x in this.context.actions) delete this.context.actions[x];
+  // this.utils.retrieve("/loadWorldMap/?map=" + map, function(resp){
+  //   for (var x in this.context.actions) delete this.context.actions[x];
   
-    this.state = resp;
-    this.prepareMap(map);
-    this.setupControls();
-    this.entrances = this.utils.loadEntrances(resp.entrances, resp.long_entrances, this.context)
+  //   this.state = resp;
+  //   this.prepareMap(map);
+  //   this.setupControls();
+  //   this.entrances = this.utils.loadEntrances(resp.entrances, resp.long_entrances, this.context)
     
-    this.context[map + "Loaded"] = true;
-    window.dispatchEvent( new Event("world-map-loaded"));
-  }.bind(this));
+  //   this.context[map + "Loaded"] = true;
+  //   window.dispatchEvent( new Event("world-map-loaded"));
+  // }.bind(this));
 }
 
 WorldMap.prototype.prepareMap = function(map){
@@ -350,7 +385,7 @@ WorldMap.prototype.checkEvents = function(x, y){
   var x = x >> 4,
       y = y >> 4;
 
-  this.test.innerHTML = x + ", " + y;
+  //this.test.innerHTML = x + ", " + y;
   if (this.entrances[x] !== void(0) && this.entrances[x][y] !== void(0)){
     this.entrances[x][y]();
     return true;

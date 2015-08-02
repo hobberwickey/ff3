@@ -1,44 +1,39 @@
 <script>
-  var MenuBase;
+  MenuBase = {
+    properties: {
+      context:      { type: Object, value: null },
+      parent:       { type: Object, value: null },
+      subs:         { type: Array, value: [] },
+      currentSub:   { type: Number, value: null },
+      items:        { type: Array, value: [] },
+      height:       { type: Number, value: 26 },
+      width:        { type: Number, value: 30 },
+      top:          { type: Number, value: 0 },
+      left:         { type: Number, value: 0 },
+      status:       { type: Number, value: 0 }
+    },
 
-  (function(){
-    var $, $$;
-
-    MenuBase = {
-      properties: {
-        context:      { type: Object, value: null },
-        parent:       { type: Object, value: null },
-        subs:         { type: Array, value: [] },
-        currentSub:   { type: Number, value: null },
-        items:        { type: Array, value: [] },
-        height:       { type: Number, value: 26 },
-        width:        { type: Number, value: 30 },
-        top:          { type: Number, value: 0 },
-        left:         { type: Number, value: 0 },
-        status:       { type: Number, value: 0 }
-      },
-
-      buildMenu: function(){
-        for (var i=0; i<this.items.length; i++){
-          $(".list").appendChild( this.buildItem(this.items.length ))
-        }
-      },
-
-      buildItem: function(){
-
-      },
-
-      ready: function(){
-        $ = Polymer.dom(this.root).querySelector.bind(this);
-        $$ = Polymer.dom(this.root).querySelectorAll.bind(this);
-        
-        $('.content').style.height = (this.height * 8) + "px"; 
-        $('.content').style.width = (this.width * 8) + "px"; 
-        $('.content').style.left = (this.left * 8) + "px"; 
-        $('.content').style.top = (this.top * 8) + "px"; 
-
-        this.buildMenu();
+    buildMenu: function(){
+      for (var i=0; i<this.items.length; i++){
+        this.$(".list").appendChild( this.buildItem(this.items.length ))
       }
+    },
+
+    buildItem: function(){
+
+    },
+
+    ready: function(){
+      this.$ = Polymer.dom(this.root).querySelector.bind(this);
+      this.$$ = Polymer.dom(this.root).querySelectorAll.bind(this);
+      
+      this.$('.content').style.height = (this.height * 8) + "px"; 
+      this.$('.content').style.width = (this.width * 8) + "px"; 
+      this.$('.content').style.left = (this.left * 8) + "px"; 
+      this.$('.content').style.top = (this.top * 8) + "px"; 
+
+      this.buildMenu();
     }
-  })();
+  }
+  
 </script>
