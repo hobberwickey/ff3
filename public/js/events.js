@@ -28,7 +28,9 @@ var Events = function(context){
     "ce": function(offset){ self.or_conditional(7, offset) },
     "cf": function(offset){ self.or_conditional(8, offset) },
     "3d": function(offset){ self.createObject(offset) },
-    "41": function(offset){ self.showObject(offset) }  
+    "41": function(offset){ self.showObject(offset) },
+    "4b": function(offset){ self.show_dialog(offset, true) },
+    "48": function(offset){ self.show_dialog(offset, false) }
   }
 }
 
@@ -65,11 +67,16 @@ Events.prototype.getValue = function(offset, bytes){
 }
 
 Events.prototype.executeCue = function(offset){
-  if (this.code[offset] !== 0xfe && this.code[offset] !== 0xff){
-    if (this.translations[this.code[offset].toString(16)] !== void(0)){
-      this.translations[this.code[offset].toString(16)](offset);
+  //console.log(offset.toString(16))
+  var loc = offset,
+      code = this.context.rom[loc];
+  
+  if (code !== 0xfe && code !== 0xff){
+    if (this.translations[code.toString(16)] !== void(0)){
+      this.translations[code.toString(16)](loc);
     } else {
       this.executeCue(offset + 1);
+      console.log("unknown", code.toString(16));
     }
      
     // console.log(this.code[offset].toString(16));
@@ -77,6 +84,25 @@ Events.prototype.executeCue = function(offset){
   }
 }
 
+Events.prototype.getText = function(index){
+  var start = this.utils.getValue(0x0CE802 + (index * 2), 2),
+      pages = [""],
+      page = 0;
+
+  while (this.context.rom[0x0D0200 + start] !== 0){
+    if (this.context.rom[0x0D0200 + start].toString(16) === "13"){
+      page++;
+      pages[page] = "";
+    } else {
+      letter = Tables.text[this.context.rom[0x0D0200 + start].toString(16)] || this.context.rom[0x0D0200 + start].toString(16);
+      pages[page] += letter;
+    }
+
+    start++;
+  }
+
+  return pages;
+}
 
 ////////////////////////////////////////////////////////////////
 ///                       The Code                           ///
@@ -122,7 +148,7 @@ Events.prototype.and_conditional = function(num, offset){
 
   if (truth){
     var jump = this.getValue(offset + 3);
-    this.executeCue(jump);
+    this.executeCue(jump + 0x0A0200);
   }
 
   this.executeCue(offset + 4 + (num * 2));
@@ -133,9 +159,12 @@ Events.prototype.or_conditional = function(num, offset){
 
 }
 
-Events.prototype.show_dialog = function(offset){
-  var message = "Event at " + offset; //this.get_message();
+Events.prototype.show_dialog = function(offset, halt){
+  var index = this.utils.getValue(offset + 1, 2) & 0x3fff,
+      message = this.getText(index)[0];
 
+
+  console.log(message);
   this.context.menus.openDialog();
 
   var cntr = 0,

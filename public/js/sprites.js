@@ -95,7 +95,7 @@ Sprites.prototype.checkForNPC = function(){
   var sprite = this.sprite_coords[pos.x][pos.y];
     
   if (sprite !== 0){
-    this.context.events.show_dialog(sprite.event)
+    this.context.events.executeCue(sprite.event);
   } else {
     console.log('nothing!')
   }
@@ -141,7 +141,7 @@ Sprite.prototype.loadSprite = function(){
 
 Sprite.prototype.getEvent = function(offset){
   if (offset){
-    return offset.toString(16);
+    return offset + 1;
   } else {
     return null;
   }
