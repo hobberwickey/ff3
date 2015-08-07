@@ -43,16 +43,6 @@ var FF3 = function(rom){
   window.dispatchEvent( new Event('rom-running'));
   window.addEventListener('map-loaded', function mapLoaded(e){    
     this.drawScreen = function(data){ this.map.runMap(data) };
-    // var chr = this.map.character
-    // if ( !!chr ){
-    //   chr.coords.x = coords[0];
-    //   chr.coords.y = coords[1];
-    // }
-
-    // this.map.map_pos.x = (Math.min(this.map.width - 16, Math.max(0, coords[0] - 7)));
-    // this.map.map_pos.y = (Math.min(this.map.height - 16, Math.max(0, coords[1] - 7)));
-
-    // window.removeEventListener("map-loaded", mapLoaded);
     
     this.loading = false;
     this.resume(300);
@@ -78,6 +68,7 @@ FF3.prototype.loadMap = function(index, coords, showName, facing){
   }
 
   this.pause(0, 300, function(){
+    console.log("loading map", index)
     this.clearActions();
     this.map = new Map(index, this, coords, facing);
   }.bind(this));

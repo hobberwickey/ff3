@@ -35,7 +35,6 @@ var WorldMap = function(map, context, coords){
 }
 
 WorldMap.prototype.loadMap = function(map){
-  console.log(1)
   this.state = {
     graphics: this.utils.decompress(0x2F134F, 0x10000),
     tiles: this.utils.decompress(0x2ED634, 0x10000),
@@ -104,12 +103,13 @@ WorldMap.prototype.prepareMap = function(map){
   this.ctxData = this.ctxDataObj.data;
 
   var wob = this.state,
-      tile_assembly = wob.graphics.splice(0, 1024),
-      palette_indexes = wob.graphics.splice(-128, 128),
-      graphics = wob.graphics,
+      tile_assembly = wob.graphics.subarray(0, 1024),
+      palette_indexes = wob.graphics.subarray(9216, 9344),
+      graphics = wob.graphics.subarray(1024),
       palettes = wob.palettes,
       map_data = wob.tiles;
 
+  console.log(palette_indexes)
   for (var x=0; x<256; x++){
     for (var y=0; y<256; y++){
       var tile = map_data[x + (y << 8)]

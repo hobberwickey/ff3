@@ -111,6 +111,7 @@ var Sprite = function(data, context){
   this.gfx_set = data.gfx_set;
   this.palette = data.palette === void(0) ? this.character_palettes[this.gfx_set] : data.palette;
   this.movement = data.movement;
+  this.speed = 200; //TODO: this needs to be set for real
   this.walk_through = data.walk_through;
   this.chocobo = data.chocobo;
   this.magitek = data.magitek;
@@ -121,6 +122,7 @@ var Sprite = function(data, context){
   this.position = {0: 4, 1: 6, 2: 1, 3: 6}[this.facing];
   this.mirror = (this.facing === 1) | 0;
   this.lastStep = 0;
+
 
   this.gfx = this.loadSprite()
 } 

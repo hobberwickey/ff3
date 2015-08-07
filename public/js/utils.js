@@ -122,8 +122,9 @@ Utils.prototype.loadEntrances = function(map_objects){
 Utils.prototype.decompress = function(offset, max){
   max = max || 8192;
 
-  var output = [],
-      len = this.getValue(offset, 2),
+  var len = this.getValue(offset, 2),
+      output = new Uint8ClampedArray(max),
+      cntr = 0,
       pos = offset + 2,
       win = 0;
 
@@ -135,7 +136,9 @@ Utils.prototype.decompress = function(offset, max){
       if ( (( flag_byte & (1 << i)) >> i ) === 1 ){
         if (pos - offset >= len) break;
 
-        output.push( this.context.rom[pos] );
+        output[cntr] = this.context.rom[pos];
+
+        cntr += 1;
         pos += 1;
         win += 1;
       } else {
@@ -151,11 +154,13 @@ Utils.prototype.decompress = function(offset, max){
 
         for (var j=0; j<bytes_to_fetch; j++) {
           if ( win > max ) break;
-          output.push( fetch_offset + j < 0 ? 0 : output[fetch_offset + j] )
-          win += 1
+          output[cntr] = fetch_offset + j < 0 ? 0 : output[fetch_offset + j];
+
+          cntr += 1;
+          win += 1;
         }
 
-        pos += 2
+        pos += 2;
       }
     }
   }
