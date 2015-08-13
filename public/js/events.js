@@ -582,7 +582,7 @@ Events.prototype.jump_to_subroutine = function(offset){
  */
 Events.prototype.pause_for = function(offset){
   var self = this,
-      duration = this.context.rom[offset + 1] * 8;
+      duration = (this.context.rom[offset + 1] * 7.5) | 0;
 
   this.context.iterate(duration, 1, function(){}, function(){
     self.executeCue(offset + 2);
