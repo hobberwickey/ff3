@@ -62,9 +62,9 @@
       
       live.onload = function() {
           ff3 = new FF3(live.result);
-          //ff3.events.executeCue(0x0C9A5B)
-          //ff3.effects.masks.black = 0;
-          ff3.map = new Map(75, ff3, [2, 28], 0);
+          ff3.effects.masks.black = 0;
+          ff3.events.executeCue(0x0A6033);
+          // ff3.map = new Map(75, ff3, [2, 28], 0);
       };
       live.readAsArrayBuffer(blob);
     }
@@ -106,7 +106,4 @@
     }
   }, false);
   
-  
-
-
 </script>

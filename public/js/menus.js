@@ -31,10 +31,12 @@ Menus.prototype.closeMain = function(){
   this.context.resume(200);
 }
 
-Menus.prototype.openDialog = function(pages){
+Menus.prototype.openDialog = function(pages, bottom, bg){
   var wrapper = document.querySelector("#menu"),
       menu = document.createElement('dialog-menu');
       menu.pages = pages
+      menu.displayOnBottom = bottom
+      menu.showBackground = bg
 
   menu.context = this.context;
 
@@ -45,14 +47,15 @@ Menus.prototype.openDialog = function(pages){
   wrapper.style.opacity = 1;
   wrapper.dataset.opened = 1;
 
-  this.context.map.flags.dialogOpened = true;
+  this.context.ram.dialogOpened = true;
 }
 
 Menus.prototype.closeDialog = function(){
+  console.log("CLOSING")
   var wrapper = document.querySelector("#menu");
       wrapper.style.opacity = 0;
       wrapper.dataset.opened = 0;
 
-  this.context.map.flags.dialogOpened = false;
+  this.context.ram.dialogOpened = false;
   window.dispatchEvent( new Event('dialog-close') );
 }

@@ -27,31 +27,42 @@
     properties: {
       height: { type: Number, value: 9 },
       pages: { type: Array, value: [] },
-      page: { type: Number, value: 0 }
+      page: { type: Number, value: 0 },
+      displayOnBottom: { type: Boolean, value: false },
+      showBackground: { type: Boolean, value: true }
+    },
+
+    ready: function(){
+      if (this.bottom) this.top = 15;
+      if (!this.bg) this.$(".content").classList.add("no-bg");
     },
 
     attached: function(){
       var self = this,
           wrapper = document.querySelector("#menu");
       
-      wrapper.addEventListener("transitionend", function _write(){
-        self.showPage();
-        wrapper.removeEventListener("transitionend", _write);
-      }, false);
-
-      window.addEventListener("text-ready", function _can_close(){
-        window.addEventListener("a-end", function _close(){
-          if (self.page + 1 < self.pages.length){
-            self.page += 1;
-            self.showPage();
-          } else {
-            self.context.menus.closeDialog();
-            window.removeEventListener("text-ready", _can_close);
-          }
-
-          window.removeEventListener("a-end", _close);
+      if (this.showBackground){      
+        wrapper.addEventListener("transitionend", function _write(){
+          self.showPage();
+          wrapper.removeEventListener("transitionend", _write);
         }, false);
-      }, false);
+
+        window.addEventListener("text-ready", function _can_close(){
+          window.addEventListener("a-end", function _close(){
+            if (self.page + 1 < self.pages.length){
+              self.page += 1;
+              self.showPage();
+            } else {
+              self.context.menus.closeDialog();
+              window.removeEventListener("text-ready", _can_close);
+            }
+
+            window.removeEventListener("a-end", _close);
+          }, false);
+        }, false);
+      } else {
+        self.showPage();
+      }
     },
 
     showPage: function(){
@@ -64,7 +75,6 @@
           hidden = this.$(".invisible"),
           soFar = "";
 
-      console.log(text);
       hidden.innerHTML = text;
       this.context.iterate(2, len, function(){
         var letter = Tables.text[message.hex[cntr]] || (message.hex[cntr] || "");

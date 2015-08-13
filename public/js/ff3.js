@@ -1,13 +1,15 @@
 var FF3 = function(rom){
   this.rom = new Uint8ClampedArray(rom);
   this.ram = {
-    party: [5],
-    characters: []
+    parties: [[0],[],[]],
+    selectedParty: 0,
+    mapCharacter: null,
+    dialogOpened: false,
+    holdScreen: false
   };
 
-  this.sram = {
-
-  }
+  this.spriteController = new Sprites(this);
+  this.characters = this.spriteController.getMainCharacters();
 
   this.actions = {};
   this.map = null;
@@ -41,13 +43,6 @@ var FF3 = function(rom){
   this.loop()
 
   window.dispatchEvent( new Event('rom-running'));
-  window.addEventListener('map-loaded', function mapLoaded(e){    
-    this.drawScreen = function(data){ this.map.runMap(data) };
-    
-    this.loading = false;
-    this.resume(300);
-    //this.events.executeCue(this.map.state.entrance_event)
-  }.bind(this), false);
 }
 
 FF3.prototype.clearActions = function(){
@@ -58,6 +53,7 @@ FF3.prototype.loadMap = function(index, coords, showName, facing){
   this.test.innerHTML = "Loading"
   if (this.loading) return;
 
+  if (this.ram.dialogOpened) this.menus.closeDialog()
   this.loading = true;
   if (index === 0){
     this.loadWorldMap('wob', coords)
@@ -68,9 +64,8 @@ FF3.prototype.loadMap = function(index, coords, showName, facing){
   }
 
   this.pause(0, 300, function(){
-    console.log("loading map", index)
     this.clearActions();
-    this.map = new Map(index, this, coords, facing);
+    new Map(index, this, coords, facing);
   }.bind(this));
 }
 
@@ -90,20 +85,20 @@ FF3.prototype.loadWorldMap = function(map, coords){
 FF3.prototype.pause = function(opacity, duration, callback){
   var self = this;
     
-  this.effects.fade(['black'], opacity, duration, function(){
+  //this.effects.fade(['black'], opacity, duration, function(){
       self.paused = true;
       if (callback) callback();
-  })
+  //})
 }
 
 FF3.prototype.resume = function(duration, callback){
   this.paused = false;
   this.loop();
 
-  this.effects.fade(['black'], 1, duration, function(){ 
+  //this.effects.fade(['black'], 1, duration, function(){ 
     this.paused = false
     if (callback) callback();
-  }.bind(this));
+  //}.bind(this));
 }
 
 FF3.prototype.clearScreen = function(){

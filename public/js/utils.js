@@ -11,6 +11,13 @@ Utils.prototype.retrieve = function(url, callback){
       xhReq.send(null);
 }
 
+Utils.prototype.attachOnce = function(node, type, fn){
+  node.addEventListener(type, function(e){
+    node.removeEventListener(type, fn);
+    return fn(e)
+  })
+}
+
 Utils.prototype.addColors = function(o, n){
   var alpha = 0.5,
       arr = new Array(4);

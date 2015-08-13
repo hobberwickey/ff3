@@ -65,6 +65,12 @@ $bg_gradient_bottom: #008;
   background: -moz-linear-gradient(top, $bg_gradien_top, $bg_gradient_bottom);
   background: -ms-linear-gradient(top, $bg_gradien_top, $bg_gradient_bottom);
   background: -o-linear-gradient(top, $bg_gradien_top, $bg_gradient_bottom);
+
+  &.no-bg {
+    background: none;
+    text-align: center;
+    border: none;
+  }
 }
 
 a {

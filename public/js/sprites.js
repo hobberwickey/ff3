@@ -1,5 +1,4 @@
-var Sprites = function(map_index, context){
-  this.map_index = map_index;
+var Sprites = function(context){
   this.context = context;
 
   this.sprites = [];
@@ -18,13 +17,16 @@ var Sprites = function(map_index, context){
   this.utils = new Utils(context);
   this.getSpritePositions();
   this.getPalettes();
-  this.getSprites();
 }
 
-Sprites.prototype.getSprites = function(){
-  var start = this.utils.getValue(0x41c10 + ( this.map_index * 2), 2),
-      end = this.utils.getValue(0x41c12 + ( this.map_index * 2), 2),
+Sprites.prototype.getSprites = function(index){
+  var start = this.utils.getValue(0x41c10 + ( index * 2), 2),
+      end = this.utils.getValue(0x41c12 + ( index * 2), 2),
       num = (end - start) / 9;
+
+  for (var i=0; i<0x0B; i++){
+    this.sprites.push(this.context.characters[i].sprite);
+  }
 
   for (var i=0; i<num; i++){
     var offset = 0x41c10 + start + (i * 9);
@@ -40,7 +42,8 @@ Sprites.prototype.getSprites = function(){
       chocobo: (bytes[7] & 64) === 64,
       magitek: (bytes[7] & 128) === 128,
       facing: bytes[8] & 3,
-      isCharacter: false
+      isCharacter: false,
+      visible: false
     }
 
     var sprite = new Sprite(data, this.context);
@@ -48,6 +51,24 @@ Sprites.prototype.getSprites = function(){
     this.sprite_coords[data.coords.x][data.coords.y] = sprite;
     this.sprites.push( sprite );
   }
+
+  return this.sprites;
+}
+
+Sprites.prototype.getMainCharacters = function(){
+  var characters = [];
+  for (var i=0; i<0x10; i++){
+    characters.push({
+      available: false,
+      sprite: new Sprite({ 
+        gfx_set: i, 
+        palette: this.context.rom[0x2D02B + i], 
+        coords: {x: 0, y: 0} 
+      }, this.context)
+    })
+  }
+
+  return characters;
 }
 
 Sprites.prototype.getSpritePositions = function(){
@@ -102,14 +123,63 @@ Sprites.prototype.checkForNPC = function(){
 }
 
 var Sprite = function(data, context){
+  data.coords = data.coords || {x: 0, y: 0};
+
   this.context = context;
   this.utils = new Utils(context);
   this.character_palettes = [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
+  this.commands = [];
+  this.stats = {};
+  this.equipment = {};
+  this.conditions = [
+    [
+      { name: "dark", afflicted: false },
+      { name: "zombie", afflicted: false },
+      { name: "poison", afflicted: false },
+      { name: "m-tek", afflicted: false },
+      { name: "vanish", afflicted: false },
+      { name: "imp", afflicted: false },
+      { name: "petrify", afflicted: false },
+      { name: "death", afflicted: false },
+    ],
+    [
+      { name: "condemned", afflicted: false },
+      { name: "kneeling", afflicted: false },
+      { name: "blink", afflicted: false },
+      { name: "silence", afflicted: false },
+      { name: "berserk", afflicted: false },
+      { name: "confusion", afflicted: false },
+      { name: "hp-drain", afflicted: false },
+      { name: "sleep", afflicted: false },
+    ],
+    [
+      { name: "dance", afflicted: false },
+      { name: "reagan", afflicted: false },
+      { name: "slow", afflicted: false },
+      { name: "haste", afflicted: false },
+      { name: "stop", afflicted: false },
+      { name: "shell", afflicted: false },
+      { name: "safe", afflicted: false },
+      { name: "reflect", afflicted: false },
+    ],
+    [
+      { name: "rage", afflicted: false },
+      { name: "frozen", afflicted: false },
+      { name: "death-proof", afflicted: false },
+      { name: "esper", afflicted: false },
+      { name: "casting", afflicted: false },
+      { name: "removed", afflicted: false },
+      { name: "defend-by-interceptor", afflicted: false },
+      { name: "float", afflicted: false },
+    ]
+  ]
+
+  this.name = data.name || "";
   this.event = this.getEvent(data.event_address);
   this.coords = { x: data.coords.x, y: data.coords.y, x_offset: 0, y_offset: 0 }
   this.gfx_set = data.gfx_set;
-  this.palette = data.palette === void(0) ? this.character_palettes[this.gfx_set] : data.palette;
+  this.palette = data.palette || 0;//=== void(0) ? this.character_palettes[this.gfx_set] : data.palette;
   this.movement = data.movement;
   this.speed = 200; //TODO: this needs to be set for real
   this.walk_through = data.walk_through;
@@ -121,8 +191,9 @@ var Sprite = function(data, context){
   this.priority = 0;
   this.position = {0: 4, 1: 6, 2: 1, 3: 6}[this.facing];
   this.mirror = (this.facing === 1) | 0;
+  
   this.lastStep = 0;
-
+  this.walkingEnabled = true;
 
   this.gfx = this.loadSprite()
 } 
