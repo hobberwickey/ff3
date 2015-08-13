@@ -7,7 +7,7 @@ var Events = function(context){
   
   var self = this;
 
-  this.actionCues = {}
+  this.actionCues = {};
   this.screenCue = [];
 
   this.objects = {}
@@ -81,7 +81,7 @@ Events.prototype.executeActionCue = function(chr, cue, index, chr_index){
   var self = this,
       action = cue[index];
 
-  //console.log( "action cue", action.toString(16) );
+  console.log( "action cue", action.toString(16) );
 
   if (action < 0x40) {
     if (chr.position !== void(0)){ 
@@ -99,24 +99,32 @@ Events.prototype.executeActionCue = function(chr, cue, index, chr_index){
     this.executeActionCue(chr, cue, index + 1, chr_index);
     return;
   } else if (action < 0xAC && action > 0x7f) {
+    //values are [direction, distance, diagonally up, diagonally right, diagonally down, diagonally left]
+    if (action < 0xA0){
+      var values = [ action % 4, action > 0x9f ? 1 : (((action - 0x80) / 4) | 0) + 1, 0, 0, 0, 0];
+    } else {
+      var diagonals = {
+        "a0": [1, 1, 1, 0, 0, 0],
+        "a1": [1, 1, 0, 0, 1, 0],
+        "a2": [3, 1, 1, 0, 0, 0],
+        "a3": [3, 1, 0, 0, 1, 0],
+        "a4": [1, 1, 2, 0, 0, 0],
+        "a5": [0, 1, 0, 2, 0, 0],
+        "a6": [1, 1, 0, 0, 2, 0],
+        "a7": [2, 1, 0, 2, 0, 0],
+        "a8": [3, 1, 0, 0, 0, 2],
+        "a9": [0, 1, 0, 0, 2, 0],
+        "aa": [3, 1, 0, 0, 0, 2],
+        "ab": [2, 1, 2, 0, 0, 0]
+      }
+
+      var values = diagonals[action.toString(16)];
+    }
+
     var self = this,
-        direction = action % 4,
-        distance = action > 0x9f ? 1 : (((action - 0x80) / 4) | 0) + 1,
-        soFar = 0;
+        callback = function(){ self.executeActionCue(chr, cue, index + 1, chr_index) };
 
-    var speed = chr.coords === void(0) ? chr.speed : chr.coords.speed,
-        prefix = chr.position === void(0) ? "scroll" : "walk",
-        suffix = ["Up", "Right", "Down", "Left"][direction],
-        fn = function(){
-          if (soFar < distance){ 
-            self.context.map[prefix + suffix](chr, speed, fn)
-          } else {
-            self.executeActionCue(chr, cue, index + 1, chr_index);
-          }
-          soFar++;
-        }
-
-    fn()
+    this.move_character(values[0], values[1], chr, callback, values.slice(2));
     return;
   } else if (action < 0xFE && action > 0xAB) {
     if (action === 0xc0){
@@ -134,7 +142,6 @@ Events.prototype.executeActionCue = function(chr, cue, index, chr_index){
     this.executeActionCue(chr, cue, index + 1, chr_index);
     return;
   } else if (action === 255) {
-    console.log("FINISHING", chr_index.toString(16))
     window.dispatchEvent( new Event("action-cue-complete-" + chr_index.toString(16)) );
     return;
   }
@@ -666,4 +673,36 @@ Events.prototype.free_screen = function(offset){
   } 
 
   this.executeCue(offset + 1);
+}
+
+////////////////////////////////////////////////////////////////
+///                    Action Cue Code                       ///
+////////////////////////////////////////////////////////////////
+
+Events.prototype.move_character = function(direction, distance, chr, callback, diagonals){
+  var self = this,
+      soFar = 0,
+      suffixes = ["Up", "Right", "Down", "Left"];
+
+  var speed = chr.coords === void(0) ? chr.speed : chr.coords.speed,
+      prefix = chr.position === void(0) ? "scroll" : "walk",
+      suffix = suffixes[direction];
+  
+  for (var i=0; i<4; i++){
+    for (var j=0; j<diagonals[i]; j++){
+      console.log(chr, suffix)
+      self.context.map["scroll" + suffixes[i]](chr, speed);
+    }
+  }
+
+  var fn = function(){
+    if (soFar < distance){ 
+      self.context.map[prefix + suffix](chr, speed, fn)
+    } else {
+      callback();
+    }
+    soFar++;
+  }
+
+  fn()
 }
