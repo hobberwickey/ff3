@@ -24,6 +24,7 @@ Sprites.prototype.getSprites = function(index){
       end = this.utils.getValue(0x41c12 + ( index * 2), 2),
       num = (end - start) / 9;
 
+  this.sprites = [];
   for (var i=0; i<0x0B; i++){
     this.sprites.push(this.context.characters[i].sprite);
   }
@@ -46,11 +47,14 @@ Sprites.prototype.getSprites = function(index){
       visible: false
     }
 
+    console.log(data.event_address.toString(16))
     var sprite = new Sprite(data, this.context);
 
     this.sprite_coords[data.coords.x][data.coords.y] = sprite;
     this.sprites.push( sprite );
   }
+
+  console.log(this.sprites.length)
 
   return this.sprites;
 }
@@ -181,13 +185,14 @@ var Sprite = function(data, context){
   this.gfx_set = data.gfx_set;
   this.palette = data.palette || 0;//=== void(0) ? this.character_palettes[this.gfx_set] : data.palette;
   this.movement = data.movement;
-  this.speed = 200; //TODO: this needs to be set for real
+  this.speed = 400; //TODO: this needs to be set for real
   this.walk_through = data.walk_through;
   this.chocobo = data.chocobo;
   this.magitek = data.magitek;
   this.isCharacter = data.isCharacter;
   this.facing = data.facing || 0;
 
+  this.visible = true;
   this.priority = 0;
   this.position = {0: 4, 1: 6, 2: 1, 3: 6}[this.facing];
   this.mirror = (this.facing === 1) | 0;

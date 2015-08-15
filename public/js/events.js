@@ -11,6 +11,7 @@ var Events = function(context){
   this.screenCue = [];
 
   this.objects = {}
+  this.paused = false;
 
   this.translations = {
     "35": function(offset){ self.wait_for_cue(offset) },
@@ -78,10 +79,12 @@ var Events = function(context){
 }
 
 Events.prototype.executeActionCue = function(chr, cue, index, chr_index){
+  if (this.paused) return;
+  
   var self = this,
       action = cue[index];
 
-  console.log( "action cue", action.toString(16) );
+  // console.log( "action cue", action.toString(16) );
 
   if (action < 0x40) {
     if (chr.position !== void(0)){ 
@@ -163,6 +166,7 @@ Events.prototype.getFlags = function(){
 
 
 Events.prototype.executeCue = function(offset){
+  if (this.paused) return;
   //console.log(offset.toString(16))
   var loc = offset,
       code = this.context.rom[loc];
@@ -172,10 +176,10 @@ Events.prototype.executeCue = function(offset){
       this.begin_action_cue(code, offset);
     } else {
       if (this.translations[code.toString(16)] !== void(0)){
-        //console.log("yes", code.toString(16));
+        // console.log("yes", code.toString(16));
         this.translations[code.toString(16)](loc);
       } else {
-        //console.log("no", code.toString(16));
+        // console.log("no", code.toString(16));
         this.executeCue(offset + 1);
       }
     }
@@ -223,7 +227,8 @@ Events.prototype.getSpriteFromIndex = function(index){
   } else if (index === 0x30){
     return this.context.map.map_pos;
   } else {
-    return this.context.characters[this.context.ram.parties[chr_index - 0x31]].sprite
+    console.log(this.context.ram.parties[index - 0x31])
+    return this.context.characters[this.context.ram.parties[0][index - 0x31]].sprite
   } 
 }
 
@@ -301,10 +306,10 @@ Events.prototype.assign_character_graphics = function(offset){
  */
 Events.prototype.assign_party = function(offset, party_index){
   party_index = party_index || 0;
-
+  
   for (var i=0; i<4; i++){
     var chr = this.context.rom[offset + 1 + i]
-    this.context.ram.parties[party_index] = chr === 255 ? null : chr;
+    this.context.ram.parties[party_index][i] = (chr === 255 ? null : chr);
   }
 
   this.executeCue(offset + 5);
@@ -334,7 +339,7 @@ Events.prototype.assign_character_to_party = function(offset){
       if (parties[i.indexOf(chr)] !== -1 ) parties[i].splice(parties[i].indexOf(chr), 1);
     }
   } else {
-    parties[party].push(chr);
+    parties[party - 1].push(chr);
   }
 
   this.executeCue(offset + 3)
@@ -399,7 +404,9 @@ Events.prototype.assign_character_properties = function(offset){
  * Status: Not done, Not Understood
  */
 Events.prototype.show_object = function(offset){
-  //TODO: I think this 
+  chr = this.getSpriteFromIndex(this.context.rom[offset + 1])
+  chr.visible = true;
+
   this.executeCue(offset + 2);
 }
 
@@ -408,7 +415,9 @@ Events.prototype.show_object = function(offset){
  * Status: Not done, Not Understood
  */
 Events.prototype.hide_object = function(offset){
-  //TODO: I think this 
+  chr = this.getSpriteFromIndex(this.context.rom[offset + 1])
+  chr.visible = false;
+  
   this.executeCue(offset + 2);
 }
 
@@ -684,14 +693,14 @@ Events.prototype.move_character = function(direction, distance, chr, callback, d
       soFar = 0,
       suffixes = ["Up", "Right", "Down", "Left"];
 
-  var speed = chr.coords === void(0) ? chr.speed : chr.coords.speed,
+  var coords = chr.coords === void(0) ? chr : chr.coords,
+      speed = chr.coords === void(0) ? chr.speed : chr.coords.speed,
       prefix = chr.position === void(0) ? "scroll" : "walk",
       suffix = suffixes[direction];
   
   for (var i=0; i<4; i++){
     for (var j=0; j<diagonals[i]; j++){
-      console.log(chr, suffix)
-      self.context.map["scroll" + suffixes[i]](chr, speed);
+      self.context.map["scroll" + suffixes[i]](coords, speed);
     }
   }
 

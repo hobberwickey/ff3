@@ -1,7 +1,7 @@
 var FF3 = function(rom){
   this.rom = new Uint8ClampedArray(rom);
   this.ram = {
-    parties: [[0],[],[]],
+    parties: [[],[],[]],
     selectedParty: 0,
     mapCharacter: null,
     dialogOpened: false,

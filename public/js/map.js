@@ -120,9 +120,9 @@ Map.prototype.prepareMap = function(){
 
   this.layers = [
     { data: data.tilesets[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 0, trans: false, speed: 1 },
-    { data: data.tilesets[1].p, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 1, trans: false, speed: 0.5 },
+    { data: data.tilesets[1].p, index: 1, x: data.specs.layer2_shift[0], x_offset: 0, y: data.specs.layer2_shift[1], y_offset: 0, priority: 1, trans: false, speed: 0.5 },
     { data: data.tilesets[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 2, trans: false, speed: 1 },
-    { data: data.tilesets[1].r, index: 1, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 3, trans: false, speed: 0.5 }
+    { data: data.tilesets[1].r, index: 1, x: data.specs.layer2_shift[0], x_offset: 0, y: data.specs.layer2_shift[1], y_offset: 0, priority: 3, trans: false, speed: 0.5 }
   ]
 
   //TODO: layer priorities
@@ -200,7 +200,7 @@ Map.prototype.drawSprites = function(data){
     y2: (scrollPos.y << 4) + scrollPos.y_offset + 256
   }
 
-  for (var i=0x0F; i<sprites.length; i++){
+  for (var i=0x0A; i<sprites.length; i++){
     self.drawSprite(data, sprites[i], mapBounds, spritePositions, pMap, false);
   }
 

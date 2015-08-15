@@ -69,6 +69,10 @@ var Controls = function(context){
       self.context.pause(0.5, 0)
     }
   }, false)
+
+  window.addEventListener("select-end", function(){
+    self.context.events.paused = true
+  }, false);
 }
 
 Controls.prototype.scrollRight = function(speed){
