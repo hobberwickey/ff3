@@ -163,7 +163,7 @@ FF3.prototype.loop = function(){
 FF3.prototype.startGame = function(){
   this.effects.masks.black = 0;
   this.events.flags[0x2FF] = 1;
-  this.events.executeCue(0x0A6033);
+  this.events.beginCue(0x0A6033);
 }
 
 FF3.prototype.checkActions = function(){

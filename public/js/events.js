@@ -13,6 +13,8 @@ var Events = function(context){
   this.objects = {}
   this.paused = false;
 
+  this.cueIndex = 0;
+
   this.translations = {
     "35": function(offset){ self.wait_for_cue(offset) },
     "36": function(offset){ self.disable_pass_through(offset) },
@@ -35,6 +37,9 @@ var Events = function(context){
     "5a": function(offset){ self.fade_screen_black(offset, 0) },
     "6b": function(offset){ self.load_map(offset) },
     "6c": function(offset){ self.set_parent_map(offset) },
+    "73": function(offset){ self.edit_map(offset, true) },
+    "74": function(offset){ self.edit_map(offset, false) },
+    "75": function(offset){ self.refresh_map(offset, false) },
     "78": function(offset){ self.enable_pass_through(offset) },
     "7f": function(offset){ self.assign_character_name(offset) },
     "84": function(offset){ self.give_gold(offset) },
@@ -153,6 +158,7 @@ Events.prototype.executeActionCue = function(chr, cue, index, chr_index){
       "cd": function(){ chr.position = 4; chr.mirror = true; return false },
       "ce": function(){ chr.position = 7; return false },
       "cf": function(){ chr.position = 4; chr.mirror = true; return false },
+      "d1": function(){ chr.visible = false; return false; },
       "d5": function(){ chr.coords.x = cue[index + 1] << 4; chr.coords.y = cue[index + 2] << 4; index += 2; return false; },
       "e0": function(){
                         var self = this,
@@ -163,7 +169,11 @@ Events.prototype.executeActionCue = function(chr, cue, index, chr_index){
                         }, false)
 
                         return true;
-                      }.bind(this)
+                      }.bind(this),
+      "fa": function(){ if (Math.random() < 0.5) index -= cue[index + 1] + 1; return false},
+      "fb": function(){ if (Math.random() < 0.5) index -= cue[index + 1] + 1; return false},
+      "fc": function(){ index -= cue[index + 1] + 1; return false},
+      "fd": function(){ index += cue[index + 1] + 1; return false}  //TODO: Not sure if this is right
     }
     
     if (actions[action.toString(16)] !== void(0)){
@@ -195,6 +205,10 @@ Events.prototype.getFlags = function(){
   }
 }
 
+Events.prototype.beginCue = function(offset){
+  this.cueIndex += 1;
+  this.executeCue(offset);
+}
 
 Events.prototype.executeCue = function(offset){
   if (this.paused) return;
@@ -215,7 +229,10 @@ Events.prototype.executeCue = function(offset){
       }
     }
   } else {
-    window.dispatchEvent(new Event("event-cue-complete"));
+    console.log("ENDING CUE", this.cueIndex)
+
+    window.dispatchEvent(new Event("event-cue-complete-" + this.cueIndex));
+    this.cueIndex -= 1;
   }
 }
 
@@ -547,6 +564,47 @@ Events.prototype.set_parent_map = function(offset){
 }
 
 /**
+ * 73, 74: Edit Map
+ * Status: Done
+ */
+Events.prototype.edit_map = function(offset, refresh){
+  var x = this.context.rom[offset + 1],
+      y = this.context.rom[offset + 2],
+      w = this.context.rom[offset + 3],
+      h = this.context.rom[offset + 4] & 63,
+      l = (this.context.rom[offset + 4] & 192) >> 6;
+
+  var data = [];
+  for (var i=0; i<h; i++){
+    data[i] = []
+    for (var j=0; j<w; j++){
+      data[i][j] = this.context.rom[offset + 5 + j + (i * w)];
+    }
+  }
+
+  var replace = function(){
+    var data = this.context.map.map_data.map_data[l];
+
+    for (var i=0; i<h; i++){
+      for (var j=0; j<w; j++){
+        data[(j + x) + ((i + y) * this.context.map.width)] = data[i][j];
+      }
+    }
+  }.bind(this);
+
+  if (refresh){
+    replace();
+  } else {
+    window.addEventListener("refresh-map-data", function refresh(){
+      window.removeEventListener("refresh-map-data", refresh);
+      replace();
+    }, false)
+  }
+
+  this.executeCue(offset + 5 + (w * h));
+}
+
+/**
  * 78: Enable Pass Through
  * Status: Not Done, Not understood, but might not be necessary
  */
@@ -699,9 +757,12 @@ Events.prototype.jump_to_subroutine = function(offset){
   var jump = this.utils.getValue(offset + 1, 3);
   console.log(jump.toString(16), "SUBROUTINE AT ", (jump + 0xA0200).toString(16))
   
+  this.cueIndex += 1;
+  var index = this.cueIndex;
+
   var self = this;
-  window.addEventListener("event-cue-complete", function done(){
-    window.removeEventListener("event-cue-complete", done);
+  window.addEventListener("event-cue-complete-" + index, function done(){
+    window.removeEventListener("event-cue-complete-" + index, done);
     self.executeCue(offset + 4);
   }, false);
 

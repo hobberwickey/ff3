@@ -13,10 +13,12 @@ var Map = function(index, context, coords, facing){
   
   this.animated_frame = 0;
   this.map_pos = {
-    x: 0,
-    y: 0,
-    x_offset: 0,
-    y_offset: 0,
+    coords: {
+      x: 0,
+      y: 0,
+      x_offset: 0,
+      y_offset: 0
+    },
     moving: false,
     speed: 400
   }
@@ -32,12 +34,9 @@ var Map = function(index, context, coords, facing){
   this.sprites = this.spriteController.getSprites(this.index);
   
   if (this.character_index !== void(0)){
-    this.character = this.context.characters[this.character_index].sprite;
-    this.character.coords.x = !!coords? coords[0] : 0;
-    this.character.coords.y = !!coords? coords[1] : 0;
-    this.sprites.push( this.character );
-
+    this.character = this.sprites[this.character_index];
     this.spriteController.character = this.character;
+    this.character.isCharacter = true
   }
 
   this.entrances = {}
@@ -59,13 +58,24 @@ Map.prototype.loadMap = function(coords, facing){
   this.width = specs.size[0].x > specs.size[1].x ? specs.size[0].x : specs.size[1].x;
   this.height = specs.size[0].y > specs.size[1].y ? specs.size[0].y : specs.size[1].y;
 
-  this.map_pos.x = coords[0] - 8 //(Math.min(this.width - 16, Math.max(0, coords[0] - 8)));
-  this.map_pos.y = coords[1] - 7 //(Math.min(this.height - 16, Math.max(0, coords[1] - 7)));
+  this.map_pos.coords.x = (coords[0] - 8) << 4 //(Math.min(this.width - 16, Math.max(0, coords[0] - 8)));
+  this.map_pos.coords.y = (coords[1] - 7) << 4 //(Math.min(this.height - 16, Math.max(0, coords[1] - 7)));
+  
+  var party = this.utils.currentParty();
+
+  for (var j=0; j<party.length; j++){
+    if (party[j] !== null){
+      this.sprites[party[j]].coords.x = this.map_pos.coords.x + 128;
+      this.sprites[party[j]].coords.y = this.map_pos.coords.y + 112;
+    }
+  }
 
   this.context.drawScreen = function(data){ this.map.runMap(data) };
   this.context.loading = false;
   this.context.resume(300);
-    //this.events.executeCue(this.map.state.entrance_event)
+
+  console.log("LOADING EVENT:", this.map_data.entrance_event.toString(16));
+  this.context.events.beginCue(this.map_data.entrance_event + 0xa0200)
   window.dispatchEvent( new Event("map-loaded") );
 }
 
@@ -75,11 +85,18 @@ Map.prototype.setupControls = function(){
       controls = ctx.controls,
       buttons = controls.state;
 
+  var move = function(directions){
+    var sprite = self.sprites[self.utils.currentParty()[0]];
+    if (sprite.moving) return;
+
+    self.move(sprite, directions, function(){}, false, true)
+  }
+
   var actions = {
-    left: function(){ self.moveLeft() },
-    up: function(){ self.moveUp() },
-    right: function(){ self.moveRight() },
-    down: function(){ self.moveDown() },
+    left: function(){ move([0,0,0,1]) },
+    up: function(){ move([1,0,0,0]) },
+    right: function(){ move([0,1,0,0]) },
+    down: function(){ move([0,0,1,0]) },
   }
 
   var aCheck = false
@@ -116,13 +133,16 @@ Map.prototype.setupControls = function(){
 }
 
 Map.prototype.prepareMap = function(){
-  var data = this.map_data;
+  var data = this.map_data,
+      layer_2_speed = data.specs.scroll_index[0],
+      layer_2_shift_x = data.specs.layer2_shift[0] << layer_2_speed, 
+      layer_2_shift_y = data.specs.layer2_shift[1] << layer_2_speed;
 
   this.layers = [
-    { data: data.tilesets[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 0, trans: false, speed: 1 },
-    { data: data.tilesets[1].p, index: 1, x: data.specs.layer2_shift[0], x_offset: 0, y: data.specs.layer2_shift[1], y_offset: 0, priority: 1, trans: false, speed: 0.5 },
-    { data: data.tilesets[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 2, trans: false, speed: 1 },
-    { data: data.tilesets[1].r, index: 1, x: data.specs.layer2_shift[0], x_offset: 0, y: data.specs.layer2_shift[1], y_offset: 0, priority: 3, trans: false, speed: 0.5 }
+    { data: data.tilesets[0].p, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 0, trans: false, speed: 0 },
+    { data: data.tilesets[1].p, index: 1, x: data.specs.layer3_shift[0], x_offset: 0, y: data.specs.layer3_shift[1], y_offset: 0, priority: 1, trans: false, speed: data.specs.scroll_index[0] },
+    { data: data.tilesets[0].r, index: 0, x: 0, x_offset: 0, y: 0, y_offset: 0, priority: 2, trans: false, speed: 0 },
+    { data: data.tilesets[1].r, index: 1, x: data.specs.layer3_shift[0], x_offset: 0, y: data.specs.layer3_shift[1], y_offset: 0, priority: 3, trans: false, speed: data.specs.scroll_index[0] }
   ]
 
   //TODO: layer priorities
@@ -188,30 +208,30 @@ Map.prototype.runMap = function(data){
 
 Map.prototype.drawSprites = function(data){
   var sprites = this.sprites,
-      scrollPos = this.map_pos,
+      scrollPos = this.map_pos.coords,
       spritePositions = this.spriteController.sprite_positions,
       pMap = this.physical_map,
       self = this;
 
   var mapBounds = {
-    x1: (scrollPos.x << 4) + scrollPos.x_offset,
-    x2: (scrollPos.x << 4) + scrollPos.x_offset + 256,
-    y1: (scrollPos.y << 4) + scrollPos.y_offset,
-    y2: (scrollPos.y << 4) + scrollPos.y_offset + 256
+    x1: scrollPos.x,
+    x2: scrollPos.x + 256,
+    y1: scrollPos.y,
+    y2: scrollPos.y + 256
   }
 
-  for (var i=0x0A; i<sprites.length; i++){
-    self.drawSprite(data, sprites[i], mapBounds, spritePositions, pMap, false);
+  for (var i=0x00; i<sprites.length; i++){
+    if (sprites[i].visible) self.drawSprite(data, sprites[i], mapBounds, spritePositions, pMap, false);
   }
 
   //if (self.character !== null) self.drawSprite(data, self.character, mapBounds, spritePositions, pMap, true);
 }
 
 Map.prototype.drawSprite = function(data, sprite, mapBounds, sprite_positions, pMap, main){
-  if (sprite.coords.x === 0 || sprite.coords.y === 0) return;
+  if (sprite.coords.x < 2 || sprite.coords.y < 2) return;
 
-  var back_edge = (sprite.coords.x << 4) + sprite.coords.x_offset,
-      top_edge =  ((sprite.coords.y - 1) << 4) + sprite.coords.y_offset,
+  var back_edge = sprite.coords.x,
+      top_edge =  sprite.coords.y - 16,
       spritePos = sprite_positions[sprite.position],
       full_mirror = sprite.mirror,
       partial_mirror = full_mirror & (sprite.position === 0 || sprite.position === 2) 
@@ -238,7 +258,7 @@ Map.prototype.drawSprite = function(data, sprite, mapBounds, sprite_positions, p
             mpTile = pMap[(back_edge + x_pixel) >> 4][(top_edge + y + y_offset) >> 4],
             mask = sprite.priority === 0 && mpTile.mask === 1,
             layer = b < 4 ? (sprite.priority === 0 ? (dpTile.drawPriority > 1) | 0 : (dpTile.drawPriority > 0) | 0) : 0;
-      
+
         if (data_x < 0 || data_y < 0 || data_x > 255 || data_y > 255) continue;
         if (color[3] === 0) continue
         
@@ -277,7 +297,7 @@ Map.prototype.drawMap = function(data){
       utils = this.utils,
       pMap = this.pixel_map,
       tMap = this.trans_map,
-      sPos = this.map_pos,
+      sPos = this.map_pos.coords,
       animated_frame = this.animated_frame;                 
 
   for (var y=0; y<256; y++){
@@ -290,11 +310,11 @@ Map.prototype.drawMap = function(data){
         var layer = layers[z],
             layer_index = layer.index;
 
-        var pixel_x = x + sPos.x_offset + layer.x_offset,
-            pixel_y = y + sPos.y_offset + layer.y_offset,
+        var pixel_x = x + (sPos.x >> layer.speed) + layer.x,
+            pixel_y = y + (sPos.y >> layer.speed) + layer.y,
             
-            map_x = (((sPos.x << 4) + pixel_x + (layer.x << 4)) >> 4) & (map_size[layer_index].x - 1),
-            map_y = (((sPos.y << 4) + pixel_y + (layer.y << 4)) >> 4) & (map_size[layer_index].y - 1),
+            map_x = (pixel_x >> 4) & (map_size[layer_index].x - 1),
+            map_y = (pixel_y >> 4) & (map_size[layer_index].y - 1),
             
             pixel_offset = (pixel_x & 15) + ((pixel_y & 15) << 4);
             
@@ -329,6 +349,55 @@ Map.prototype.drawMap = function(data){
 
     }
   }
+  // for (var y=0; y<256; y++){
+  //   for (var x=0; x<256; x++){
+      
+  //     var index = (x << 2) + (y << 10),
+  //         transColor = 0;
+      
+  //     for (var z=0; z<layers_len; z++){
+  //       var layer = layers[z],
+  //           layer_index = layer.index;
+
+  //       var pixel_x = x + sPos.x_offset + layer.x_offset,
+  //           pixel_y = y + sPos.y_offset + layer.y_offset,
+            
+  //           map_x = (((sPos.x << 4) + pixel_x + (layer.x << 4)) >> 4) & (map_size[layer_index].x - 1),
+  //           map_y = (((sPos.y << 4) + pixel_y + (layer.y << 4)) >> 4) & (map_size[layer_index].y - 1),
+            
+  //           pixel_offset = (pixel_x & 15) + ((pixel_y & 15) << 4);
+            
+  //       var map_index = map_x + (map_y * map_size[layer_index].x),
+  //           tile_index = m_data[layer_index][map_index]; //
+
+  //       var tile_data = layer.data[tile_index]; //layer.data[i]; 
+        
+  //       var animated_offset = pixel_offset + (animated_frame << 8),
+  //           color_index = tile_data[animated_offset] === void(0) ? tile_data[pixel_offset] : tile_data[animated_offset];
+        
+  //       var pixel = palette[color_index];
+        
+  //       if (pixel[3] !== 0 & layer.trans){
+  //         transColor = pixel;
+  //         continue;
+  //       }
+
+  //       if (pixel[3] !== 0){ 
+  //           if (transColor !== 0){
+  //             pixel = utils.addColors(pixel, transColor);
+  //           }
+            
+  //           pMap[x][y] = layer.priority;
+  //           tMap[x][y] = transColor;
+  //           transColor = 0;
+  //           break;
+  //       }
+  //     }
+    
+  //     utils.drawPixel(data, pixel, index)
+
+  //   }
+  // }
 }
 
 Map.prototype.buildPhysicalMap = function(){
@@ -358,15 +427,11 @@ Map.prototype.buildPhysicalMap = function(){
       if (x >= map_size.x - 1 || x < 1 || y >= map_size.y - 1 || y < 1){ 
         return [0xf7, 0xff, x, y];
       } else {
-        try{
-          var arr = props[tiles[x + (y * map_size.x)]];
-              arr.push(x)
-              arr.push(y)
+        var arr = props[tiles[x + (y * map_size.x)]];
+            arr.push(x)
+            arr.push(y)
 
-          return arr;
-        } catch(e){
-          console.log("error", x + (y * map_size.x))
-        }
+        return arr;
       }
     }
 
@@ -553,7 +618,7 @@ Map.prototype.canMoveLeft = function(sprite){
   if (sprite.coords.x === 0) return false;
   
   var map = this.physical_map,
-      current = map[sprite.coords.x][sprite.coords.y],
+      current = map[sprite.coords.x >> 4][sprite.coords.y >> 4],
       next = current.west,
       yes = sprite.priority === 0 ? next.layer_0 : next.layer_1;
 
@@ -588,7 +653,7 @@ Map.prototype.canMoveRight = function(sprite){
   if (sprite.coords.x === this.width - 1) return false;
   
   var map = this.physical_map,
-      current = map[sprite.coords.x][sprite.coords.y],
+      current = map[sprite.coords.x >> 4][sprite.coords.y >> 4],
       next = current.east,
       yes = sprite.priority === 0 ? next.layer_0 : next.layer_1;
 
@@ -623,7 +688,7 @@ Map.prototype.canMoveUp = function(sprite){
   if ( this.checkEvents(sprite, sprite.coords.x, sprite.coords.y - 1) ) return true;
 
   var map = this.physical_map,
-      current = map[sprite.coords.x][sprite.coords.y].north,
+      current = map[sprite.coords.x >> 4][sprite.coords.y >> 4].north,
       yes = sprite.priority === 0 ? current.layer_0 : current.layer_1;
 
   if ( yes ){
@@ -641,7 +706,7 @@ Map.prototype.canMoveDown = function(sprite){
 
 
   var map = this.physical_map,
-      current = map[sprite.coords.x][sprite.coords.y].south,
+      current = map[sprite.coords.x >> 4][sprite.coords.y >> 4].south,
       yes = sprite.priority === 0 ? current.layer_0 : current.layer_1;
 
   if ( yes ){
@@ -656,8 +721,8 @@ Map.prototype.moveRight = function(){
   var sprite = this.character,
       self = this;
 
-  if ( this.walkRight(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.x < this.width - 16 && sprite.coords.x - this.map_pos.x >= 8){ 
-    this.scrollRight(this.map_pos, sprite.speed);
+  if ( this.walkRight(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.coordsx < this.width - 16 && sprite.coords.x - this.map_pos.x >= 8){ 
+    this.scrollRight(this.map_pos.coords, sprite.speed);
   }
 }
 
@@ -693,8 +758,8 @@ Map.prototype.moveLeft = function(){
   var sprite = this.character,
       self = this;
 
-  if ( this.walkLeft(sprite, 1) && this.map_pos.x > 0 && sprite.coords.x - this.map_pos.x <= 8){ 
-    this.scrollLeft(this.map_pos, sprite.speed);
+  if ( this.walkLeft(sprite, 1) && this.map_pos.coords.x > 0 && sprite.coords.x - this.map_pos.coords.x <= 8){ 
+    this.scrollLeft(this.map_pos.coords, sprite.speed);
   }
 }
 
@@ -728,12 +793,12 @@ Map.prototype.moveDown = function(){
   var sprite = this.character,
       self = this;
 
-  if ( this.walkDown(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.y < this.height - 16 && sprite.coords.y - this.map_pos.y >= 6){ 
-    this.scrollDown(this.map_pos, sprite.speed);
+  if ( this.walkDown(sprite, 1, function(){ self.checkEvents() }, [0, 0, 0, 0]) && this.map_pos.coords.y < this.height - 16 && sprite.coords.y - this.map_pos.coords.y >= 6){ 
+    this.scrollDown(this.map_pos.coords, sprite.speed, function(){}, [0, 0, 0, 0]);
   }
 }
 
-Map.prototype.walkDown = function(sprite, speed, callback){
+Map.prototype.walkDown = function(sprite, speed, callback, diagonals){
   var self = this;
 
   if ( sprite.coords.moving ) return false;
@@ -767,8 +832,8 @@ Map.prototype.moveUp = function(){
   var sprite = this.character,
       self = this;
 
-  if ( this.walkUp(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.y > 0 && sprite.coords.y - this.map_pos.y <= 6){ 
-    this.scrollUp(this.map_pos, sprite.speed);
+  if ( this.walkUp(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.coords.y > 0 && sprite.coords.y - this.map_pos.coords.y <= 6){ 
+    this.scrollUp(this.map_pos.coords, sprite.speed);
   }
 }
 
@@ -798,11 +863,88 @@ Map.prototype.walkUp = function(sprite, speed, callback){
   return true;
 }
 
+Map.prototype.move = function(sprite, directions, callback, override, checkEvents){
+  var self = this,
+      map = this.map_pos.coords,
+      coords = sprite.coords,
+      _callback = checkEvents ? function(){ self.checkEvents(); callback(); } : callback;
+  
+  var moved = this.walk(sprite, directions, _callback, override);
+
+  if ( moved ){ 
+    var scroll_directions = [];
+    //console.log(directions, map, coords)
+    scroll_directions[0] = (directions[0] !== 0 && (map.y >> 4) !== 0 && coords.y - map.y < 112) ? directions[0] : 0;
+    scroll_directions[1] = (directions[1] !== 0 && (map.x >> 4) < this.width && coords.x - map.y < 112) ? directions[1] : 0;
+    scroll_directions[2] = (directions[2] !== 0 && (map.y >> 4) < this.height && coords.y - map.y > 112) ? directions[2] : 0;
+    scroll_directions[3] = (directions[3] !== 0 && (map.x >> 4) !== 0 && coords.x - map.x < 112) ? directions[3] : 0
+    this.scroll(this.map_pos, scroll_directions, function(){});
+  }
+}
+
+Map.prototype.walk = function(sprite, directions, callback, override){
+  if ( sprite.moving ) return false;
+
+  var suffix = directions[1] !== 0 ? "Right" : (directions[3] !== 0 ? "Left" : (directions[0] !== 0 ? "Up" : "Down"));
+  
+  var position = {
+    Up: [3, 4, 5, 0, sprite.lastStep],
+    Right: [6, 7, 8, 1, 1],
+    Down: [0, 1, 2, 0, sprite.lastStep],
+    Left: [6, 7, 8, 0, 0]
+  }[suffix];
+
+  sprite.position = position[1];
+  sprite.mirror = position[4];
+
+  if (!this["canMove" + suffix](sprite) && !override) return false;
+
+  var self = this;
+      frames = ((((sprite.speed / 1000) * 60) - 2 ) / 2) | 0;
+  
+  self.scroll(sprite, directions, callback);
+  self.context.iterate(frames, 1, function(){
+    if (sprite.position === position[1]){
+      sprite.position = sprite.lastStep === 0 ? position[0] : position[2];
+      sprite.lastStep = !sprite.lastStep | 0;
+      sprite.mirror = position[4];
+    } else {
+      sprite.position = position[1];
+      sprite.mirror = position[3];
+    }
+  }, function(){
+    sprite.position = position[1];
+  }, false)   
+
+  return true;
+}
+
+Map.prototype.scroll = function(obj, directions, callback){
+  var frames = ((obj.speed / 1000) * 60) | 0,
+      dif = 16 / frames,
+      coords = obj.coords,
+      original = { x: coords.x, y: coords.y };
+
+  obj.moving = true;
+  this.context.iterate(1, frames - 2, function(){
+    for (var i=0; i<4; i++){
+      var change = (i === 0 || i === 3) ? -dif * directions[i] : dif * directions[i],
+          direction = (i & 1) === 0 ? "y" : "x";
+    
+      original[direction] += change;
+      coords[direction] = Math.round(original[direction]);
+    }
+  }, function(){
+    obj.moving = false;
+    if (callback !== void(0)) callback();
+  }, true)
+}
+
 Map.prototype.scrollRight = function(obj, speed, callback){
   var frames = (speed / 1000) * 60,
       dif = 15 / frames,
       original = obj.x_offset - dif;
-  
+
   this.context.iterate(1, (frames | 0) - 1, function(){
     obj.moving = true;
     original += dif;
@@ -820,7 +962,7 @@ Map.prototype.scrollDown = function(obj, speed, callback){
   var frames = (speed / 1000) * 60,
       dif = 15 / frames,
       original = obj.y_offset - dif;
-  
+
   this.context.iterate(1, (frames | 0) - 1, function(){
     obj.moving = true;
     original += dif;
@@ -834,19 +976,25 @@ Map.prototype.scrollDown = function(obj, speed, callback){
   }, true)
 }
 
-Map.prototype.scrollLeft = function(obj, speed, callback){
+Map.prototype.scrollLeft = function(obj, speed, callback, diagonals){
   var frames = (speed / 1000) * 60,
       dif = 15 / frames,
-      original = obj.x_offset + dif;
+      yDif = diagonals[1] > 0 ? dif * diagonals[1] : diagonals[3] > 0 ? diagonals[3] * dif : 0, 
+      original = obj.x_offset + dif,
+      yOriginal = obj.y_offset + dif;
   
   this.context.iterate(1, (frames | 0) - 1, function(){
     obj.moving = true;
     original += dif;
+    yOriginal += yDif;
     obj.x_offset = -(original | 0);
+    obj.y_offset = -(yOriginal | 0);
   }, function(){
     obj.moving = false;
     obj.x_offset = 0;
+    obj.y_offset = 0;
     obj.x -= 1;
+    obj.y += (yDif * frames) | 0;
 
     if (callback !== void(0)) callback();
   }, true)
@@ -872,12 +1020,12 @@ Map.prototype.scrollUp = function(obj, speed, callback){
 
 Map.prototype.northStairs = function(sprite){
   this.scrollUp(sprite.coords, 1);
-  if (this.map_pos.y > 0) this.scrollUp(this.map_pos);
+  if (this.map_pos.coords.y > 0) this.scrollUp(this.map_pos.coords);
 }
 
 Map.prototype.southStairs = function(sprite){
   this.scrollDown(sprite.coords, 1);
-  if (this.map_pos.y < this.height - 16 ) this.scrollDown(this.map_pos);
+  if (this.map_pos.coords.y < this.height - 16 ) this.scrollDown(this.map_pos.coords);
 }
 
 var MapData = function(index, context){
@@ -915,15 +1063,15 @@ MapData.prototype.getSpecs = function(){
     battle_bg: rom[offset + 2] & 127,
     song: rom[offset + 28],
     layer_priorities: rom[offset + 32],
-    scroll_index: rom[offset + 22],
+    scroll_index: this.getScrollIndex(offset),
     tile_properties: rom[offset + 4],
     layer2_shift: [
-      rom[offset + 18],
-      rom[offset + 19]
+      rom[offset + 18] << 4,
+      rom[offset + 19] << 4
     ],
     layer3_shift: [
-      rom[offset + 20],
-      rom[offset + 21]
+      rom[offset + 20] << 4,
+      rom[offset + 21] << 4
     ],
     effects: {
       layer3_ripple: (rom[offset + 1] & 0x04) === 0x04,
@@ -1104,6 +1252,20 @@ MapData.prototype.assemble_chunk = function(tile_r, tile_p, chunk, info, tile_da
         }
       }
     }
+  }
+}
+
+MapData.prototype.getScrollIndex = function(offset){
+  switch (this.context.rom[offset + 22]){
+    case 0:
+      return [0, 0]
+      break
+    case 4:
+    case 2:
+      return [1, 0]
+      break
+    default:
+      return [0, 0]
   }
 }
 

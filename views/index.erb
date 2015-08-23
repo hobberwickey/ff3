@@ -45,7 +45,8 @@
 
       live.onload = function(){ 
         ff3 = new FF3(live.result);
-        ff3.map = new Map(75, ff3, [2, 28], 0);
+        ff3.startGame();
+        // ff3.map = new Map(75, ff3, [2, 28], 0);
       }
 
       store.onload = function(){ 
@@ -62,9 +63,8 @@
       
       live.onload = function() {
           ff3 = new FF3(live.result);
-          // ff3.effects.masks.black = 0;
-          // ff3.events.executeCue(0x0A6033);
-          ff3.map = new Map(75, ff3, [2, 28], 0);
+          ff3.startGame();
+          // ff3.map = new Map(75, ff3, [24, 25], 0);
       };
       live.readAsArrayBuffer(blob);
     }

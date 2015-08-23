@@ -35,8 +35,8 @@ Menus.prototype.openDialog = function(pages, bottom, bg){
   var wrapper = document.querySelector("#menu"),
       menu = document.createElement('dialog-menu');
       menu.pages = pages
-      menu.displayOnBottom = bottom
-      menu.showBackground = bg
+      menu.displayOnBottom = bottom;
+      menu.showBackground = bg;
 
   menu.context = this.context;
 
@@ -48,6 +48,7 @@ Menus.prototype.openDialog = function(pages, bottom, bg){
   wrapper.dataset.opened = 1;
 
   this.context.ram.dialogOpened = true;
+  window.dispatchEvent( new Event('dialog-open') );
 }
 
 Menus.prototype.closeDialog = function(){
@@ -58,4 +59,27 @@ Menus.prototype.closeDialog = function(){
 
   this.context.ram.dialogOpened = false;
   window.dispatchEvent( new Event('dialog-close') );
+}
+
+Menus.prototype.setDialogTimer = function(duration){
+  console.log(duration)
+  var timer = true;
+
+  window.addEventListener("text-ready", function ready(){
+    window.addEventListener("dialog-open", function opened(){
+      timer = false;
+      window.removeEventListener("dialog-open", opened)
+    })
+
+    window.addEventListener("dialog-close", function closed(){
+      timer = false;
+      window.removeEventListener("dialog-close", closed)
+    })
+
+    window.removeEventListener("text-ready", ready);
+  }, false)
+
+  this.context.iterate(duration, 1, function(){}, function(){
+    if (timer) this.closeDialog();
+  }.bind(this), false)
 }

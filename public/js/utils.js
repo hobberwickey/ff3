@@ -31,6 +31,10 @@ Utils.prototype.addColors = function(o, n){
   return arr;
 }
 
+Utils.prototype.currentParty = function(){
+  return this.context.ram.parties[this.context.ram.selectedParty]
+}
+
 Utils.prototype.buildPalette = function(offset){
   var palette = []
   

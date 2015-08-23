@@ -25,7 +25,8 @@ Sprites.prototype.getSprites = function(index){
       num = (end - start) / 9;
 
   this.sprites = [];
-  for (var i=0; i<0x0B; i++){
+  for (var i=0; i<0x10; i++){
+    this.context.characters[i].sprite.isCharacter = false;
     this.sprites.push(this.context.characters[i].sprite);
   }
 
@@ -36,7 +37,7 @@ Sprites.prototype.getSprites = function(index){
     var data = {
       event_address: ((bytes[2] & 3) << 16) + (bytes[1] << 8) + bytes[0] + 0xa01ff,
       palette: (bytes[2] & 28) >> 2,
-      coords: { x: bytes[4] & 127, y: bytes[5] & 63 },
+      coords: { x: (bytes[4] & 127) << 4, y: (bytes[5] & 63) << 4 },
       gfx_set: bytes[6],
       movement: bytes[7] & 15, //3: random, 0: standing still,
       walk_through: (bytes[7] & 0x30) >> 4,
@@ -47,14 +48,11 @@ Sprites.prototype.getSprites = function(index){
       visible: false
     }
 
-    console.log(data.event_address.toString(16))
     var sprite = new Sprite(data, this.context);
 
-    this.sprite_coords[data.coords.x][data.coords.y] = sprite;
+    this.sprite_coords[data.coords.x >> 4][data.coords.y >> 4] = sprite;
     this.sprites.push( sprite );
   }
-
-  console.log(this.sprites.length)
 
   return this.sprites;
 }
@@ -127,7 +125,7 @@ Sprites.prototype.checkForNPC = function(){
 }
 
 var Sprite = function(data, context){
-  data.coords = data.coords || {x: 0, y: 0};
+  data.coords = data.coords || {x: 0, y: 0, x_offset: 0, y_offset: 0};
 
   this.context = context;
   this.utils = new Utils(context);
@@ -193,6 +191,7 @@ var Sprite = function(data, context){
   this.facing = data.facing || 0;
 
   this.visible = true;
+  this.moving = false;
   this.priority = 0;
   this.position = {0: 4, 1: 6, 2: 1, 3: 6}[this.facing];
   this.mirror = (this.facing === 1) | 0;
