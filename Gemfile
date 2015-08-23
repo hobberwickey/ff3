@@ -1,4 +1,7 @@
 source "https://rubygems.org"
+#ruby=ruby-2.0.0-p451
+#ruby-gemset=ff3
+
 
 gem "rake"
 gem "sinatra"

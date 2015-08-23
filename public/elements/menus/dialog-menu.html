@@ -32,12 +32,10 @@
       showBackground: { type: Boolean, value: true }
     },
 
-    ready: function(){
-      if (this.bottom) this.top = 15;
-      if (!this.bg) this.$(".content").classList.add("no-bg");
-    },
-
     attached: function(){
+      if (this.displayOnBottom) this.top = 15;
+      if (!this.showBackground) this.$(".content").classList.add("no-bg");
+      
       var self = this,
           wrapper = document.querySelector("#menu");
       

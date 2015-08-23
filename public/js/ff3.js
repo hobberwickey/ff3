@@ -1,11 +1,15 @@
 var FF3 = function(rom){
   this.rom = new Uint8ClampedArray(rom);
   this.ram = {
-    parties: [[],[],[]],
+    parties: [[0],[],[]],
     selectedParty: 0,
     mapCharacter: null,
     dialogOpened: false,
-    holdScreen: false
+    holdScreen: false,
+    gold: 0,
+    items: {},
+    stats: [],
+    spells: []
   };
 
   this.spriteController = new Sprites(this);
@@ -154,6 +158,12 @@ FF3.prototype.loop = function(){
 
   var timer = setInterval(logic, fps);
   draw();
+}
+
+FF3.prototype.startGame = function(){
+  this.effects.masks.black = 0;
+  this.events.flags[0x2FF] = 1;
+  this.events.executeCue(0x0A6033);
 }
 
 FF3.prototype.checkActions = function(){

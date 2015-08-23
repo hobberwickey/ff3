@@ -15,6 +15,7 @@ var Events = function(context){
 
   this.translations = {
     "35": function(offset){ self.wait_for_cue(offset) },
+    "36": function(offset){ self.disable_pass_through(offset) },
     "37": function(offset){ self.assign_character_graphics(offset) },
     "38": function(offset){ self.hold_screen(offset) },
     "39": function(offset){ self.free_screen(offset) },
@@ -25,6 +26,7 @@ var Events = function(context){
     "41": function(offset){ self.show_object(offset) },
     "42": function(offset){ self.hide_object(offset) },
     "43": function(offset){ self.assign_character_palette(offset) },
+    "44": function(offset){ self.put_character_in_vehicle(offset) },
     "45": function(offset){ self.refresh_objects(offset) },
     "4b": function(offset){ self.show_dialog(offset, true) },
     "46": function(offset){ self.set_party(offset) },
@@ -33,7 +35,9 @@ var Events = function(context){
     "5a": function(offset){ self.fade_screen_black(offset, 0) },
     "6b": function(offset){ self.load_map(offset) },
     "6c": function(offset){ self.set_parent_map(offset) },
+    "78": function(offset){ self.enable_pass_through(offset) },
     "7f": function(offset){ self.assign_character_name(offset) },
+    "84": function(offset){ self.give_gold(offset) },
     "88": function(offset){ self.remove_conditions(offset) },
     "89": function(offset){ self.add_conditions(offset) },
     "8a": function(offset){ self.toggle_conditions(offset) },
@@ -42,6 +46,9 @@ var Events = function(context){
     "93": function(offset){ self.pause(offset, 24) },
     "94": function(offset){ self.pause(offset, 32) },
     "95": function(offset){ self.pause(offset, 64) },
+    "ab": function(offset){ self.invoke_game_loading_screen(offset) },
+    "b0": function(offset){ self.repeat(offset) },
+    "b1": function(offset){ self.stop_repeat(offset) },
     "b2": function(offset){ self.jump_to_subroutine(offset) },
     "b5": function(offset){ self.pause_for(offset) },
     "c0": function(offset){ self.and_conditional(1, offset) },
@@ -74,7 +81,10 @@ var Events = function(context){
     "db": function(offset){ self.set_or_clear_event_bit(0x500, offset, 0)},
     "dc": function(offset){ self.set_or_clear_event_bit(0x600, offset, 1)},
     "dd": function(offset){ self.set_or_clear_event_bit(0x600, offset, 0)},
-    "f0": function(offset){ self.play_song(offset)}
+    "f0": function(offset){ self.play_song(offset)},
+    "f1": function(offset){ self.fade_in_song(offset)},
+    "f4": function(offset){ self.play_sound_fx(offset)},
+    "f6": function(offset){ self.change_sound_fx_volume(offset) },
   }
 }
 
@@ -84,7 +94,7 @@ Events.prototype.executeActionCue = function(chr, cue, index, chr_index){
   var self = this,
       action = cue[index];
 
-  // console.log( "action cue", action.toString(16) );
+  //console.log( "action cue", action.toString(16) );
 
   if (action < 0x40) {
     if (chr.position !== void(0)){ 
@@ -102,47 +112,68 @@ Events.prototype.executeActionCue = function(chr, cue, index, chr_index){
     this.executeActionCue(chr, cue, index + 1, chr_index);
     return;
   } else if (action < 0xAC && action > 0x7f) {
-    //values are [direction, distance, diagonally up, diagonally right, diagonally down, diagonally left]
     if (action < 0xA0){
-      var values = [ action % 4, action > 0x9f ? 1 : (((action - 0x80) / 4) | 0) + 1, 0, 0, 0, 0];
+      var directions = [0, 0, 0, 0],
+          iterations =  (((action - 0x80) / 4) | 0) + 1;
+
+      directions[action % 4] = 1;
     } else {
       var diagonals = {
-        "a0": [1, 1, 1, 0, 0, 0],
-        "a1": [1, 1, 0, 0, 1, 0],
-        "a2": [3, 1, 1, 0, 0, 0],
-        "a3": [3, 1, 0, 0, 1, 0],
-        "a4": [1, 1, 2, 0, 0, 0],
-        "a5": [0, 1, 0, 2, 0, 0],
-        "a6": [1, 1, 0, 0, 2, 0],
-        "a7": [2, 1, 0, 2, 0, 0],
-        "a8": [3, 1, 0, 0, 0, 2],
-        "a9": [0, 1, 0, 0, 2, 0],
-        "aa": [3, 1, 0, 0, 0, 2],
-        "ab": [2, 1, 2, 0, 0, 0]
+        "a0": [1, 1, 0, 0],
+        "a1": [0, 1, 1, 0],
+        "a2": [0, 0, 1, 1],
+        "a3": [1, 0, 0, 1],
+        "a4": [2, 1, 0, 0],
+        "a5": [1, 2, 0, 0],
+        "a6": [0, 2, 1, 0],
+        "a7": [0, 1, 2, 0],
+        "a8": [0, 0, 2, 1],
+        "a9": [0, 0, 1, 2],
+        "aa": [1, 0, 0, 2],
+        "ab": [2, 0, 0, 1]
       }
 
-      var values = diagonals[action.toString(16)];
+      var directions = diagonals[action.toString(16)],
+          iterations = 1;
     }
 
     var self = this,
         callback = function(){ self.executeActionCue(chr, cue, index + 1, chr_index) };
 
-    this.move_character(values[0], values[1], chr, callback, values.slice(2));
+    this.move_character(chr, iterations, directions, callback);
     return;
   } else if (action < 0xFE && action > 0xAB) {
-    if (action === 0xc0){
-      chr.speed = 700;
-    } else if (action === 0xc1){
-      chr.speed = 550;
-    } else if (action === 0xc2){
-      chr.speed = 400;
-    } else if (action === 0xc3){
-      chr.speed = 200;
-    } else if (action === 0xc4){
-      chr.speed = 100;
+    var actions = {
+      "c0": function(){ chr.speed = 700; return false },
+      "c1": function(){ chr.speed = 550; return false },
+      "c2": function(){ chr.speed = 400; return false },
+      "c3": function(){ chr.speed = 200; return false },
+      "c4": function(){ chr.speed = 100; return false },
+      "cc": function(){ chr.position = 1; return false },
+      "cd": function(){ chr.position = 4; chr.mirror = true; return false },
+      "ce": function(){ chr.position = 7; return false },
+      "cf": function(){ chr.position = 4; chr.mirror = true; return false },
+      "d5": function(){ chr.coords.x = cue[index + 1] << 4; chr.coords.y = cue[index + 2] << 4; index += 2; return false; },
+      "e0": function(){
+                        var self = this,
+                            duration = (cue[index + 1] * 7.5) | 0;
+
+                        this.context.iterate(duration, 1, function(){}, function(){
+                          self.executeActionCue(chr, cue, index + 2, chr_index);
+                        }, false)
+
+                        return true;
+                      }.bind(this)
+    }
+    
+    if (actions[action.toString(16)] !== void(0)){
+      var paused = actions[action.toString(16)]();
+    } else {
+      console.log("action cue command not implemented", action.toString(16))
+      var paused = false
     }
 
-    this.executeActionCue(chr, cue, index + 1, chr_index);
+    if (!paused) this.executeActionCue(chr, cue, index + 1, chr_index);
     return;
   } else if (action === 255) {
     window.dispatchEvent( new Event("action-cue-complete-" + chr_index.toString(16)) );
@@ -176,16 +207,15 @@ Events.prototype.executeCue = function(offset){
       this.begin_action_cue(code, offset);
     } else {
       if (this.translations[code.toString(16)] !== void(0)){
-        // console.log("yes", code.toString(16));
+        //console.log("yes", code.toString(16));
         this.translations[code.toString(16)](loc);
       } else {
-        // console.log("no", code.toString(16));
+        console.log(offset.toString(16), "no", code.toString(16));
         this.executeCue(offset + 1);
       }
     }
-     
-    // console.log(this.code[offset].toString(16));
-    // offset += 1;
+  } else {
+    window.dispatchEvent(new Event("event-cue-complete"));
   }
 }
 
@@ -199,11 +229,14 @@ Events.prototype.getText = function(index){
       page++;
       pages[page] = {dialog: "", hex: []};
     } else if (this.context.rom[0x0D0200 + start].toString(16) === "11"){
-      //need to figure out what these done
+      this.context.menus.setDialogTimer( this.context.rom[0x0D0200 + start + 1] * 15 );
+      
       start += 2
     } else if (this.context.rom[0x0D0200 + start].toString(16) === "16"){
+      console.log("DIALOG FUNCTION", this.context.rom[0x0D0200 + start].toString(16), this.context.rom[0x0D0200 + start + 1].toString(16))
       start += 2
     } else if (this.context.rom[0x0D0200 + start].toString(16) === "14"){
+      console.log("DIALOG FUNCTION", this.context.rom[0x0D0200 + start].toString(16), this.context.rom[0x0D0200 + start + 1].toString(16))
       start += 1
     } else {
       var letter = Tables.text[this.context.rom[0x0D0200 + start].toString(16)] || this.context.rom[0x0D0200 + start].toString(16),
@@ -223,11 +256,10 @@ Events.prototype.getSpriteFromIndex = function(index){
   if (index < 0x10){
     return this.context.characters[index].sprite;
   } else if (index < 0x30 && index > 0x0F){ 
-    return this.context.map.sprites[index - 5];
+    return this.context.map.sprites[index];
   } else if (index === 0x30){
     return this.context.map.map_pos;
   } else {
-    console.log(this.context.ram.parties[index - 0x31])
     return this.context.characters[this.context.ram.parties[0][index - 0x31]].sprite
   } 
 }
@@ -238,14 +270,10 @@ Events.prototype.getSpriteFromIndex = function(index){
 
 Events.prototype.begin_action_cue = function(chr_index, offset){
   //console.log("beginning action cue for", chr_index)
-  if (chr_index === 0x30){
-    this.screenCue = [];
-    var cue = this.screenCue;
-  } else {
-    this.actionCues[chr_index] = [];
-    var cue = this.actionCues[chr_index];
-  }
-
+  
+  this.actionCues[chr_index] = [];
+  var cue = this.actionCues[chr_index];
+  
   var len = this.context.rom[offset + 1] & 0x7f;
       wait = (this.context.rom[offset + 1] & 128) === 128;
 
@@ -285,6 +313,14 @@ Events.prototype.wait_for_cue = function(offset){
 }
 
 /**
+ * 36: Disable Pass Through
+ * Status: Not Done, not understood
+ */
+Events.prototype.disable_pass_through = function(offset){
+  this.executeCue(offset + 2);
+}
+
+/**
  * 37 Assign Character Graphics
  * Status: Done
  */
@@ -311,6 +347,13 @@ Events.prototype.assign_party = function(offset, party_index){
     var chr = this.context.rom[offset + 1 + i]
     this.context.ram.parties[party_index][i] = (chr === 255 ? null : chr);
   }
+
+  //SETTING THE APPROPRIATE CHARACTER
+  for (var i=0; i<this.context.characters.length; i++){
+    this.context.characters[i].sprite.isCharacter = false;
+  }
+
+  this.context.characters[this.utils.currentParty()[0]].sprite.isCharacter = true;
 
   this.executeCue(offset + 5);
 }
@@ -437,6 +480,14 @@ Events.prototype.assign_character_palette = function(offset){
 }
 
 /**
+ * 44: Place character on vehicle 
+ * Status: Not Done, but seems easy to understand
+ */
+ Events.prototype.put_character_in_vehicle = function(offset){
+  this.executeCue(offset + 3);
+ }
+
+/**
  * 45: Refresh Objects
  * Status: Not understood
  */
@@ -449,7 +500,7 @@ Events.prototype.refresh_objects = function(offset){
  * Status: Done
  */
 Events.prototype.set_party = function(offset){
-  this.context.ram.selectedParty = this.context.rom[offset + 1];
+  this.context.ram.selectedParty = this.context.rom[offset + 1] - 1;
   this.executeCue(offset + 2);
 }
 
@@ -488,11 +539,20 @@ Events.prototype.load_map = function(offset){
 
 /**
  * 6c: Set Parent Map
- * Status: Not done, not understood
+ * Status: Not done, understood, basically it just sets the map you'll exit to
  */
 Events.prototype.set_parent_map = function(offset){
-  this.executeCue(offset + 12);
+  console.log(offset.toString(16), "AFTER PARENT MAP", this.context.rom[offset + 6].toString(16) )
+  this.executeCue(offset + 6);
 }
+
+/**
+ * 78: Enable Pass Through
+ * Status: Not Done, Not understood, but might not be necessary
+ */
+ Events.prototype.enable_pass_through = function(offset){
+  this.executeCue(offset + 2);
+ }
 
 /**
  * 7F: Assign Name
@@ -502,10 +562,20 @@ Events.prototype.assign_character_name = function(offset){
   var id = this.context.rom[offset + 1],
       index = this.context.rom[offset + 2];
 
-  var chr = this.context.characters[id];
+  var chr = this.context.characters[id].sprite;
       chr.name = "";
 
   chr.name = Tables.battleText( this.context.rom, 0x047AC0 + (index * 6) );
+  this.executeCue(offset + 3);
+}
+
+/**
+ * 84: Give Gold
+ * Status: Done
+ */
+Events.prototype.give_gold = function(offset){
+  this.context.ram.gold += this.utils.getValue(offset + 1, 2);
+
   this.executeCue(offset + 3);
 }
 
@@ -577,12 +647,64 @@ Events.prototype.pause = function(offset, duration){
 }
 
 /**
+ * AB - Invoke Game Loading Screen
+ * Status - This does a lot, all I know is that it clear bit 2ff
+ */
+Events.prototype.invoke_game_loading_screen = function(offset){
+  this.flags[0x2ff] = 0;
+  this.executeCue(offset + 1);
+}
+
+/**
+ * B0 - Repeat Commands
+ * Status - Done
+ */
+Events.prototype.repeat = function(offset){
+  var self = this;
+      iterations = this.context.rom[offset + 1],
+      soFar = 0;
+
+  console.log("Repeating " + iterations + " Times")
+  
+  var cntr = 2;
+  while( self.context.rom[offset + cntr] !== 0xb1){ cntr += 1 };
+
+  window.addEventListener("event-repeat", function repeat(){
+    soFar += 1;
+    console.log("So Far", soFar);
+    if (soFar < iterations){
+      self.executeCue(offset + 2);
+    } else {
+      window.removeEventListener("event-repeat", repeat);
+      self.executeCue(offset + cntr + 1);
+    }
+  }, false);
+
+  self.executeCue(offset + 2);
+}
+
+/**
+ * B1 - End Repeat
+ * Status - Done
+ */
+Events.prototype.stop_repeat = function(offset){
+  window.dispatchEvent( new Event("event-repeat"));
+}
+
+/**
  * B2: Jump to subroutine
  * Done
  */
 Events.prototype.jump_to_subroutine = function(offset){
   var jump = this.utils.getValue(offset + 1, 3);
   console.log(jump.toString(16), "SUBROUTINE AT ", (jump + 0xA0200).toString(16))
+  
+  var self = this;
+  window.addEventListener("event-cue-complete", function done(){
+    window.removeEventListener("event-cue-complete", done);
+    self.executeCue(offset + 4);
+  }, false);
+
   this.executeCue(jump + 0x0A0200);
 }
 
@@ -613,6 +735,75 @@ Events.prototype.and_conditional = function(num, offset){
         set = (val & 0x8000) >> 15;
         dist = ((val & 0x7fff) / 8) | 0,
         bit = (val & 0x7fff) - (dist * 8)
+    
+    var flag = this.flags[(val & 0x3ff)];
+
+    console.log("CHECKING BYTE " + (val & 0x3ff) + " BIT: " + bit + ". IT IS " + flag)
+  
+    truth = flag === set; 
+  }
+
+  if (truth){
+    var jump = this.utils.getValue(offset + 3, 3);
+
+    console.log(jump.toString(16), "IF CONDITIONAL BRANCH TO ", (jump + 0xA0200).toString(16))
+    this.executeCue(jump + 0x0A0200);
+  } else {
+    this.executeCue(offset + 4 + (num * 2));
+  }
+}
+
+/**
+ * F0: Play Song
+ * Status: Not implemented
+ */
+Events.prototype.play_song = function(offset){
+  this.executeCue(offset + 2);
+}
+
+/**
+ * F1: Fade in song
+ * Status: Not implemented
+ */
+Events.prototype.fade_in_song = function(offset){
+  this.executeCue(offset + 3);
+}
+
+Events.prototype.set_or_clear_event_bit = function(extra, offset, value){
+  console.log("SETTING BYTE " + (this.context.rom[offset + 1] + extra).toString(16) + " TO " + value)
+  var dist = this.context.rom[offset + 1] + extra;
+
+  this.flags[dist] = value;
+
+  this.executeCue(offset + 2);
+}
+
+/**
+ * F1: Play sound effect
+ * Status: Not implemented
+ */
+Events.prototype.play_sound_fx = function(offset){
+  this.executeCue(offset + 2);
+}
+
+/**
+ * F6: Change the volume of currently playing sound effect
+ * Status: Not implemented
+ */
+Events.prototype.change_sound_fx_volume = function(offset){
+  this.executeCue(offset + 4);
+}
+
+Events.prototype.or_conditional = function(num, offset){
+  var truth = false;
+
+  for (var i=0; i<num; i++){
+    if (truth) break;
+
+    var val = this.utils.getValue(offset + 1, 2),
+        set = (val & 0x8000) >> 15;
+        dist = ((val & 0x7fff) / 8) | 0,
+        bit = (val & 0x7fff) - (dist * 8)
   
     var flag = this.flags[dist];
 
@@ -622,23 +813,11 @@ Events.prototype.and_conditional = function(num, offset){
   if (truth){
     var jump = this.utils.getValue(offset + 3, 3);
 
-    console.log(jump.toString(16), "IF CONDITIONAL BRANCH TO ", (jump + 0xA0200).toString(16))
+    console.log(jump.toString(16), "OR CONDITIONAL BRANCH TO ", (jump + 0xA0200).toString(16))
     this.executeCue(jump + 0x0A0200);
   }
 
   this.executeCue(offset + 4 + (num * 2));
-}
-
-Events.prototype.set_or_clear_event_bit = function(extra, offset, value){
-  var dist = this.context.rom[offset + 1] + extra;
-
-  this.flags[dist] = value;
-
-  this.executeCue(offset + 2);
-}
-
-Events.prototype.or_conditional = function(num, offset){
-
 }
 
 Events.prototype.show_dialog = function(offset, halt){
@@ -659,10 +838,6 @@ Events.prototype.show_dialog = function(offset, halt){
   } else {
     this.executeCue(offset + 3);
   }
-}
-
-Events.prototype.play_song = function(offset){
-  this.executeCue(offset + 2);
 }
 
 //Screen Stuff
@@ -688,25 +863,21 @@ Events.prototype.free_screen = function(offset){
 ///                    Action Cue Code                       ///
 ////////////////////////////////////////////////////////////////
 
-Events.prototype.move_character = function(direction, distance, chr, callback, diagonals){
+Events.prototype.move_character = function(chr, distance, directions, callback){
   var self = this,
-      soFar = 0,
-      suffixes = ["Up", "Right", "Down", "Left"];
-
-  var coords = chr.coords === void(0) ? chr : chr.coords,
-      speed = chr.coords === void(0) ? chr.speed : chr.coords.speed,
-      prefix = chr.position === void(0) ? "scroll" : "walk",
-      suffix = suffixes[direction];
+      soFar = 0;
   
-  for (var i=0; i<4; i++){
-    for (var j=0; j<diagonals[i]; j++){
-      self.context.map["scroll" + suffixes[i]](coords, speed);
-    }
-  }
-
   var fn = function(){
     if (soFar < distance){ 
-      self.context.map[prefix + suffix](chr, speed, fn)
+      if (chr.name === void(0)){
+        self.context.map.scroll(chr, directions, fn);
+      } else {
+        if (chr.isCharacter && !self.context.ram.holdScreen){
+          self.context.map.move(chr, directions, fn, true, false);
+        } else {
+          self.context.map.walk(chr, directions, fn, true);
+        }
+      }
     } else {
       callback();
     }
