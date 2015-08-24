@@ -2,9 +2,10 @@ var Events = function(context){
   this.context = context;
   this.utils = new Utils(context);
   this.flags = null;
+  this.presence = null;
 
   this.getFlags();
-  
+
   var self = this;
 
   this.actionCues = {};
@@ -192,10 +193,15 @@ Events.prototype.executeActionCue = function(chr, cue, index, chr_index){
 }
 
 Events.prototype.getFlags = function(){
+  console.log(window.localStorage.flags === "null")
   if (!window.localStorage.flags){
     var flags = []
-    for (var i=0; i<224; i++){
+    for (var i=0; i<0x60; i++){
       flags.push(0);
+    }
+
+    for (var i=0; i<0x80; i++){
+      flags.push(this.context.rom[0xe2a0 + i]);
     }
 
     this.flags = flags;
@@ -792,15 +798,13 @@ Events.prototype.and_conditional = function(num, offset){
   for (var i=0; i<num; i++){
     if (!truth) break;
 
-    var val = this.utils.getValue(offset + 1, 2),
+    var val = this.utils.getValue(offset + 1 + (i * 2), 2),
         set = (val & 0x8000) >> 15;
         dist = ((val & 0x7fff) / 8) | 0,
         bit = (val & 0x7fff) - (dist * 8)
     
-    var flag = this.flags[(val & 0x3ff)];
+    var flag = (this.flags[dist] & (1 << bit)) >> bit;
 
-    console.log("CHECKING BYTE " + (val & 0x3ff) + " BIT: " + bit + ". IT IS " + flag)
-  
     truth = flag === set; 
   }
 
@@ -831,10 +835,15 @@ Events.prototype.fade_in_song = function(offset){
 }
 
 Events.prototype.set_or_clear_event_bit = function(extra, offset, value){
-  console.log("SETTING BYTE " + (this.context.rom[offset + 1] + extra).toString(16) + " TO " + value)
-  var dist = this.context.rom[offset + 1] + extra;
+  var val = this.context.rom[offset + 1] + (extra << 8),
+      dist = (val / 8) | 0,
+      bit = val - (dist * 8);
 
-  this.flags[dist] = value;
+  if (value === 0){
+    this.flags[dist] = this.flags[dist] & (255 - (1 << bit));
+  } else {
+    this.flags[dist] = this.flags[dist] | (1 << bit);
+  }
 
   this.executeCue(offset + 2);
 }

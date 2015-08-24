@@ -45,7 +45,7 @@ Sprites.prototype.getSprites = function(index){
       magitek: (bytes[7] & 128) === 128,
       facing: bytes[8] & 3,
       isCharacter: false,
-      visible: false
+      visible: this.getSpriteVisibility(bytes[2] + (bytes[3] << 8))
     }
 
     var sprite = new Sprite(data, this.context);
@@ -65,12 +65,21 @@ Sprites.prototype.getMainCharacters = function(){
       sprite: new Sprite({ 
         gfx_set: i, 
         palette: this.context.rom[0x2D02B + i], 
-        coords: {x: 0, y: 0} 
+        coords: {x: 0, y: 0},
+        visible: false
       }, this.context)
     })
   }
 
   return characters;
+}
+
+Sprites.prototype.getSpriteVisibility = function(val){
+  var _byte = (val >> 9) + 0x60,
+      _bit = (val >> 6) & 7,
+      visible = ((this.context.events.flags[_byte] & (1 << _bit)) >> _bit);
+
+  return visible === 1;
 }
 
 Sprites.prototype.getSpritePositions = function(){
@@ -104,19 +113,19 @@ Sprites.prototype.getPalettes = function(){
 Sprites.prototype.checkForNPC = function(){
   var chr = this.character;
   if ([0, 1, 2].indexOf(chr.position) !== -1){
-    var pos = {x: chr.coords.x, y: chr.coords.y + 1};
+    var pos = {x: chr.coords.x, y: chr.coords.y + 16};
   } else if ([3, 4, 5].indexOf(chr.position) != -1){
-    var pos = {x: chr.coords.x, y: chr.coords.y - 1};
+    var pos = {x: chr.coords.x, y: chr.coords.y - 16};
   } else if ([6, 7, 8].indexOf(chr.position) != -1){
     if (chr.mirror === 0){
-      var pos = {x: chr.coords.x - 1, y: chr.coords.y};
+      var pos = {x: chr.coords.x - 16, y: chr.coords.y};
     } else {
-      var pos = {x: chr.coords.x + 1, y: chr.coords.y};
+      var pos = {x: chr.coords.x + 16, y: chr.coords.y};
     }
   }
 
-  var sprite = this.sprite_coords[pos.x][pos.y];
-    
+  var sprite = this.sprite_coords[pos.x >> 4][pos.y >> 4];
+
   if (sprite !== 0){
     this.context.events.executeCue(sprite.event);
   } else {
@@ -190,7 +199,7 @@ var Sprite = function(data, context){
   this.isCharacter = data.isCharacter;
   this.facing = data.facing || 0;
 
-  this.visible = true;
+  this.visible = data.visible;
   this.moving = false;
   this.priority = 0;
   this.position = {0: 4, 1: 6, 2: 1, 3: 6}[this.facing];

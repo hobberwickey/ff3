@@ -37,6 +37,7 @@ var Map = function(index, context, coords, facing){
     this.character = this.sprites[this.character_index];
     this.spriteController.character = this.character;
     this.character.isCharacter = true
+    this.character.visible = true
   }
 
   this.entrances = {}
@@ -601,6 +602,9 @@ Map.prototype.buildPhysicalMap = function(){
 }
 
 Map.prototype.checkEvents = function(sprite, x, y){
+  x = x >> 4;
+  y = y >> 4;
+  
   if (sprite !== this.character){ 
     return false;
   }
