@@ -221,8 +221,7 @@ Map.prototype.drawSprites = function(data){
     y2: scrollPos.y + 256
   }
 
-  // for (var i=0x00; i<sprites.length; i++){
-  for (var i=0x00; i<1; i++){
+  for (var i=0x00; i<sprites.length; i++){
     if (sprites[i].visible) self.drawSprite(data, sprites[i], mapBounds, spritePositions, pMap, false);
   }
 

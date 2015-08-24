@@ -63,8 +63,11 @@
       
       live.onload = function() {
           ff3 = new FF3(live.result);
-          // ff3.startGame();
-          ff3.map = new Map(75, ff3, [2, 30], 0);
+          <% if params[:map].blank? %>
+          ff3.startGame();
+          <% else %>
+          ff3.map = new Map(<%= params[:map] %>, ff3, [<%= params[:x] ||= 2 %>, <%= params[:y] ||= 30 %>], 0);
+          <% end %>
       };
       live.readAsArrayBuffer(blob);
     }
