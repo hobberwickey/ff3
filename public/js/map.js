@@ -221,7 +221,8 @@ Map.prototype.drawSprites = function(data){
     y2: scrollPos.y + 256
   }
 
-  for (var i=0x00; i<sprites.length; i++){
+  // for (var i=0x00; i<sprites.length; i++){
+  for (var i=0x00; i<1; i++){
     if (sprites[i].visible) self.drawSprite(data, sprites[i], mapBounds, spritePositions, pMap, false);
   }
 
@@ -238,6 +239,7 @@ Map.prototype.drawSprite = function(data, sprite, mapBounds, sprite_positions, p
       partial_mirror = full_mirror & (sprite.position === 0 || sprite.position === 2) 
       tMap = this.trans_map,
       pMap = this.pixel_map,
+      physMap = this.physical_map,
       palettes = this.spriteController.palettes;
       utils = this.utils;
 
@@ -255,8 +257,8 @@ Map.prototype.drawSprite = function(data, sprite, mapBounds, sprite_positions, p
             data_x = (back_edge - mapBounds.x1) + x_pixel,
             data_y = (y + (top_edge - mapBounds.y1)) + y_offset;
 
-        var dpTile = pMap[(back_edge + x_pixel) >> 4][(top_edge + y + 16) >> 4],
-            mpTile = pMap[(back_edge + x_pixel) >> 4][(top_edge + y + y_offset) >> 4],
+        var dpTile = physMap[(back_edge + x_pixel) >> 4][(top_edge + y + 16) >> 4],
+            mpTile = physMap[(back_edge + x_pixel) >> 4][(top_edge + y + y_offset) >> 4],
             mask = sprite.priority === 0 && mpTile.mask === 1,
             layer = b < 4 ? (sprite.priority === 0 ? (dpTile.drawPriority > 1) | 0 : (dpTile.drawPriority > 0) | 0) : 0;
 
@@ -265,7 +267,7 @@ Map.prototype.drawSprite = function(data, sprite, mapBounds, sprite_positions, p
         
         var data_offset = ((data_x) + ((data_y) * 256)) * 4;
 
-
+        //if (y === 0 && x === 0) console.log(sprite.priority, mpTile, mask);
         if (layer === 0 || mask){ 
           if (mask){
             //if (pixelMap[data_x][data_y] === 2) drawPixel(data, color, data_offset)
@@ -274,14 +276,14 @@ Map.prototype.drawSprite = function(data, sprite, mapBounds, sprite_positions, p
               if (tMap[data_x][data_y] !== 0) color = utils.addColors(color, tMap[data_x][data_y])
               utils.drawPixel(data, color, data_offset)
 
-              pMap[data_x][data_y] = 0;
+              //pMap[data_x][data_y] = 0;
             }
           }
         } else {
           if (tMap[data_x][data_y] !== 0) color = utils.addColors(color, tMap[data_x][data_y])
           utils.drawPixel(data, color, data_offset)
 
-          pMap[data_x][data_y] = 0;
+          //pMap[data_x][data_y] = 0;
         }
       }
     }
@@ -604,7 +606,7 @@ Map.prototype.buildPhysicalMap = function(){
 Map.prototype.checkEvents = function(sprite, x, y){
   x = x >> 4;
   y = y >> 4;
-  
+
   if (sprite !== this.character){ 
     return false;
   }

@@ -237,8 +237,8 @@ Events.prototype.executeCue = function(offset){
   } else {
     console.log("ENDING CUE", this.cueIndex)
 
-    window.dispatchEvent(new Event("event-cue-complete-" + this.cueIndex));
     this.cueIndex -= 1;
+    window.dispatchEvent(new Event("event-cue-complete-" + (this.cueIndex + 1)));
   }
 }
 
@@ -715,7 +715,8 @@ Events.prototype.pause = function(offset, duration){
  * Status - This does a lot, all I know is that it clear bit 2ff
  */
 Events.prototype.invoke_game_loading_screen = function(offset){
-  this.flags[0x2ff] = 0;
+  console.log("FLAG 95", this.flags[95])
+  this.flags[95] = this.flags[95] & (0x7f);
   this.executeCue(offset + 1);
 }
 
@@ -761,7 +762,7 @@ Events.prototype.stop_repeat = function(offset){
  */
 Events.prototype.jump_to_subroutine = function(offset){
   var jump = this.utils.getValue(offset + 1, 3);
-  console.log(jump.toString(16), "SUBROUTINE AT ", (jump + 0xA0200).toString(16))
+  console.log(this.cueIndex, "SUBROUTINE AT ", (jump + 0xA0200).toString(16))
   
   this.cueIndex += 1;
   var index = this.cueIndex;
@@ -835,9 +836,12 @@ Events.prototype.fade_in_song = function(offset){
 }
 
 Events.prototype.set_or_clear_event_bit = function(extra, offset, value){
-  var val = this.context.rom[offset + 1] + (extra << 8),
+  var val = this.context.rom[offset + 1] + extra,
       dist = (val / 8) | 0,
       bit = val - (dist * 8);
+
+  console.log(val, extra, this.context.rom[offset + 1])
+  console.log("SETTING BYTE " + (dist) + " BIT " + bit + " TO " + value)
 
   if (value === 0){
     this.flags[dist] = this.flags[dist] & (255 - (1 << bit));
