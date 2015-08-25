@@ -52,6 +52,10 @@ class Application < Sinatra::Base
     erb :"tests/wob"
   end
 
+  get "/trump" do
+    erb :"tests/trump"
+  end
+
   get "/loadMap/:index" do
     @map_info = MapInfo.new :map_index => params[:index].to_i
     @map = Map.new :map_info => @map_info, :character => params[:character].to_i

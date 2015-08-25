@@ -24,6 +24,7 @@
   ],
   "dependencies": {
     "polymer": "Polymer/polymer#^1.0.0",
-    "polymer-rails-forms": "~0.1.10"
+    "polymer-rails-forms": "~0.1.10",
+    "paper-button": "PolymerElements/paper-button#~1.0.3"
   }
 }

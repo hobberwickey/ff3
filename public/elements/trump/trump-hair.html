@@ -1,0 +1,346 @@
+<link rel='import' href='../../components/polymer/polymer.html'>
+<link rel='import' href='../../components/paper-button/paper-button.html'>
+
+<dom-module id='trump-hair'>
+  <style>
+    :host {
+      width: 1024px;
+      background-color: white;
+      margin: 0px auto;
+      display: block;
+      padding: 10px 10px 10px 30px;
+    }
+
+    .stage {
+      position: relative;
+    }
+
+    #image, #hair {
+      display: none;
+    }
+
+    #result {
+      display: block;
+      margin: 0px auto;
+    }
+
+    .hair-wrapper {
+      border: solid 1px rgba(200, 200, 200, 0.7);
+      position: absolute;
+      box-sizing: border-box;
+      display: none;
+    }
+
+    .stage:hover .hair-wrapper {
+      display: block;
+    }
+
+    #controls {
+      display: flex;
+      height: 60px;
+    }
+
+    #controls paper-button {
+      background-color: #ff2;
+      flex: 1;
+      margin: 10px;
+      box-sizing: border-box;
+    }
+
+    #controls #file-upload {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      font-size: 999px;
+      text-align: right;
+      filter: alpha(opacity=0);
+      opacity: 0;
+      outline: none;
+      background: white;
+      cursor: pointer;
+      display: block;
+      z-index: 1;
+    }
+
+    #controls paper-button[disabled] {
+      background-color: #ccc;
+    }
+
+    .hair-wrapper .control {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      border: solid 1px #ccc;
+    }
+
+    .control.nw {
+      top: -15px;
+      left: -15px;
+    }
+
+    .control.ne {
+      top: -15px;
+      right: -15px;
+    }
+
+    .control.sw {
+      bottom: -15px;
+      left: -15px;
+    }
+
+    .control.se {
+      bottom: -15px;
+      right: -15px;
+    }
+
+    .control.translate {
+      top: 50%;
+      left: 50%;
+      margin-top: -15px;
+      margin-left: -15px;
+      cursor: move;
+    }
+  </style>
+
+  <template>
+    <!-- <div id='test'>Test</div> -->
+    <div id='controls'>
+      <paper-button>
+        <a href='javascript:void(0)'>Upload</a>
+        <input type='file' id='file-upload' />
+      </paper-button>
+      <paper-button disabled$="[[ hasUpload(upload) ]]"><a href='javascript:void(0)'>Share</a></paper-button>
+    </div>    
+
+    <div class='stage'>
+      <canvas id='result' width="1024" height='720'></canvas>
+      <canvas id='image' width="1024" height='720'></canvas>
+      <canvas id='hair' width="1024" height='720'></canvas>
+
+      <div class='hair-wrapper' id='hair-wrapper'>
+        <div class='control rotate nw'></div>
+        <div class='control rotate ne'></div>
+        <div class='control rotate sw'></div>
+        <div class='control rotate se'></div>
+        <div class='control translate'></div>
+      </div>
+    </div>
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "trump-hair",
+    
+    properties: {
+      upload: { type: String, value: null, notify: true },
+      position: { type: Object, value: { x: 0, y: 0, w: 1024, h: 720, a: 0, x_offset: 0, y_offset: 0 } },
+      scale: { type: Number, value: 1 },
+      angleOffset: { type: Number, value: 0},
+      originalLength: { type: Number, value: 0}
+    },
+
+    hairImage: null,
+    result: null,
+    image: null,
+    hair: null,
+    active: false,
+
+    ready: function(){
+      this.result = Polymer.dom(this.root).querySelector("#result").getContext('2d');
+      this.image = Polymer.dom(this.root).querySelector("#image").getContext('2d');
+      this.hair = Polymer.dom(this.root).querySelector("#hair").getContext('2d');
+
+      var uploader = Polymer.dom(this.root).querySelector("#file-upload");
+      uploader.addEventListener("change", function(){
+        if (uploader.files.length > 0){
+          var reader = new FileReader();
+          reader.onloadend = function(){
+            this.set("upload", reader.result)
+            this.resize();
+          }.bind(this)
+
+          reader.readAsDataURL(uploader.files[0]);
+        } else {
+          this.set("upload",  null);
+        }
+      }.bind(this), false);  
+    },
+
+    hasUpload: function(upload){
+      return upload === null
+    },
+
+    resize: function(){
+      var img = new Image();
+          img.src = this.upload;
+
+      img.onload = function(){
+        var w = (Math.min(1024, Math.max(512, img.width))),
+            h = (Math.min(1024, Math.max(512, img.height)));
+
+        this.scale = img.height > img.width ? h / img.height : w / img.width;
+          
+        Polymer.dom(this.root).querySelectorAll("canvas").forEach(function(canvas){
+          canvas.width = (img.width * this.scale) | 0;
+          canvas.height = (img.height * this.scale) | 0; 
+        }.bind(this));
+
+        this.image.drawImage(img, 0, 0, this.image.canvas.width, this.image.canvas.height)
+
+        var coords = this.result.canvas.getBoundingClientRect();
+        
+        this.position.w = this.result.canvas.width;
+        this.position.h = this.result.canvas.height;
+        
+        var data = this.calcAngle({x: coords.left, y: coords.top});
+        this.angleOffset = this.position.a = data.angle;
+        this.originalLength = data.length;
+
+        this.hairImage = new Image();
+        this.hairImage.src = "/images/trump-hair.png" 
+
+        this.hairImage.onload = function(){
+          if (this.hairImage.width / this.result.canvas.width > this.hairImage.height / this.result.canvas.height){
+            var scale = this.result.canvas.width / this.hairImage.width;
+          } else {
+            var scale = this.result.canvas.height / this.hairImage.height;
+          }
+
+          var top = (this.result.canvas.height - (this.hairImage.height * scale)) / 2,
+              left = (this.result.canvas.width - (this.hairImage.width * scale)) / 2;
+
+          this.hair.drawImage(this.hairImage, 0, 0, this.hairImage.width, this.hairImage.height, left, top, this.hairImage.width * scale, this.hairImage.height * scale);
+          
+          this.draw();
+        }.bind(this)        
+      }.bind(this);
+
+      this.setupRotate();
+      this.setupTranslate();
+    },
+
+    draw: function(){
+      this.result.clearRect(0, 0, this.result.canvas.width, this.result.canvas.height);
+      this.result.drawImage(this.image.canvas, 0, 0, this.image.canvas.width, this.image.canvas.height);
+      
+      this.result.save();
+      this.result.translate((this.result.canvas.width / 2) + this.position.x_offset, (this.result.canvas.height / 2) + this.position.y_offset)
+      this.result.rotate(-(this.position.a - this.angleOffset));
+      this.result.translate(-((this.result.canvas.width / 2) + this.position.x_offset), -((this.result.canvas.height / 2) + this.position.y_offset))
+      this.result.drawImage(this.hair.canvas, this.position.x, this.position.y, this.position.w, this.position.h)
+      this.result.restore();
+
+      this.adjust();
+      this.setTransform();
+    },
+
+    adjust: function(){
+      var wrapper = Polymer.dom(this.root).querySelector("#hair-wrapper");
+
+      wrapper.style.top = (this.position.y + parseInt(this.result.canvas.offsetTop, 10)) + "px";
+      wrapper.style.left = (this.position.x + parseInt(this.result.canvas.offsetLeft, 10)) + "px";
+    },
+
+    setupTranslate: function(){
+      var wrapper = Polymer.dom(this.root).querySelector("#hair-wrapper");
+
+      if (this.active) return;
+      wrapper.addEventListener("mousedown", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (e.target.classList.contains("translate")){
+          var last = { x: e.clientX, y: e.clientY }
+
+          var translate = function(e){
+            this.position.x_offset += e.clientX - last.x;
+            this.position.y_offset += e.clientY - last.y;
+
+            this.position.x = this.position.x_offset + ((this.result.canvas.width - this.position.w) / 2);
+            this.position.y = this.position.y_offset + ((this.result.canvas.height - this.position.h) / 2);
+
+            last = { x: e.clientX, y: e.clientY };
+            this.draw();
+          }.bind(this)
+
+          window.addEventListener("mousemove", translate, false)
+
+          window.addEventListener("mouseup", function stop(e){
+            window.removeEventListener("mousemove", translate);
+            window.removeEventListener("mouseup", stop);
+          }, false)
+        }
+      }.bind(this), false)
+    },
+
+    setupRotate: function(){
+      var wrapper = Polymer.dom(this.root).querySelector("#hair-wrapper");
+
+      if (this.active) return;
+      wrapper.addEventListener("mousedown", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (e.target.classList.contains("rotate")){
+          var data = this.calcAngle({ x: e.clientX, y: e.clientY }),
+              startAngle = data.angle,
+              startLength = data.length,
+              originalAngle = this.position.a,
+              originalX = this.position.x_offset,
+              originalY = this.position.y_offset;
+        
+
+          var calc = function(e){
+            e.preventDefault();
+            e.stopPropagation();
+
+            var data = this.calcAngle({x: e.clientX, y: e.clientY});
+            this.position.a = originalAngle + (startAngle - data.angle);
+            
+            var dif = (data.length / this.originalLength);
+
+            this.position.w = this.result.canvas.width * dif; 
+            this.position.h = this.result.canvas.height * dif; 
+            this.position.x = originalX + ((this.result.canvas.width - this.position.w) / 2);
+            this.position.y = originalY + ((this.result.canvas.height - this.position.h) / 2);
+            
+            this.draw();
+            //Polymer.dom(this.root).querySelector("#test").innerHTML = this.position.w + " " + this.position.h
+          }.bind(this);
+
+          window.addEventListener("mousemove", calc, false);
+          window.addEventListener("mouseup", function stop(){
+            window.removeEventListener("mousemove", calc);
+            window.removeEventListener("mouseup", stop);
+          }, false)
+        }
+      }.bind(this), false);    
+    },
+
+    calcAngle: function(pnt){
+      var coords = this.result.canvas.getBoundingClientRect();
+          center = {
+            y: coords.top + (this.result.canvas.height / 2) + this.position.y_offset,
+            x: coords.left + (this.result.canvas.width / 2) + this.position.x_offset,
+          } 
+
+      var angle = Math.atan2(pnt.y - center.y, pnt.x - center.x),
+          length = Math.sqrt(Math.pow(pnt.x - center.x, 2) + Math.pow(pnt.y - center.y, 2));
+
+      return {length: length, angle: angle};
+    },
+
+    setTransform: function(){
+      var wrapper = Polymer.dom(this.root).querySelector("#hair-wrapper");
+
+      wrapper.style.transform = "rotate(" + (this.angleOffset - this.position.a) + "rad)";
+      wrapper.style.width = this.position.w + "px";
+      wrapper.style.height = this.position.h + "px";
+
+      this.adjust();
+    }
+  })
+</script>
