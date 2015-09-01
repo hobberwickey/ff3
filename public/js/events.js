@@ -3,6 +3,8 @@ var Events = function(context){
   this.utils = new Utils(context);
   this.flags = null;
   this.presence = null;
+  this.verbose = true; 
+  this.ongoing = false;
 
   this.getFlags();
 
@@ -10,6 +12,8 @@ var Events = function(context){
 
   this.actionCues = {};
   this.screenCue = [];
+
+  this.subroutines = [];
 
   this.objects = {}
   this.paused = false;
@@ -24,6 +28,7 @@ var Events = function(context){
     "39": function(offset){ self.free_screen(offset) },
     "3c": function(offset){ self.assign_party(offset) },
     "3d": function(offset){ self.create_object(offset) },
+    "3e": function(offset){ self.delete_object(offset) },
     "3f": function(offset){ self.assign_character_to_party(offset) },
     "40": function(offset){ self.assign_character_properties(offset) },
     "41": function(offset){ self.show_object(offset) },
@@ -34,9 +39,11 @@ var Events = function(context){
     "4b": function(offset){ self.show_dialog(offset, true) },
     "46": function(offset){ self.set_party(offset) },
     "48": function(offset){ self.show_dialog(offset, false) },
+    "51": function(offset){ self.modify_background_color_range(offset) },
     "59": function(offset){ self.fade_screen_black(offset, 1) },
     "5a": function(offset){ self.fade_screen_black(offset, 0) },
-    "6b": function(offset){ self.load_map(offset) },
+    "6a": function(offset){ self.load_map(offset, true) },
+    "6b": function(offset){ self.load_map(offset, false) },
     "6c": function(offset){ self.set_parent_map(offset) },
     "73": function(offset){ self.edit_map(offset, true) },
     "74": function(offset){ self.edit_map(offset, false) },
@@ -47,16 +54,21 @@ var Events = function(context){
     "88": function(offset){ self.remove_conditions(offset) },
     "89": function(offset){ self.add_conditions(offset) },
     "8a": function(offset){ self.toggle_conditions(offset) },
+    "8b": function(offset){ self.set_hp_to_max(offset) },
     "91": function(offset){ self.pause(offset, 8) },
     "92": function(offset){ self.pause(offset, 16) },
     "93": function(offset){ self.pause(offset, 24) },
     "94": function(offset){ self.pause(offset, 32) },
     "95": function(offset){ self.pause(offset, 64) },
+    "96": function(offset){ self.refresh_map(offset) },
+    "98": function(offset){ self.open_name_change(offset) },
     "ab": function(offset){ self.invoke_game_loading_screen(offset) },
     "b0": function(offset){ self.repeat(offset) },
     "b1": function(offset){ self.stop_repeat(offset) },
     "b2": function(offset){ self.jump_to_subroutine(offset) },
+    "b3": function(offset){ self.repeat_subroutine(offset) },
     "b5": function(offset){ self.pause_for(offset) },
+    "be": function(offset){ self.branch_on_caseword(offset) },
     "c0": function(offset){ self.and_conditional(1, offset) },
     "c1": function(offset){ self.and_conditional(2, offset) },
     "c2": function(offset){ self.and_conditional(3, offset) },
@@ -87,8 +99,10 @@ var Events = function(context){
     "db": function(offset){ self.set_or_clear_event_bit(0x500, offset, 0)},
     "dc": function(offset){ self.set_or_clear_event_bit(0x600, offset, 1)},
     "dd": function(offset){ self.set_or_clear_event_bit(0x600, offset, 0)},
+    "de": function(offset){ self.load_current_party_into_word(offset)},
     "f0": function(offset){ self.play_song(offset)},
     "f1": function(offset){ self.fade_in_song(offset)},
+    "f2": function(offset){ self.fade_out_song(offset)},
     "f4": function(offset){ self.play_sound_fx(offset)},
     "f6": function(offset){ self.change_sound_fx_volume(offset) },
   }
@@ -100,20 +114,20 @@ Events.prototype.executeActionCue = function(chr, cue, index, chr_index){
   var self = this,
       action = cue[index];
 
-  //console.log( "action cue", action.toString(16) );
+  if (this.verbose) console.log( "action cue", action.toString(16), chr_index );
 
   if (action < 0x40) {
     if (chr.position !== void(0)){ 
       chr.position = action;
-      chr.mirror = false;
+      chr.mirror = 0;
     }
 
     this.executeActionCue(chr, cue, index + 1, chr_index);
     return;
   } else if (action < 0x80 && action > 0x3f) {  
     if (chr.position !== void(0)){
-      chr.mirror = true;
-      chr.position = action;
+      chr.mirror = 1;
+      chr.position = (action - 0x40);
     }
     this.executeActionCue(chr, cue, index + 1, chr_index);
     return;
@@ -143,8 +157,9 @@ Events.prototype.executeActionCue = function(chr, cue, index, chr_index){
           iterations = 1;
     }
 
-    var self = this,
-        callback = function(){ self.executeActionCue(chr, cue, index + 1, chr_index) };
+    var callback = function(_chr, _cue, _index, _chr_index){ 
+          this.executeActionCue(_chr, _cue, _index, _chr_index) 
+        }.bind(this, chr, cue, index + 1, chr_index);
 
     this.move_character(chr, iterations, directions, callback);
     return;
@@ -155,10 +170,13 @@ Events.prototype.executeActionCue = function(chr, cue, index, chr_index){
       "c2": function(){ chr.speed = 400; return false },
       "c3": function(){ chr.speed = 200; return false },
       "c4": function(){ chr.speed = 100; return false },
-      "cc": function(){ chr.position = 1; return false },
-      "cd": function(){ chr.position = 4; chr.mirror = true; return false },
-      "ce": function(){ chr.position = 7; return false },
-      "cf": function(){ chr.position = 4; chr.mirror = true; return false },
+      "c6": function(){ chr.walkingEnabled = true; return false },
+      "c7": function(){ chr.walkingEnabled = false; return false },
+      "c8": function(){ chr.priority = (cue[index + 1] & 1); index++; return false },
+      "cc": function(){ chr.position = 4; return false },
+      "cd": function(){ chr.position = 7; chr.mirror = 1; return false },
+      "ce": function(){ chr.position = 1; return false },
+      "cf": function(){ chr.position = 7; chr.mirror = 0; return false },
       "d1": function(){ chr.visible = false; return false; },
       "d5": function(){ chr.coords.x = cue[index + 1] << 4; chr.coords.y = cue[index + 2] << 4; index += 2; return false; },
       "e0": function(){
@@ -180,7 +198,7 @@ Events.prototype.executeActionCue = function(chr, cue, index, chr_index){
     if (actions[action.toString(16)] !== void(0)){
       var paused = actions[action.toString(16)]();
     } else {
-      console.log("action cue command not implemented", action.toString(16))
+      if (this.verbose) console.log("action cue command not implemented", action.toString(16))
       var paused = false
     }
 
@@ -193,7 +211,6 @@ Events.prototype.executeActionCue = function(chr, cue, index, chr_index){
 }
 
 Events.prototype.getFlags = function(){
-  console.log(window.localStorage.flags === "null")
   if (!window.localStorage.flags){
     var flags = []
     for (var i=0; i<0x60; i++){
@@ -218,27 +235,32 @@ Events.prototype.beginCue = function(offset){
 
 Events.prototype.executeCue = function(offset){
   if (this.paused) return;
+
+  this.ongoing = true;
   //console.log(offset.toString(16))
   var loc = offset,
       code = this.context.rom[loc];
         
-  if (code !== 0xfe && code !== 0xff){
-    if (code < 0x31){
+  if (code !== 0xfe){
+    if (code < 0x35){
       this.begin_action_cue(code, offset);
     } else {
       if (this.translations[code.toString(16)] !== void(0)){
-        //console.log("yes", code.toString(16));
+        if (this.verbose) console.log("yes", code.toString(16));
         this.translations[code.toString(16)](loc);
       } else {
-        console.log(offset.toString(16), "no", code.toString(16));
+        if (this.verbose) console.log(offset.toString(16), "no", code.toString(16));
         this.executeCue(offset + 1);
       }
     }
   } else {
-    console.log("ENDING CUE", this.cueIndex)
-
-    this.cueIndex -= 1;
-    window.dispatchEvent(new Event("event-cue-complete-" + (this.cueIndex + 1)));
+    if (this.subroutines.length > 0){
+      var sub = this.subroutines.pop();
+      this.executeCue(sub);
+    } else {
+      this.ongoing = false;
+      window.dispatchEvent( new Event("event-cue-complete") );
+    } 
   }
 }
 
@@ -256,10 +278,10 @@ Events.prototype.getText = function(index){
       
       start += 2
     } else if (this.context.rom[0x0D0200 + start].toString(16) === "16"){
-      console.log("DIALOG FUNCTION", this.context.rom[0x0D0200 + start].toString(16), this.context.rom[0x0D0200 + start + 1].toString(16))
+      // console.log("DIALOG FUNCTION", this.context.rom[0x0D0200 + start].toString(16), this.context.rom[0x0D0200 + start + 1].toString(16))
       start += 2
     } else if (this.context.rom[0x0D0200 + start].toString(16) === "14"){
-      console.log("DIALOG FUNCTION", this.context.rom[0x0D0200 + start].toString(16), this.context.rom[0x0D0200 + start + 1].toString(16))
+      // console.log("DIALOG FUNCTION", this.context.rom[0x0D0200 + start].toString(16), this.context.rom[0x0D0200 + start + 1].toString(16))
       start += 1
     } else {
       var letter = Tables.text[this.context.rom[0x0D0200 + start].toString(16)] || this.context.rom[0x0D0200 + start].toString(16),
@@ -283,7 +305,11 @@ Events.prototype.getSpriteFromIndex = function(index){
   } else if (index === 0x30){
     return this.context.map.map_pos;
   } else {
-    return this.context.characters[this.context.ram.parties[0][index - 0x31]].sprite
+    if (this.context.ram.parties[0][index - 0x31] !== null){
+      return this.context.characters[this.context.ram.parties[0][index - 0x31]].sprite
+    } else {
+      return null
+    }
   } 
 }
 
@@ -292,8 +318,6 @@ Events.prototype.getSpriteFromIndex = function(index){
 ////////////////////////////////////////////////////////////////
 
 Events.prototype.begin_action_cue = function(chr_index, offset){
-  //console.log("beginning action cue for", chr_index)
-  
   this.actionCues[chr_index] = [];
   var cue = this.actionCues[chr_index];
   
@@ -365,10 +389,24 @@ Events.prototype.assign_character_graphics = function(offset){
  */
 Events.prototype.assign_party = function(offset, party_index){
   party_index = party_index || 0;
-  
+
   for (var i=0; i<4; i++){
-    var chr = this.context.rom[offset + 1 + i]
-    this.context.ram.parties[party_index][i] = (chr === 255 ? null : chr);
+    var chr = this.context.rom[offset + 1 + i];
+
+    if (chr !== 255){
+      var obj = this.context.characters[chr].sprite;
+
+      this.context.ram.parties[party_index][i] = chr;
+      
+      if (i===0){
+        for (var j=0; j<16; j++) this.context.characters[j].sprite.isCharacter = false;
+        
+        obj.isCharacter = true;
+        if (this.context.map !== null) this.context.map.character = obj;
+      }
+    } else {
+      this.context.ram.parties[party_index][i] = null
+    }
   }
 
   //SETTING THE APPROPRIATE CHARACTER
@@ -392,6 +430,16 @@ Events.prototype.create_object = function(offset){
 }
 
 /**
+ * 3E: Delete Object
+ * Status: Done? Vaugely understood?
+ */
+Events.prototype.delete_object = function(offset){
+  var id = this.context.rom[offset + 1].toString(16);
+  delete this.objects[id];
+  this.executeCue(offset + 2);
+}
+
+/**
  * 3F: Assign a character to a party
  * Status: Done
  */
@@ -402,7 +450,7 @@ Events.prototype.assign_character_to_party = function(offset){
 
   if (party === 0){
     for (var i=0; i<parties.length; i++){
-      if (parties[i.indexOf(chr)] !== -1 ) parties[i].splice(parties[i].indexOf(chr), 1);
+      if (parties[i].indexOf(chr) !== -1 ) parties[i].splice(parties[i].indexOf(chr), 1);
     }
   } else {
     parties[party - 1].push(chr);
@@ -470,9 +518,9 @@ Events.prototype.assign_character_properties = function(offset){
  * Status: Not done, Not Understood
  */
 Events.prototype.show_object = function(offset){
-  chr = this.getSpriteFromIndex(this.context.rom[offset + 1])
-  chr.visible = true;
-
+  var chr = this.getSpriteFromIndex(this.context.rom[offset + 1])
+  
+  if (chr !== null) chr.visible = true;
   this.executeCue(offset + 2);
 }
 
@@ -481,9 +529,9 @@ Events.prototype.show_object = function(offset){
  * Status: Not done, Not Understood
  */
 Events.prototype.hide_object = function(offset){
-  chr = this.getSpriteFromIndex(this.context.rom[offset + 1])
-  chr.visible = false;
+  var chr = this.getSpriteFromIndex(this.context.rom[offset + 1])
   
+  if (chr !== null) chr.visible = false;
   this.executeCue(offset + 2);
 }
 
@@ -514,7 +562,7 @@ Events.prototype.assign_character_palette = function(offset){
  * 45: Refresh Objects
  * Status: Not understood
  */
-Events.prototype.refresh_objects = function(offset){
+Events.prototype.refresh_objects = function(offset){  
   this.executeCue(offset + 1);
 }
 
@@ -525,6 +573,39 @@ Events.prototype.refresh_objects = function(offset){
 Events.prototype.set_party = function(offset){
   this.context.ram.selectedParty = this.context.rom[offset + 1] - 1;
   this.executeCue(offset + 2);
+}
+
+/**
+ * 48, 4B Show a dialog message
+ * Status: Done
+ */
+
+Events.prototype.show_dialog = function(offset, halt){
+  var val = this.utils.getValue(offset + 1, 2),
+      bottom = (val & 0x8000) === 0x8000,
+      bg = (val & 0x4000) !== 0x4000,
+      index = val & 0x3fff,
+      pages = this.getText(index);
+
+  this.context.menus.openDialog(pages, bottom, bg, halt);
+
+  if (halt){
+    var self = this;
+    window.addEventListener("dialog-close", function next(){
+      self.executeCue(offset + 3);
+      window.removeEventListener('dialog-close', next);
+    }, false)
+  } else {
+    this.executeCue(offset + 3);
+  }
+}
+
+/**
+ * 51: Modify Background Color Range
+ * Status: Not understood, but sound like I should set the screens bg color
+ */
+Events.prototype.modify_background_color_range = function(offset){
+  this.executeCue(offset + 4);
 }
 
 /**
@@ -539,25 +620,28 @@ Events.prototype.fade_screen_black = function(offset, opacity){
 }
 
 /**
- * 6b: Load Map
+ * 6a, 6b: Load Map
  * Status: Done 
  */
-Events.prototype.load_map = function(offset){
+Events.prototype.load_map = function(offset, temporary){
   var mapIndex = this.utils.getValue(offset + 1, 2) & 0x3ff,
       coords = [this.context.rom[offset + 3], this.context.rom[offset + 4]],
       facing = this.context.rom[offset + 5];
 
   var self = this;
-  window.addEventListener('map-loaded', function loaded(){
-    window.removeEventListener('map-loaded', loaded);
-    self.executeCue(offset + 6);
-  }, false)
+  this.subroutines.push(offset + 6)
+  // window.addEventListener('map-loaded', function loaded(){
+  //   window.removeEventListener('map-loaded', loaded);
+  //   self.executeCue(offset + 6);
+  // }, false)
 
-  if (this.context.map === null){
-    this.context.map = new Map(mapIndex, this.context, coords, facing);
-  } else {
-    this.context.loadMap(mapIndex, coords, false, facing);
-  }
+  // this.context.effects.fade(['black'], 0, 300, function(){
+    if (this.context.map === null){
+      this.context.map = new Map(mapIndex, this.context, coords, facing);
+    } else {
+      this.context.loadMap(mapIndex, coords, false, facing);
+    }
+  // }.bind(this));
 }
 
 /**
@@ -565,7 +649,7 @@ Events.prototype.load_map = function(offset){
  * Status: Not done, understood, basically it just sets the map you'll exit to
  */
 Events.prototype.set_parent_map = function(offset){
-  console.log(offset.toString(16), "AFTER PARENT MAP", this.context.rom[offset + 6].toString(16) )
+  // console.log(offset.toString(16), "AFTER PARENT MAP", this.context.rom[offset + 6].toString(16) )
   this.executeCue(offset + 6);
 }
 
@@ -700,6 +784,14 @@ Events.prototype.toggle_conditions = function(offset){
 }
 
 /**
+ * 8B: Set HP to Max (maybe)?
+ * Status: Not understood, not implemented
+ */
+Events.prototype.set_hp_to_max = function(offset){
+  this.executeCue(offset + 3);
+}
+
+/**
  * 91 - 95: Pause
  * Done
  */
@@ -711,11 +803,31 @@ Events.prototype.pause = function(offset, duration){
 }
 
 /**
+ * 96 Refresh Map
+ * Done
+ */
+Events.prototype.refresh_map = function(offset){
+  var self = this,
+      duration = 300;
+
+  this.context.effects.fade(['black'], 1, duration, function(){ 
+    self.executeCue(offset + 1);
+  })
+}
+
+/**
+ * 98 Open name change dialog
+ * Not Done
+ */
+Events.prototype.open_name_change = function(offset){
+  this.executeCue(offset + 2);
+}
+
+/**
  * AB - Invoke Game Loading Screen
  * Status - This does a lot, all I know is that it clear bit 2ff
  */
 Events.prototype.invoke_game_loading_screen = function(offset){
-  console.log("FLAG 95", this.flags[95])
   this.flags[95] = this.flags[95] & (0x7f);
   this.executeCue(offset + 1);
 }
@@ -729,14 +841,14 @@ Events.prototype.repeat = function(offset){
       iterations = this.context.rom[offset + 1],
       soFar = 0;
 
-  console.log("Repeating " + iterations + " Times")
+  // console.log("Repeating " + iterations + " Times")
   
   var cntr = 2;
   while( self.context.rom[offset + cntr] !== 0xb1){ cntr += 1 };
 
   window.addEventListener("event-repeat", function repeat(){
     soFar += 1;
-    console.log("So Far", soFar);
+    // console.log("So Far", soFar);
     if (soFar < iterations){
       self.executeCue(offset + 2);
     } else {
@@ -762,16 +874,27 @@ Events.prototype.stop_repeat = function(offset){
  */
 Events.prototype.jump_to_subroutine = function(offset){
   var jump = this.utils.getValue(offset + 1, 3);
-  console.log(this.cueIndex, "SUBROUTINE AT ", (jump + 0xA0200).toString(16))
+  // console.log(this.cueIndex, "SUBROUTINE AT ", (jump + 0xA0200).toString(16))
   
-  this.cueIndex += 1;
-  var index = this.cueIndex;
+  this.subroutines.push(offset + 4);
+  this.executeCue(jump + 0x0A0200);
+}
 
-  var self = this;
-  window.addEventListener("event-cue-complete-" + index, function done(){
-    window.removeEventListener("event-cue-complete-" + index, done);
-    self.executeCue(offset + 4);
-  }, false);
+/**
+ * B3: Repeat subroutine
+ * Done
+ */
+Events.prototype.repeat_subroutine = function(offset){
+  var iterations = this.context.rom[offset + 1],
+      soFar = 0,
+      jump = this.utils.getValue(offset + 2, 3);
+
+  // console.log(this.cueIndex, "REPEAT SUBROUTINE AT ", (jump + 0xA0200).toString(16), iterations, "TIMES")
+  
+  this.subroutines.push(offset + 5);
+  for (var i=0; i<iterations - 1; i++){
+    this.subroutines.push(jump + 0x0A0200);
+  }
 
   this.executeCue(jump + 0x0A0200);
 }
@@ -786,6 +909,72 @@ Events.prototype.pause_for = function(offset){
   this.context.iterate(duration, 1, function(){}, function(){
     self.executeCue(offset + 2);
   }, false)
+}
+
+/**
+ * BE: Branch on casewords
+ * Status: I think I understand, and it should be working
+ */
+Events.prototype.branch_on_caseword = function(offset){
+  //Not sure if this is an if / else scenario or if it's an if / else if scenario. 
+  //The former is commented out below
+
+  // var iterations = this.context.rom[offset + 1],
+  //     word = (this.flags[53] << 8) + this.flags[52],
+  //     truth = false,
+  //     jump = null;
+
+  // console.log(word.toString(2))
+
+  // for (var i=0; i<iterations; i++){
+  //   var bank = (this.context.rom[offset + 4 + (i * 3)] & 0x0f) << 16,
+  //       bit = (this.context.rom[offset + 4 + (i * 3)] & 0xf0) >> 4;
+
+  //   if ((word & (1 << bit)) > 0){
+  //     var jump = bank + this.utils.getValue(offset + 2 + (i * 3), 2);
+
+  //     this.cueIndex += 1;
+  //     var index = this.cueIndex;
+
+  //     // var self = this;
+  //     // window.addEventListener("event-cue-complete-" + index, function done(){
+  //     //   window.removeEventListener("event-cue-complete-" + index, done);
+  //     //   self.executeCue(offset + 2 + (iterations * 3));
+  //     // }, false);
+
+  //     console.log("CONDITIONAL SUBROUTINE AT", (jump + 0x200).toString(16));
+
+  //     this.executeCue(jump + 0xA0200);
+  //   }
+  // }
+
+  // this.executeCue(offset + 2 + (iterations * 3));
+
+  var iterations = this.context.rom[offset + 1],
+      word = (this.flags[53] << 8) + this.flags[52],
+      truth = false,
+      jump = null;
+
+  for (var i=0; i<iterations; i++){
+    var bank = (this.context.rom[offset + 4 + (i * 3)] & 0x0f) << 16,
+        bit = (this.context.rom[offset + 4 + (i * 3)] & 0xf0) >> 4;
+
+    if ((word & (1 << bit)) > 0){
+      var jump = bank + this.utils.getValue(offset + 2 + (i * 3), 2);
+
+      truth = true;
+      break;
+    }
+  }
+
+  if (truth && jump !== null){
+    // console.log("CONDITIONAL SUBROUTINE AT", (jump + 0x200).toString(16));
+     
+    this.subroutines.push(offset + 2 + (iterations * 3));
+    this.executeCue(jump + 0xA0200);
+  } else {
+    this.executeCue(offset + 2 + (iterations * 3));
+  }
 }
 
 /**
@@ -812,11 +1001,31 @@ Events.prototype.and_conditional = function(num, offset){
   if (truth){
     var jump = this.utils.getValue(offset + 3, 3);
 
-    console.log(jump.toString(16), "IF CONDITIONAL BRANCH TO ", (jump + 0xA0200).toString(16))
+    // console.log(jump.toString(16), "IF CONDITIONAL BRANCH TO ", (jump + 0xA0200).toString(16))
     this.executeCue(jump + 0x0A0200);
   } else {
     this.executeCue(offset + 4 + (num * 2));
   }
+}
+
+/**
+ * DE Loads the current party into the word?
+ * Status: Not well understood, but it might be working
+ */
+Events.prototype.load_current_party_into_word = function(offset){
+  var word = 0,
+      party = this.utils.currentParty();
+
+  for (var i=0; i<4; i++){
+    if (party[i] !== null){
+      word += (1 << party[i])
+    }
+  }
+
+  this.flags[52] = (word & 0xff);
+  this.flags[53] = ((word & 0xff00) >> 8);
+
+  this.executeCue(offset + 1);
 }
 
 /**
@@ -840,8 +1049,7 @@ Events.prototype.set_or_clear_event_bit = function(extra, offset, value){
       dist = (val / 8) | 0,
       bit = val - (dist * 8);
 
-  console.log(val, extra, this.context.rom[offset + 1])
-  console.log("SETTING BYTE " + (dist) + " BIT " + bit + " TO " + value)
+  // console.log("SETTING BYTE " + (dist) + " BIT " + bit + " TO " + value)
 
   if (value === 0){
     this.flags[dist] = this.flags[dist] & (255 - (1 << bit));
@@ -857,6 +1065,16 @@ Events.prototype.set_or_clear_event_bit = function(extra, offset, value){
  * Status: Not implemented
  */
 Events.prototype.play_sound_fx = function(offset){
+  this.executeCue(offset + 2);
+}
+
+/**
+  * F2: Fade out current song
+  * Status: Not implemented
+  */
+Events.prototype.fade_out_song = function(offset){
+  var speed = this.context.rom[offset + 1];
+
   this.executeCue(offset + 2);
 }
 
@@ -887,31 +1105,11 @@ Events.prototype.or_conditional = function(num, offset){
   if (truth){
     var jump = this.utils.getValue(offset + 3, 3);
 
-    console.log(jump.toString(16), "OR CONDITIONAL BRANCH TO ", (jump + 0xA0200).toString(16))
+    // console.log(jump.toString(16), "OR CONDITIONAL BRANCH TO ", (jump + 0xA0200).toString(16))
     this.executeCue(jump + 0x0A0200);
   }
 
   this.executeCue(offset + 4 + (num * 2));
-}
-
-Events.prototype.show_dialog = function(offset, halt){
-  var val = this.utils.getValue(offset + 1, 2),
-      bottom = (val & 0x8000) === 0x8000,
-      bg = (val & 0x4000) !== 0x4000,
-      index = val & 0x3fff,
-      pages = this.getText(index);
-
-  this.context.menus.openDialog(pages, bottom, bg);
-
-  if (halt){
-    var self = this;
-    window.addEventListener("dialog-close", function next(){
-      self.executeCue(offset + 3);
-      window.removeEventListener('dialog-close', next);
-    }, false)
-  } else {
-    this.executeCue(offset + 3);
-  }
 }
 
 //Screen Stuff
@@ -919,6 +1117,7 @@ Events.prototype.hold_screen = function(offset){
   if (!!this.context.map){
     //TODO: implement this
     this.context.ram.holdScreen = true;
+  
   } 
 
   this.executeCue(offset + 1);

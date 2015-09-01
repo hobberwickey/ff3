@@ -26,12 +26,8 @@
       var effect = {
         data: [ 0, 0, 0, 1, 1, 0, 0, 0 ],
         fn: function(y){
-          var offset = y % effect.data.length;
-          if (effect.data[offset] === 1){ 
-            return y - 1
-          } else {
-            return y
-          }
+          var offset = y & 7;
+          return effect.data[offset] === 0 ? y : y - 1;
         }.bind(this)
       }
 
@@ -151,7 +147,8 @@
       function drawBG(tiles){
         var tiles = TILES,
             info = INFO[INFO_INDEX];
-      
+        
+        console.log(tiles);
         var pals = [PALETTE_1, PALETTE_2, PALETTE_3];
 
         var assembly1 = ASSEMBLY_DATA[info[3]],

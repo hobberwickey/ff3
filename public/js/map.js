@@ -38,6 +38,7 @@ var Map = function(index, context, coords, facing){
     this.spriteController.character = this.character;
     this.character.isCharacter = true
     this.character.visible = true
+    this.character.speed = 200;
   }
 
   this.entrances = {}
@@ -68,6 +69,7 @@ Map.prototype.loadMap = function(coords, facing){
     if (party[j] !== null){
       this.sprites[party[j]].coords.x = this.map_pos.coords.x + 128;
       this.sprites[party[j]].coords.y = this.map_pos.coords.y + 112;
+      this.sprites[party[j]].moving = false;
     }
   }
 
@@ -75,8 +77,7 @@ Map.prototype.loadMap = function(coords, facing){
   this.context.loading = false;
   this.context.resume(300);
 
-  console.log("LOADING EVENT:", this.map_data.entrance_event.toString(16));
-  this.context.events.beginCue(this.map_data.entrance_event + 0xa0200)
+  this.context.events.beginCue(this.map_objects.entrance_event + 0xa0200)
   window.dispatchEvent( new Event("map-loaded") );
 }
 
@@ -88,9 +89,14 @@ Map.prototype.setupControls = function(){
 
   var move = function(directions){
     var sprite = self.sprites[self.utils.currentParty()[0]];
-    if (sprite.moving) return;
+    if (sprite.moving || self.context.events.ongoing) return;
 
     self.move(sprite, directions, function(){}, false, true)
+
+    var facing = [0x01, 0x02, 0x04, 0x08];
+
+    self.context.events.flags[54] = self.context.events.flags[54] & 0xf0;
+    self.context.events.flags[54] = self.context.events.flags[54] | facing[sprite.facing];
   }
 
   var actions = {
@@ -250,12 +256,13 @@ Map.prototype.drawSprite = function(data, sprite, mapBounds, sprite_positions, p
 
     for (var y=0; y<8; y++){
       for (var x=0; x<8; x++){
+        //try{
         var color_index = sprite.gfx[spritePos[b]][x + (y << 3)],
             color = palettes[sprite.palette][color_index],
             x_pixel = mirror === 0 ? x + x_offset : 15 - (x + x_offset),
             data_x = (back_edge - mapBounds.x1) + x_pixel,
             data_y = (y + (top_edge - mapBounds.y1)) + y_offset;
-
+        //} catch(e){ console.log(sprite) }
         var dpTile = physMap[(back_edge + x_pixel) >> 4][(top_edge + y + 16) >> 4],
             mpTile = physMap[(back_edge + x_pixel) >> 4][(top_edge + y + y_offset) >> 4],
             mask = sprite.priority === 0 && mpTile.mask === 1,
@@ -602,23 +609,29 @@ Map.prototype.buildPhysicalMap = function(){
   }
 }
 
-Map.prototype.checkEvents = function(sprite, x, y){
+Map.prototype.checkEvents = function(sprite, x, y, execute){
   x = x >> 4;
   y = y >> 4;
 
-  if (sprite !== this.character){ 
+  if (!sprite.isCharacter || this.context.events.ongoing){ 
     return false;
   }
 
   if (this.entrances[x] !== void(0) && this.entrances[x][y] !== void(0)){
-    this.entrances[x][y]();
+    if (execute) this.entrances[x][y]();
     return true;
   } else {
     return false;
   }
+
+  // if (this.events[x] !== void(0) && this.events[x][y] !== void(0)){
+  //   return true;
+  // } else {
+  //   return false;
+  // }
 }
 
-Map.prototype.canMoveLeft = function(sprite){
+Map.prototype.canMoveLeft = function(sprite, directions){
   // return true
   if (sprite.coords.x === 0) return false;
   
@@ -631,19 +644,17 @@ Map.prototype.canMoveLeft = function(sprite){
     if (current.stairs === 1) {
       next = current.south_west,
       yes = next.stairs === 1;
-
-      if ( yes ) this.southStairs(sprite);
+      if ( yes ) directions[2] = 1;
 
     } else if (current.stairs === 2){
       next = current.north_west;
       yes = current.stairs === 2;
-
-      if ( yes ) this.northStairs(sprite);
+      if ( yes ) directions[0] = 1;
     }
   }
   
-  if ( this.checkEvents(sprite, sprite.coords.x - 1, sprite.coords.y) ) return true;
-  if ( this.checkEvents(sprite, sprite.coords.x, sprite.coords.y) ) return true;
+  if ( this.checkEvents(sprite, sprite.coords.x - 1, sprite.coords.y, false) ) return true;
+  if ( this.checkEvents(sprite, sprite.coords.x, sprite.coords.y, false) ) return true;
 
   if ( yes ){
     sprite.priority = next.priority(sprite);
@@ -653,7 +664,7 @@ Map.prototype.canMoveLeft = function(sprite){
   }
 }
 
-Map.prototype.canMoveRight = function(sprite){
+Map.prototype.canMoveRight = function(sprite, directions){
   // return true
   if (sprite.coords.x === this.width - 1) return false;
   
@@ -667,17 +678,17 @@ Map.prototype.canMoveRight = function(sprite){
       next = current.north_east;
       yes = next.stairs === 1;
 
-      if ( yes ) this.northStairs(sprite);
+      if ( yes ) directions[0] = 1;
     } else if (current.stairs === 2){
       next = current.south_east;
       yes = next.stairs === 2;
 
-      if ( yes ) this.southStairs(sprite);
+      if ( yes ) directions[2] = 1;
     }
   }
 
-  if ( this.checkEvents(sprite, sprite.coords.x + 1, sprite.coords.y) ) return true;
-  if ( this.checkEvents(sprite, sprite.coords.x, sprite.coords.y) ) return true;
+  if ( this.checkEvents(sprite, sprite.coords.x + 1, sprite.coords.y, false) ) return true;
+  if ( this.checkEvents(sprite, sprite.coords.x, sprite.coords.y, false) ) return true;
 
   if ( yes ){
     sprite.priority = next.priority(sprite);
@@ -689,8 +700,8 @@ Map.prototype.canMoveRight = function(sprite){
 
 Map.prototype.canMoveUp = function(sprite){
   // return true
-  if (sprite.coords.y === 0) return false;
-  if ( this.checkEvents(sprite, sprite.coords.x, sprite.coords.y - 1) ) return true;
+  if (sprite.coords.y <= 0) return false;
+  if ( this.checkEvents(sprite, sprite.coords.x, sprite.coords.y - 1, false) ) return true;
 
   var map = this.physical_map,
       current = map[sprite.coords.x >> 4][sprite.coords.y >> 4].north,
@@ -707,7 +718,7 @@ Map.prototype.canMoveUp = function(sprite){
 Map.prototype.canMoveDown = function(sprite){
   // return true
   if (sprite.coords.y === this.height - 1) return false
-  if ( this.checkEvents(sprite, sprite.coords.x, sprite.coords.y + 1) ) return true;
+  if ( this.checkEvents(sprite, sprite.coords.x, sprite.coords.y + 1, false) ) return true;
 
 
   var map = this.physical_map,
@@ -722,157 +733,157 @@ Map.prototype.canMoveDown = function(sprite){
   }
 }
 
-Map.prototype.moveRight = function(){
-  var sprite = this.character,
-      self = this;
+// Map.prototype.moveRight = function(){
+//   var sprite = this.character,
+//       self = this;
 
-  if ( this.walkRight(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.coordsx < this.width - 16 && sprite.coords.x - this.map_pos.x >= 8){ 
-    this.scrollRight(this.map_pos.coords, sprite.speed);
-  }
-}
+//   if ( this.walkRight(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.coordsx < this.width - 16 && sprite.coords.x - this.map_pos.x >= 8){ 
+//     this.scrollRight(this.map_pos.coords, sprite.speed);
+//   }
+// }
 
-Map.prototype.walkRight = function(sprite, speed, callback){
-  var self = this;
-  if ( sprite.coords.moving ) return false;
+// Map.prototype.walkRight = function(sprite, speed, callback){
+//   var self = this;
+//   if ( sprite.coords.moving ) return false;
   
-  sprite.position = 7;
-  sprite.mirror = 1;
+//   sprite.position = 7;
+//   sprite.mirror = 1;
   
-  if ( !self.canMoveRight(sprite) ) return false;
+//   if ( !self.canMoveRight(sprite) ) return false;
 
-  var frames = (sprite.speed / 1000) * 60
-  self.scrollRight(sprite.coords, sprite.speed);
+//   var frames = (sprite.speed / 1000) * 60
+//   self.scrollRight(sprite.coords, sprite.speed);
 
-  self.context.iterate((frames / 2) | 0, 1, function(){
-    if (sprite.position === 7){
-      sprite.position = sprite.lastStep === 0 ? 6 : 8;
-      sprite.lastStep = sprite.lastStep === 0 ? 1 : 0;
-    } else {
-      sprite.position = 7;
-    }
-  }, function(){
-    sprite.position = 7;
-    if (callback !== void(0)) callback();
-  }, false)
+//   self.context.iterate((frames / 2) | 0, 1, function(){
+//     if (sprite.position === 7){
+//       sprite.position = sprite.lastStep === 0 ? 6 : 8;
+//       sprite.lastStep = sprite.lastStep === 0 ? 1 : 0;
+//     } else {
+//       sprite.position = 7;
+//     }
+//   }, function(){
+//     sprite.position = 7;
+//     if (callback !== void(0)) callback();
+//   }, false)
 
-  return true;
-}
+//   return true;
+// }
 
 
-Map.prototype.moveLeft = function(){
-  var sprite = this.character,
-      self = this;
+// Map.prototype.moveLeft = function(){
+//   var sprite = this.character,
+//       self = this;
 
-  if ( this.walkLeft(sprite, 1) && this.map_pos.coords.x > 0 && sprite.coords.x - this.map_pos.coords.x <= 8){ 
-    this.scrollLeft(this.map_pos.coords, sprite.speed);
-  }
-}
+//   if ( this.walkLeft(sprite, 1) && this.map_pos.coords.x > 0 && sprite.coords.x - this.map_pos.coords.x <= 8){ 
+//     this.scrollLeft(this.map_pos.coords, sprite.speed);
+//   }
+// }
 
-Map.prototype.walkLeft = function(sprite, speed, callback){
-  var self = this;
-  if ( sprite.coords.moving ) return false;
+// Map.prototype.walkLeft = function(sprite, speed, callback){
+//   var self = this;
+//   if ( sprite.coords.moving ) return false;
   
-  sprite.position = 7;
-  sprite.mirror = 0;
-  if ( !self.canMoveLeft(sprite) ) return false;
+//   sprite.position = 7;
+//   sprite.mirror = 0;
+//   if ( !self.canMoveLeft(sprite) ) return false;
 
-  var frames = (sprite.speed / 1000) * 60
-  self.scrollLeft(sprite.coords, sprite.speed);
+//   var frames = (sprite.speed / 1000) * 60
+//   self.scrollLeft(sprite.coords, sprite.speed);
 
-  self.context.iterate((frames / 2) | 0, 1, function(){
-    if (sprite.position === 7){
-      sprite.position = sprite.lastStep === 0 ? 6 : 8;
-      sprite.lastStep = sprite.lastStep === 0 ? 1 : 0;
-    } else {
-      sprite.position = 7;
-    }
-  }, function(){
-    sprite.position = 7;
-    if (callback !== void(0)) callback();
-  }, false)
+//   self.context.iterate((frames / 2) | 0, 1, function(){
+//     if (sprite.position === 7){
+//       sprite.position = sprite.lastStep === 0 ? 6 : 8;
+//       sprite.lastStep = sprite.lastStep === 0 ? 1 : 0;
+//     } else {
+//       sprite.position = 7;
+//     }
+//   }, function(){
+//     sprite.position = 7;
+//     if (callback !== void(0)) callback();
+//   }, false)
 
-  return true;
-}
+//   return true;
+// }
 
-Map.prototype.moveDown = function(){
-  var sprite = this.character,
-      self = this;
+// Map.prototype.moveDown = function(){
+//   var sprite = this.character,
+//       self = this;
 
-  if ( this.walkDown(sprite, 1, function(){ self.checkEvents() }, [0, 0, 0, 0]) && this.map_pos.coords.y < this.height - 16 && sprite.coords.y - this.map_pos.coords.y >= 6){ 
-    this.scrollDown(this.map_pos.coords, sprite.speed, function(){}, [0, 0, 0, 0]);
-  }
-}
+//   if ( this.walkDown(sprite, 1, function(){ self.checkEvents() }, [0, 0, 0, 0]) && this.map_pos.coords.y < this.height - 16 && sprite.coords.y - this.map_pos.coords.y >= 6){ 
+//     this.scrollDown(this.map_pos.coords, sprite.speed, function(){}, [0, 0, 0, 0]);
+//   }
+// }
 
-Map.prototype.walkDown = function(sprite, speed, callback, diagonals){
-  var self = this;
+// Map.prototype.walkDown = function(sprite, speed, callback, diagonals){
+//   var self = this;
 
-  if ( sprite.coords.moving ) return false;
+//   if ( sprite.coords.moving ) return false;
   
-  sprite.position = 1;
-  sprite.mirror = 0;
-  if ( !self.canMoveDown(sprite) ) return false;
+//   sprite.position = 1;
+//   sprite.mirror = 0;
+//   if ( !self.canMoveDown(sprite) ) return false;
 
-  var frames = (sprite.speed / 1000) * 60;
-  self.scrollDown(sprite.coords, sprite.speed);
+//   var frames = (sprite.speed / 1000) * 60;
+//   self.scrollDown(sprite.coords, sprite.speed);
 
-  self.context.iterate((frames / 2) | 0, 1, function(){
-    if (sprite.position === 1){
-      sprite.position = sprite.lastStep === 0 ? 0 : 2;
-      sprite.lastStep = sprite.lastStep === 0 ? 1 : 0;
-      sprite.mirror = sprite.lastStep;
-    } else {
-      sprite.position = 1;
-      sprite.mirror = 0;
-    }
-  }, function(){
-    sprite.position = 1;
-    sprite.mirror = 0;
-    if (callback !== void(0)) callback();
-  }, false)
+//   self.context.iterate((frames / 2) | 0, 1, function(){
+//     if (sprite.position === 1){
+//       sprite.position = sprite.lastStep === 0 ? 0 : 2;
+//       sprite.lastStep = sprite.lastStep === 0 ? 1 : 0;
+//       sprite.mirror = sprite.lastStep;
+//     } else {
+//       sprite.position = 1;
+//       sprite.mirror = 0;
+//     }
+//   }, function(){
+//     sprite.position = 1;
+//     sprite.mirror = 0;
+//     if (callback !== void(0)) callback();
+//   }, false)
 
-  return true;
-}
+//   return true;
+// }
 
-Map.prototype.moveUp = function(){
-  var sprite = this.character,
-      self = this;
+// Map.prototype.moveUp = function(){
+//   var sprite = this.character,
+//       self = this;
 
-  if ( this.walkUp(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.coords.y > 0 && sprite.coords.y - this.map_pos.coords.y <= 6){ 
-    this.scrollUp(this.map_pos.coords, sprite.speed);
-  }
-}
+//   if ( this.walkUp(sprite, 1, function(){ self.checkEvents() }) && this.map_pos.coords.y > 0 && sprite.coords.y - this.map_pos.coords.y <= 6){ 
+//     this.scrollUp(this.map_pos.coords, sprite.speed);
+//   }
+// }
 
-Map.prototype.walkUp = function(sprite, speed, callback){
-  var self = this;
-  if ( sprite.coords.moving ) return false;
+// Map.prototype.walkUp = function(sprite, speed, callback){
+//   var self = this;
+//   if ( sprite.coords.moving ) return false;
   
-  sprite.position = 4;
-  if ( !self.canMoveUp(sprite) ) return false;
+//   sprite.position = 4;
+//   if ( !self.canMoveUp(sprite) ) return false;
 
-  var frames = (sprite.speed / 1000) * 60;
-  self.scrollUp(sprite.coords, sprite.speed);
+//   var frames = (sprite.speed / 1000) * 60;
+//   self.scrollUp(sprite.coords, sprite.speed);
 
-  self.context.iterate((frames / 2) | 0, 1, function(){
-    if (sprite.position === 4){
-      sprite.position = sprite.lastStep === 0 ? 3 : 5;
-      sprite.lastStep = sprite.lastStep === 0 ? 1 : 0;
-      sprite.mirror = sprite.lastStep;
-    } else {
-      sprite.position = 4;
-    }
-  }, function(){
-    sprite.position = 4;
-    if (callback !== void(0)) callback();
-  }, false)
+//   self.context.iterate((frames / 2) | 0, 1, function(){
+//     if (sprite.position === 4){
+//       sprite.position = sprite.lastStep === 0 ? 3 : 5;
+//       sprite.lastStep = sprite.lastStep === 0 ? 1 : 0;
+//       sprite.mirror = sprite.lastStep;
+//     } else {
+//       sprite.position = 4;
+//     }
+//   }, function(){
+//     sprite.position = 4;
+//     if (callback !== void(0)) callback();
+//   }, false)
 
-  return true;
-}
+//   return true;
+// }
 
 Map.prototype.move = function(sprite, directions, callback, override, checkEvents){
   var self = this,
       map = this.map_pos.coords,
       coords = sprite.coords,
-      _callback = checkEvents ? function(){ self.checkEvents(); callback(); } : callback;
+      _callback = checkEvents ? function(){ self.checkEvents(sprite, sprite.coords.x, sprite.coords.y, true); callback(); } : callback;
   
   var moved = this.walk(sprite, directions, _callback, override);
 
@@ -883,7 +894,7 @@ Map.prototype.move = function(sprite, directions, callback, override, checkEvent
     scroll_directions[1] = (directions[1] !== 0 && (map.x >> 4) < this.width && coords.x - map.y < 112) ? directions[1] : 0;
     scroll_directions[2] = (directions[2] !== 0 && (map.y >> 4) < this.height && coords.y - map.y > 112) ? directions[2] : 0;
     scroll_directions[3] = (directions[3] !== 0 && (map.x >> 4) !== 0 && coords.x - map.x < 112) ? directions[3] : 0
-    this.scroll(this.map_pos, scroll_directions, function(){});
+    this.scroll(this.map_pos, scroll_directions, function(){}, sprite.speed);
   }
 }
 
@@ -893,21 +904,27 @@ Map.prototype.walk = function(sprite, directions, callback, override){
   var suffix = directions[1] !== 0 ? "Right" : (directions[3] !== 0 ? "Left" : (directions[0] !== 0 ? "Up" : "Down"));
   
   var position = {
-    Up: [3, 4, 5, 0, sprite.lastStep],
-    Right: [6, 7, 8, 1, 1],
-    Down: [0, 1, 2, 0, sprite.lastStep],
-    Left: [6, 7, 8, 0, 0]
+    Up: [3, 4, 5, 0, sprite.lastStep, 0],
+    Right: [6, 7, 8, 1, 1, 1],
+    Down: [0, 1, 2, 0, 0, 2],
+    Left: [6, 7, 8, 0, 0, 3]
   }[suffix];
 
-  sprite.position = position[1];
-  sprite.mirror = position[4];
+  
+  if (sprite.walkingEnabled){
+    sprite.position = position[1];
+    sprite.mirror = position[4];
+    sprite.facing = position[5];
+  }
 
-  if (!this["canMove" + suffix](sprite) && !override) return false;
+  if (!this["canMove" + suffix](sprite, directions) && !override) return false;
 
   var self = this;
       frames = ((((sprite.speed / 1000) * 60) - 2 ) / 2) | 0;
   
   self.scroll(sprite, directions, callback);
+  
+  if (!sprite.walkingEnabled) return true;
   self.context.iterate(frames, 1, function(){
     if (sprite.position === position[1]){
       sprite.position = sprite.lastStep === 0 ? position[0] : position[2];
@@ -924,8 +941,11 @@ Map.prototype.walk = function(sprite, directions, callback, override){
   return true;
 }
 
-Map.prototype.scroll = function(obj, directions, callback){
-  var frames = ((obj.speed / 1000) * 60) | 0,
+Map.prototype.scroll = function(obj, directions, callback, speed){
+  speed = speed || obj.speed;
+
+  var self = this,
+      frames = ((speed / 1000) * 60) | 0,
       dif = 16 / frames,
       coords = obj.coords,
       original = { x: coords.x, y: coords.y };
@@ -941,6 +961,21 @@ Map.prototype.scroll = function(obj, directions, callback){
     }
   }, function(){
     obj.moving = false;
+
+    if (obj.isCharacter){
+      var party = self.context.ram.parties[self.context.ram.selectedParty];
+      
+      for (var i=0; i<4; i++){
+        if (party[i] === null) continue;
+        var chr = self.context.characters[party[i]].sprite;
+
+        if (!chr.visible){
+          chr.coords.x = coords.x;
+          chr.coords.y = coords.y;
+        }
+      }
+    }
+
     if (callback !== void(0)) callback();
   }, true)
 }
@@ -1050,8 +1085,8 @@ var MapData = function(index, context){
   this.tilesets = this.getTilesets();
   this.tile_properties = this.getTileProperties();
   
-  this.getEvents();
-  this.getTreasure();
+  // this.getEvents();
+  // this.getTreasure();
 }
 
 MapData.prototype.getSpecs = function(){
@@ -1123,27 +1158,6 @@ MapData.prototype.getSpecs = function(){
       (map_data & (0x3ff << 20)) >> 20,
     ]
   }
-}
-
-MapData.prototype.getEvents = function(){
-  this.entrance_event = this.utils.getValue(0x11fc00 + (this.index * 3), 3);
-  this.events = [];
-
-  var first = this.utils.getValue(0x040000 + (this.index * 2), 2),
-      last = this.utils.getValue(0x040002 + (this.index * 2), 2),
-      num = (last - first) / 5;
-
-  for (var i=0; i<num; i++){
-    events.push({
-      x: this.context.rom[0x40000 + first + (i * 5), 1],
-      y: this.context.rom[0x40000 + first + (i * 5) + 1],
-      pntr: this.utils.getValue(0x40000 + first + (i * 5) + 2, 3)
-    });
-  } 
-}
-
-MapData.prototype.getTreasure = function(){
-  this.treasure = [];
 }
 
 MapData.prototype.getPalette = function(){

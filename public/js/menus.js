@@ -31,12 +31,13 @@ Menus.prototype.closeMain = function(){
   this.context.resume(200);
 }
 
-Menus.prototype.openDialog = function(pages, bottom, bg){
+Menus.prototype.openDialog = function(pages, bottom, bg, wait){
   var wrapper = document.querySelector("#menu"),
       menu = document.createElement('dialog-menu');
       menu.pages = pages
       menu.displayOnBottom = bottom;
       menu.showBackground = bg;
+      menu.wait = wait;
 
   menu.context = this.context;
 
@@ -52,7 +53,6 @@ Menus.prototype.openDialog = function(pages, bottom, bg){
 }
 
 Menus.prototype.closeDialog = function(){
-  console.log("CLOSING")
   var wrapper = document.querySelector("#menu");
       wrapper.style.opacity = 0;
       wrapper.dataset.opened = 0;
@@ -62,7 +62,6 @@ Menus.prototype.closeDialog = function(){
 }
 
 Menus.prototype.setDialogTimer = function(duration){
-  console.log(duration)
   var timer = true;
 
   window.addEventListener("text-ready", function ready(){

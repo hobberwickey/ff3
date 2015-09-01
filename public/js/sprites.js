@@ -50,7 +50,7 @@ Sprites.prototype.getSprites = function(index){
 
     var sprite = new Sprite(data, this.context);
 
-    this.sprite_coords[data.coords.x >> 4][data.coords.y >> 4] = sprite;
+    if (sprite.visible) this.sprite_coords[data.coords.x >> 4][data.coords.y >> 4] = sprite;
     this.sprites.push( sprite );
   }
 
@@ -127,6 +127,7 @@ Sprites.prototype.checkForNPC = function(){
   var sprite = this.sprite_coords[pos.x >> 4][pos.y >> 4];
 
   if (sprite !== 0){
+    console.log("SPRITE FOUND", sprite.event.toString(16))
     this.context.events.executeCue(sprite.event);
   } else {
     console.log('nothing!')

@@ -1,6 +1,8 @@
 var Effects = function(context){
   this.context = context
-  this.masks = { black: 1, blue: 1, red: 1, green: 1, }
+  this.masks = { black: 1, blue: 1, red: 1, green: 1, },
+  this.rippleTimer = null;
+  this.rippleFn = null;
 }
 
 Effects.prototype.fade = function(keys, opacity, duration, callback){
@@ -26,6 +28,34 @@ Effects.prototype.fade = function(keys, opacity, duration, callback){
     callback();
   }, true)
 }
+
+Effects.prototype.ripple = function(){
+  this.stopRipple();
+
+  var effect = {
+    data: [ 0, 0, 0, 1, 1, 0, 0, 0 ],
+    fn: function(y){
+      var offset = y & 7;
+      return effect.data[offset] === 0 ? y : y - 1;
+    }.bind(this)
+  }
+
+  this.rippleTimer = setInterval(function(){
+    var item = effect.data[1];
+    effect.data.splice(1, 1);
+    effect.data.push(item);
+  }, 150)
+
+  this.rippleFn = effect.fn.bind(this);
+}
+
+Effects.prototype.stopRipple = function(){
+  if (this.rippleTimer !== null){
+    clearInterval(this.rippleTimer);
+    this.rippleTimer = null;
+  }
+}
+
 
 Effects.prototype.linearTransition = function(from, to, delta){
   return (to - from) * delta + from;

@@ -28,6 +28,7 @@
       height: { type: Number, value: 9 },
       pages: { type: Array, value: [] },
       page: { type: Number, value: 0 },
+      wait: { type: Boolean },
       displayOnBottom: { type: Boolean, value: false },
       showBackground: { type: Boolean, value: true }
     },
@@ -40,11 +41,15 @@
           wrapper = document.querySelector("#menu");
       
       if (this.showBackground){      
-        wrapper.addEventListener("transitionend", function _write(){
+        
+        var t = setTimeout(function(){
           self.showPage();
-          wrapper.removeEventListener("transitionend", _write);
-        }, false);
+        }, 200);
+      } else {
+        self.showPage();
+      }
 
+      if (this.wait){
         window.addEventListener("text-ready", function _can_close(){
           window.addEventListener("a-end", function _close(){
             if (self.page + 1 < self.pages.length){
@@ -58,8 +63,6 @@
             window.removeEventListener("a-end", _close);
           }, false);
         }, false);
-      } else {
-        self.showPage();
       }
     },
 

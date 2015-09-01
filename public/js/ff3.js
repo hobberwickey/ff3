@@ -1,7 +1,10 @@
 var FF3 = function(rom){
   this.rom = new Uint8ClampedArray(rom);
   this.ram = {
-    parties: [[0],[],[]],
+    parties: [[4, 0, 1, null],[],[]],
+    partyLocation: {x: 0, y: 0},
+    worldMapLocation: {x: 0, y: 0},
+    airshipLocation: {x: 0, y: 0},
     selectedParty: 0,
     mapCharacter: null,
     dialogOpened: false,
@@ -38,6 +41,7 @@ var FF3 = function(rom){
   this.ctxData = this.ctx.getImageData(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
   this.pixelData = this.ctxData.data;
 
+  this.battles = new Battles(this);
   this.controls = new Controls(this);
   this.menus = new Menus(this);
   this.utils = new Utils(this);
@@ -73,6 +77,14 @@ FF3.prototype.loadMap = function(index, coords, showName, facing){
   }.bind(this));
 }
 
+FF3.prototype.openBattle = function(bg, monster_set){
+  var old = this.drawScreen;
+
+  this.battle = new Battle(this, bg, monster_set);
+  this.clearScreen();
+  this.drawScreen = function(data){ this.battle.draw(data) };
+}
+
 FF3.prototype.loadWorldMap = function(map, coords){
   this.test.innerHTML = "Loading"
   
@@ -89,20 +101,20 @@ FF3.prototype.loadWorldMap = function(map, coords){
 FF3.prototype.pause = function(opacity, duration, callback){
   var self = this;
     
-  //this.effects.fade(['black'], opacity, duration, function(){
+  this.effects.fade(['black'], opacity, duration, function(){
       self.paused = true;
       if (callback) callback();
-  //})
+  })
 }
 
 FF3.prototype.resume = function(duration, callback){
   this.paused = false;
   this.loop();
 
-  //this.effects.fade(['black'], 1, duration, function(){ 
+  this.effects.fade(['black'], 1, duration, function(){ 
     this.paused = false
     if (callback) callback();
-  //}.bind(this));
+  }.bind(this));
 }
 
 FF3.prototype.clearScreen = function(){

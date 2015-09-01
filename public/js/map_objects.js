@@ -3,6 +3,7 @@ var MapObjects = function(index, context){
   this.context = context;
   this.utils = new Utils(context);
 
+  this.entrance_event = null;
   this.long_entrances = [];
   this.entrances = [];
   this.events = [];
@@ -10,6 +11,7 @@ var MapObjects = function(index, context){
 
   this.getEntrances();
   this.getLongEntrances();
+  this.getEvents();
 }
 
 MapObjects.prototype.getEntrances = function(){
@@ -40,4 +42,27 @@ MapObjects.prototype.getLongEntrances = function(){
 
     this.long_entrances.push( entrance );
   }
+}
+
+MapObjects.prototype.getEvents = function(){
+  this.entrance_event = this.utils.getValue(0x11fc00 + (this.index * 3), 3);
+  this.events = [];
+
+  var first = this.utils.getValue(0x040200 + (this.index * 2), 2),
+      last = this.utils.getValue(0x040202 + (this.index * 2), 2),
+      num = (last - first) / 5;
+
+  for (var i=0; i<num; i++){
+    var ev = {
+      x: this.context.rom[0x40200 + first + (i * 5)],
+      y: this.context.rom[0x40200 + first + (i * 5) + 1],
+      pntr: this.utils.getValue(0x40200 + first + (i * 5) + 2, 3)
+    }
+
+    this.events.push(ev);
+  } 
+}
+
+MapObjects.prototype.getTreasure = function(){
+  this.treasure = [];
 }

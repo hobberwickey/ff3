@@ -35,10 +35,11 @@ Utils.prototype.currentParty = function(){
   return this.context.ram.parties[this.context.ram.selectedParty]
 }
 
-Utils.prototype.buildPalette = function(offset){
+Utils.prototype.buildPalette = function(offset, colors){
   var palette = []
   
-  for (var i=0; i<16; i++){
+  colors = colors || 16;
+  for (var i=0; i<colors; i++){
     var bytes = this.getValue( offset + (i * 2), 2 ),
         r = bytes & 31,
         g = (bytes & ( 31 << 5 )) >> 5, 
@@ -74,6 +75,7 @@ Utils.prototype.getValue = function(offset, bytes){
 Utils.prototype.loadEntrances = function(map_objects){
   var shorts = map_objects.entrances,
       longs = map_objects.long_entrances,
+      events = map_objects.events,
       context = this.context,
       entrances = {};
 
@@ -127,6 +129,17 @@ Utils.prototype.loadEntrances = function(map_objects){
     }
   }
 
+  for (var i=0; i<events.length; i++){
+    var e = events[i];
+    if (entrances[e.x] === void(0)) entrances[e.x] = {};
+    
+    entrances[e.x][e.y] = (function(e){
+      return function(){
+        context.events.executeCue(e.pntr + 0xa0200);
+      } 
+    })(e)
+  }
+
   return entrances;  
 }
 
@@ -134,7 +147,7 @@ Utils.prototype.decompress = function(offset, max){
   max = max || 8192;
 
   var len = this.getValue(offset, 2),
-      output = new Uint8ClampedArray(max),
+      output = [],
       cntr = 0,
       pos = offset + 2,
       win = 0;
@@ -197,6 +210,58 @@ Utils.prototype.assemble_4bit = function(tile_offset, hFlip, vFlip, bytes){
           color += ((byte2 & (1 << shift)) >> shift) << 1;
           color += ((byte3 & (1 << shift)) >> shift) << 2;
           color += ((byte4 & (1 << shift)) >> shift) << 3;
+      
+      var x_offset = hFlip ? 7 - x : x;
+
+      color_index = x_offset + (y_offset * 8)
+      tile[color_index] = color
+    }
+  }
+
+  return tile;
+}
+
+Utils.prototype.assemble_2bit = function(tile_offset, hFlip, vFlip, bytes){
+  var gfx = bytes || this.context.rom,
+      tile = [];
+
+  for (var y=0; y<8; y++){
+    var byte1 = gfx[tile_offset + (y * 2)],
+        byte2 = gfx[tile_offset + 1 + (y * 2)];
+    
+    var y_offset = vFlip ? 7 - y : y;
+
+    for (var x=0; x<8; x++){
+      var shift = 7 - x,
+          color = (byte1 & (1 << shift)) >> shift;
+          color += ((byte2 & (1 << shift)) >> shift) << 1;
+      
+      var x_offset = hFlip ? 7 - x : x;
+
+      color_index = x_offset + (y_offset * 8)
+      tile[color_index] = color
+    }
+  }
+
+  return tile;
+}
+
+Utils.prototype.assemble_3bit = function(tile_offset, hFlip, vFlip, bytes){
+  var gfx = bytes || this.context.rom,
+      tile = [];
+
+  for (var y=0; y<8; y++){
+    var byte1 = gfx[tile_offset + (y * 2)],
+        byte2 = gfx[tile_offset + 1 + (y * 2)],
+        byte3 = gfx[tile_offset + 16 + y];
+    
+    var y_offset = vFlip ? 7 - y : y;
+
+    for (var x=0; x<8; x++){
+      var shift = 7 - x,
+          color = (byte1 & (1 << shift)) >> shift;
+          color += ((byte2 & (1 << shift)) >> shift) << 1;
+          color += ((byte3 & (1 << shift)) >> shift) << 2;
       
       var x_offset = hFlip ? 7 - x : x;
 
