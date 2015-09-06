@@ -62,12 +62,7 @@ Sprites.prototype.getMainCharacters = function(){
   for (var i=0; i<0x10; i++){
     characters.push({
       available: false,
-      sprite: new Sprite({ 
-        gfx_set: i, 
-        palette: this.context.rom[0x2D02B + i], 
-        coords: {x: 0, y: 0},
-        visible: false
-      }, this.context)
+      sprite: new Sprite(this.context.stats.getCharacterStats(i), this.context)
     })
   }
 
@@ -141,9 +136,14 @@ var Sprite = function(data, context){
   this.utils = new Utils(context);
   this.character_palettes = [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
-  this.commands = [];
-  this.stats = {};
-  this.equipment = {};
+  this.spells = [];
+
+  this.hp = !!data.stats ? data.stats.max_hp : 0;
+  this.mp = !!data.stats ? data.stats.max_mp : 0;
+  console.log(data.stats)
+  this.commands = data.commands || [];
+  this.stats = data.stats || {};
+  this.equipment = data.equipment || {};
   this.conditions = [
     [
       { name: "dark", afflicted: false },
@@ -187,6 +187,7 @@ var Sprite = function(data, context){
     ]
   ]
 
+  this.ready = 0;
   this.name = data.name || "";
   this.event = this.getEvent(data.event_address);
   this.coords = { x: data.coords.x, y: data.coords.y, x_offset: 0, y_offset: 0 }

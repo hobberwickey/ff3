@@ -15,16 +15,19 @@ var FF3 = function(rom){
     spells: []
   };
 
+  this.stats = new Stats(this);
   this.spriteController = new Sprites(this);
   this.characters = this.spriteController.getMainCharacters();
 
   this.actions = {};
+  this.actionStack = [];
   this.map = null;
 
   this.wobLoaded = false;
   this.worLoaded = false;
   this.menuOpened = false;
   this.loading = false;
+  this.eventsPaused = true;
 
 
   this.drawScreen = function(){};
@@ -47,6 +50,7 @@ var FF3 = function(rom){
   this.utils = new Utils(this);
   this.effects = new Effects(this);
   this.events = new Events(this);
+  this.misc = new Misc(this);
 
   this.loop()
 
@@ -78,11 +82,28 @@ FF3.prototype.loadMap = function(index, coords, showName, facing){
 }
 
 FF3.prototype.openBattle = function(bg, monster_set){
+  this.clearScreen();
+  this.pauseActions();
+
   var old = this.drawScreen;
 
-  this.battle = new Battle(this, bg, monster_set);
-  this.clearScreen();
+  var party = (function(){ 
+    var p = [], party = this.ram.parties[this.ram.selectedParty];
+    for (var i=0; i<party.length; i++){
+      p.push(party[i] === null ? null : this.characters[party[i]].sprite);
+    } 
+    return p;
+  }.bind(this))();
+
+  this.battle = new Battle(this, bg, monster_set, party);
+
   this.drawScreen = function(data){ this.battle.draw(data) };
+
+  var self = this;
+  window.addEventListener("battle-complete", function(e){
+    self.resumeActions();
+    self.drawScreen = old;
+  }, false)
 }
 
 FF3.prototype.loadWorldMap = function(map, coords){
@@ -102,10 +123,29 @@ FF3.prototype.pause = function(opacity, duration, callback){
   var self = this;
     
   this.effects.fade(['black'], opacity, duration, function(){
-      self.paused = true;
-      if (callback) callback();
+    self.paused = true;
+    if (callback) callback();
   })
 }
+
+FF3.prototype.pauseActions = function(){
+  console.log("PAUSING ACTIONS")
+  var a = {};
+  for (var x in this.actions){
+    a[x] = this.actions[x];
+    delete this.actions[x];
+  }
+
+  this.actionStack.push(a);
+}
+
+FF3.prototype.resumeActions = function(){
+  var a = this.actionStack.pop();
+  for (var x in a){
+    this.actions[x] = a[x];
+  }
+}
+
 
 FF3.prototype.resume = function(duration, callback){
   this.paused = false;
@@ -173,7 +213,7 @@ FF3.prototype.loop = function(){
 }
 
 FF3.prototype.startGame = function(){
-  this.effects.masks.black = 0;
+  //this.effects.masks.black = 0;
   this.events.flags[95] = 0x80;
   this.events.beginCue(0x0A6033);
 }

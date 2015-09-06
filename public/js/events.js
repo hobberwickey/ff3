@@ -3,7 +3,7 @@ var Events = function(context){
   this.utils = new Utils(context);
   this.flags = null;
   this.presence = null;
-  this.verbose = true; 
+  this.verbose = false; 
   this.ongoing = false;
 
   this.getFlags();

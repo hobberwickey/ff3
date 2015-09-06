@@ -1,0 +1,57 @@
+<link rel='import' href='../../components/polymer/polymer.html'>
+<link rel='import' href='../../components/iron-selector/iron-selector.html'>
+
+<link rel='import' href='menu-base.html'>
+
+<dom-module id='battle-action-menu'>
+  <template>
+  	<div class='content action-menu-content'>
+      <iron-selector class='list'>
+      	<template is="dom-repeat" items="[[ chr.commands ]]">
+      		<div><span>[[ item ]]</span></div>
+      	</template>
+      </iron-selector>
+    </div>
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "battle-action-menu",
+    
+    properties: {
+      height: { type: Number, value: 8 },
+      width: { type: Number, value: 9 },
+      top: { type: Number, value: 0 },
+      left: { type: Number, value: 1 },
+      party: { type: Array, value: function(){ return [] }, notify: true },
+      battle: { type: Object, value: function(){ return {} }, notify: true },
+      context: { type: Object },
+      chr: { type: Object }
+    },
+
+    attached: function(){
+    	var pointer = this.context.misc.getIcon("pointer");
+    		pointer.classList.add("pointer");
+
+    	var list = Polymer.dom(this.root).querySelector(".list");
+    		list.addEventListener("iron-select", function(e){
+    			
+    			list.selectedItem.insertBefore(pointer, list.selectedItem.firstChild);
+    		}.bind(this), false)
+    		list.select(0);
+    },
+
+    onDown: function(){
+    	var list = Polymer.dom(this.root).querySelector(".list")
+    	list.selectNext();
+    },
+
+    onUp: function(){
+    	var list = Polymer.dom(this.root).querySelector(".list")
+    	list.selectPrevious();
+    },
+
+    behaviors: [MenuBase]
+  })
+</script>

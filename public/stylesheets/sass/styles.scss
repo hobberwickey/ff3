@@ -73,6 +73,15 @@ $bg_gradient_bottom: #008;
   }
 }
 
+battle-action-menu .content {
+	padding: 0px 10px 0px 15px;
+}
+
+battle-action-menu canvas.pointer {
+	margin-left: -17px;
+	position: absolute;
+}
+
 a {
 	text-decoration: none;
 	color: #333788;

@@ -1,8 +1,11 @@
-var Battle = function(context, bg_index, monster_set){
+var Battle = function(context, bg_index, monster_set, party, menu){
 	this.context = context;
 	this.utils = new Utils(this.context);
 	this.bg_index = bg_index;
 	this.monster_set = monster_set;
+	this.menu = menu;
+	this.party = party;
+
 	this.bg_tiles = [];
 	this.palettes = [];
 	this.ripple = false;
@@ -15,8 +18,25 @@ var Battle = function(context, bg_index, monster_set){
 		this.ripple = true;
 	}
 
+	this.createMenu();
 	this.getMonsters();
 	this.buildBackground();
+	this.setupTimers();
+}
+
+Battle.prototype.createMenu = function(){
+	var wrapper = document.querySelector("#menu");
+    	wrapper.innerHTML = "";
+    	wrapper.style.opacity = 1;
+
+	var menu = document.createElement("main-battle-dialog");
+	    menu.context = this.context;
+	    menu.battle = this;
+	    menu.party = this.party;
+
+	wrapper.appendChild(menu);
+
+	this.menu = menu;
 }
 
 Battle.prototype.buildBackground = function(){
@@ -44,6 +64,27 @@ Battle.prototype.buildBackground = function(){
   	data.palettes[palette_index + 1],
   	data.palettes[palette_index + 2]
   ]
+}
+
+Battle.prototype.setupTimers = function(){
+	//TODO: setup monster timers
+	var self = this;
+	this.context.every(2, function(){
+		for (var i=0; i<4; i++){
+			var chr = self.party[i];
+			if (!chr) return;
+
+			if (chr.ready !== 100){
+				self.menu.set('party.' + i + '.ready', self.context.stats.getChrReady(chr))
+			} else {
+				return;
+			}
+
+			if (chr.ready === 100){
+				self.menu.dispatchEvent( new CustomEvent("battle-character-ready", { detail: { chr: chr }} ))
+			}
+		}
+	}, true);
 }
 
 Battle.prototype.getMonsters = function(){

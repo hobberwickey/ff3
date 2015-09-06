@@ -1,0 +1,228 @@
+<link rel='import' href='../../components/polymer/polymer.html'>
+<link rel='import' href='../../components/iron-selector/iron-selector.html'>
+
+<link rel='import' href='menu-base.html'>
+<link rel='import' href='battle-action-menu.html'>
+
+<dom-module id='main-battle-dialog'>
+  <style>
+    .content {
+      display: flex;
+      border: none !important;
+    }
+
+    .sub-menus {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      display: none;
+    }
+
+    .monsters {
+      flex: 1;
+      border: groove 3px #ccc;
+      border-radius: 5px
+    }
+
+    .characters {
+      flex: 1.8;
+      border: groove 3px #ccc;
+      border-radius: 5px;
+      display: block;
+      height: 100%;
+      box-sizing: border-box;
+    }
+
+    .characters .character {
+      display: block;
+      width: 100%;
+      height: 25%;
+      box-sizing: border-box;
+    }
+
+    .characters .character .name {
+      display: inline-block;
+      width: 4em;
+      vertical-align: top;
+      margin-left: 5px;
+    }
+
+    .characters .character .hp {
+      display: inline-block;
+      width: 2.5em;
+      vertical-align: top;
+    }
+
+    .characters .character paper-progress {
+      display: inline-block;
+      width: 3em;
+      vertical-align: middle;
+      height: 2px;
+      border: solid 2px #aaa;
+      border-radius: 3px;
+      margin-top: -2px;
+    }
+  </style>
+
+  <template>
+    <div class='content'>
+      <div class='monsters'>
+
+      </div>
+      <div class='characters'>
+        <div class='character'>
+          <div class='name'>[[ party.0.name ]]</div>
+          <div class='hp'>[[ party.0.hp ]]</div>
+          <paper-progress value="[[ party.0.ready ]]"></paper-progress>
+        </div>
+
+        <div class='character {{ status(party.1) }}'>
+          <div class='name'>[[ party.1.name ]]</div>
+          <div class='hp'>[[ party.1.hp ]]</div>
+          <paper-progress value="[[ party.1.ready ]]"></paper-progress>
+        </div>
+
+        <div class='character'>
+          <div class='name'>[[ party.2.name ]]</div>
+          <div class='hp'>[[ party.2.hp ]]</div>
+          <paper-progress value="[[ party.2.ready ]]"></paper-progress>
+        </div>
+
+        <div class='character'>
+          <div class='name'>[[ party.3.name ]]</div>
+          <div class='hp'>[[ party.3.hp ]]</div>
+          <paper-progress value="[[ party.3.ready ]]"></paper-progress>
+        </div>
+          
+      </div>
+      <div class='sub-menus'>
+        
+      </div>
+      
+    </div>
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "main-battle-dialog",
+    
+    properties: {
+      height: { type: Number, value: 8 },
+      top: { type: Number, value: 18 },
+      party: { type: Array, value: function(){ return [] }, notify: true },
+      battle: { type: Object, value: function(){ return {} }, notify: true },
+      context: { type: Object },
+      readyQueue: { type: Array, value: function(){ return [] }, notify: true },
+      actionQueue: { type: Array, value: function(){ return [] }, notify: true }
+    },
+
+    
+    actionMenuOpened: false,
+    subMenus: [],
+    readyIndex: 0,
+      
+    down: null,
+    up: null,
+    left: null,
+    right: null,
+    a: null,
+    b: null,
+    y: null,
+
+    ready: function(){
+      this.addEventListener("battle-character-ready", function(e){
+        this.readyQueue.push( e.detail.chr );
+        if (!this.actionMenuOpened) this.openActionMenu(); 
+      }.bind(this), false)
+
+      this.setupControls();
+    },
+
+    openActionMenu: function(){
+      if (this.actionMenuOpened) return;
+
+      var sub = Polymer.dom(this.root).querySelector(".sub-menus"),
+          menu = document.createElement( 'battle-action-menu' );
+          menu.context = this.context;
+          menu.chr = this.readyQueue[this.readyIndex];
+
+      sub.appendChild(menu);
+      sub.style.display = "block";
+      this.subMenus.push(menu);
+
+      this.actionMenuOpened = true;
+    },
+
+    closeSubMenu: function(){
+      var old = this.subMenus.pop();
+      old.parentNode.removeChild(old);
+      this.actionMenuOpened = this.subMenus.length !== 0;
+    },
+
+    incrementReadyIndex: function(){
+      this.readyIndex = this.readyIndex + 1 >= this.readyQueue.length ? 0 : this.readyIndex + 1; 
+    },
+
+    setupControls: function(){
+      this.down = function(){
+        var len = this.subMenus.length;
+        if (len && this.subMenus[len - 1].onDown !== void(0)){
+          this.subMenus[len - 1].onDown();
+        }
+      }.bind(this);
+
+      this.up = function(){
+        var len = this.subMenus.length;
+        if (len && this.subMenus[len - 1].onUp !== void(0)){
+          this.subMenus[len - 1].onUp();
+        }
+      }.bind(this);
+
+      this.left = function(){
+        var len = this.subMenus.length;
+        if (len && this.subMenus[len - 1].onLeft !== void(0)){
+          this.subMenus[len - 1].onLeft();
+        }
+      }.bind(this);
+
+      this.right = function(){
+        var len = this.subMenus.length;
+        if (len && this.subMenus[len - 1].onDown !== void(0)){
+          this.subMenus[len - 1].onRight();
+        }
+      }.bind(this);
+
+      this.a = function(){
+        var len = this.subMenus.length;
+        if (len && this.subMenus[len - 1].onA !== void(0)){
+          this.subMenus[len - 1].onA();
+        }
+      }.bind(this);
+
+      this.y = function(){
+        if (this.subMenus.length === 1) this.nextCharacter();
+      }.bind(this);
+
+      window.addEventListener('down-start', this.down, false)
+      window.addEventListener('up-start', this.up, false)
+      window.addEventListener('left-start', this.left, false)
+      window.addEventListener('right-start', this.right, false)
+      window.addEventListener('a-end', this.a, false)
+      window.addEventListener("y-end", this.y, false)
+    },
+
+    nextCharacter: function(){
+      this.closeSubMenu();
+      this.incrementReadyIndex();
+
+      setTimeout(function(){
+        this.openActionMenu();
+      }.bind(this), 300);
+    },
+
+    behaviors: [MenuBase]
+  })
+</script>
