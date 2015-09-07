@@ -1,7 +1,7 @@
 var FF3 = function(rom){
   this.rom = new Uint8ClampedArray(rom);
   this.ram = {
-    parties: [[4, 0, 1, null],[],[]],
+    parties: [[0, 1, 5, 10],[],[]],
     partyLocation: {x: 0, y: 0},
     worldMapLocation: {x: 0, y: 0},
     airshipLocation: {x: 0, y: 0},
@@ -233,7 +233,7 @@ FF3.prototype.checkActions = function(){
       action.framesSoFar = action.framesSoFar - action.every;
       action.iterations += 1;
 
-      if (action.stopAfter !== void(0) && action.iterations > action.stopAfter ){
+      if (action.repeat !== void(0) && action.iterations > action.repeat ){
         if (action.callback !== void(0)) action.callback();
         delete a[x];
         break;            
@@ -242,14 +242,14 @@ FF3.prototype.checkActions = function(){
   }
 }
 
-FF3.prototype.iterate = function (frameskip, stopAfter, fn, callback, immediate){
+FF3.prototype.iterate = function (frameskip, repeat, fn, callback, immediate){
   var key = "_" + Math.random();
   this.actions[key] = {
     framesSoFar: 0,
     every: frameskip,
     fn: fn,
     iterations: 0,
-    stopAfter: stopAfter,
+    repeat: repeat,
     callback: callback
   }
 

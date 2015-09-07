@@ -205,6 +205,7 @@ Events.prototype.executeActionCue = function(chr, cue, index, chr_index){
     if (!paused) this.executeActionCue(chr, cue, index + 1, chr_index);
     return;
   } else if (action === 255) {
+    delete this.actionCues[chr_index];
     window.dispatchEvent( new Event("action-cue-complete-" + chr_index.toString(16)) );
     return;
   }
@@ -350,13 +351,18 @@ Events.prototype.begin_action_cue = function(chr_index, offset){
  * Status: Done
  */
 Events.prototype.wait_for_cue = function(offset){
-  var suffix = this.context.rom[offset + 1].toString(16);
+  var chrIndex = this.context.rom[offset + 1];
+      suffix = chrIndex.toString(16);
   
-  var self = this;
-  window.addEventListener("action-cue-complete-" + suffix, function waiting(){
-    window.removeEventListener("action-cue-complete-" + suffix, waiting);
-    self.executeCue(offset + 2);
-  }, false)
+  if (this.actionCues[chrIndex] !== void(0)){
+    var self = this;
+    window.addEventListener("action-cue-complete-" + suffix, function waiting(){
+      window.removeEventListener("action-cue-complete-" + suffix, waiting);
+      self.executeCue(offset + 2);
+    }, false)
+  } else {
+    this.executeCue(offset + 2);
+  }
 }
 
 /**

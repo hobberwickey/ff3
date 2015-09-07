@@ -192,6 +192,44 @@ Utils.prototype.decompress = function(offset, max){
   return output
 }
 
+Utils.prototype.moveBezier = function(current, destination, control_point_1, control_point_2, duration){
+  bezier = function(t, p0, p1, p2, p3){
+    var cX = 3 * (p1.x - p0.x),
+        bX = 3 * (p2.x - p1.x) - cX,
+        aX = p3.x - p0.x - cX - bX;
+
+    var cY = 3 * (p1.y - p0.y),
+        bY = 3 * (p2.y - p1.y) - cY,
+        aY = p3.y - p0.y - cY - bY;
+
+    var x = (aX * Math.pow(t, 3)) + (bX * Math.pow(t, 2)) + (cX * t) + p0.x;
+    var y = (aY * Math.pow(t, 3)) + (bY * Math.pow(t, 2)) + (cY * t) + p0.y;
+
+    return {x: x, y: y};
+  }
+
+  var frames = ((duration / 1000) * 60) | 0,
+      timing = 1 / frames,
+      original = {x: current.x, y: current.y}
+
+  var points = [];
+  for (var i=0;  i<=frames; i+=1){
+    points.push( 
+      bezier(i * timing, original, control_point_1, control_point_2, destination)
+    )
+  }
+
+  var cntr = 0;
+
+  this.context.iterate(1, points.length - 1, function(){
+    current.x = points[cntr].x | 0;
+    current.y = points[cntr].y | 0;
+    cntr += 1;
+  }, function(){
+    console.log(current)
+  }, false);
+}
+
 Utils.prototype.assemble_4bit = function(tile_offset, hFlip, vFlip, bytes){
   var gfx = bytes || this.context.rom,
       tile = [];

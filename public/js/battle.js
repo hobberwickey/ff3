@@ -5,6 +5,8 @@ var Battle = function(context, bg_index, monster_set, party, menu){
 	this.monster_set = monster_set;
 	this.menu = menu;
 	this.party = party;
+	this.originals = [];
+	this.battleCoords = [];
 
 	this.bg_tiles = [];
 	this.palettes = [];
@@ -18,10 +20,26 @@ var Battle = function(context, bg_index, monster_set, party, menu){
 		this.ripple = true;
 	}
 
+	//this.getBattleType(); //Normal, pinicer, back, etc...
+	this.saveOriginalAndSetCurrent(); //sprite positions, maybe other stuff
 	this.createMenu();
 	this.getMonsters();
 	this.buildBackground();
 	this.setupTimers();
+	this.setupBattleCoords();
+}
+
+Battle.prototype.saveOriginalAndSetCurrent = function(){
+	for (var i=0; i<this.party.length; i++){
+		if (!this.party[i]) continue;
+
+		this.originals[i] = {
+			position: this.party[i].position
+		}
+
+		this.party[i].position = 7;
+		//this.party[i].mirror = (this.battleType === "normal" || (this.battleType === 'side' && i < 2)) | 0;
+	}
 }
 
 Battle.prototype.createMenu = function(){
@@ -87,6 +105,14 @@ Battle.prototype.setupTimers = function(){
 	}, true);
 }
 
+Battle.prototype.setupBattleCoords = function(){
+	//TODO: back, pinicer
+	this.battleCoords[0] = { x: 194, y: 70 };
+	this.battleCoords[1] = { x: 202, y: 88 };
+	this.battleCoords[2] = { x: 210, y: 106 };
+	this.battleCoords[3] = { x: 218, y: 124 };
+}
+
 Battle.prototype.getMonsters = function(){
 	var set = this.context.battles.monsterSets[this.monster_set];
 
@@ -109,7 +135,7 @@ Battle.prototype.getMonsters = function(){
 Battle.prototype.draw = function(data){
 	this.drawBG(data);
 	this.drawMonsters(data, this.monsters, this.monster_offsets);
-	//this.drawSprites(data);
+	this.drawSprites(data);
 	//this.drawAttack(data);
 }
 
@@ -196,6 +222,41 @@ Battle.prototype.drawMonsters = function(data){
 				}
 			}
 		}
+	}
+}
+
+Battle.prototype.drawSprites = function(data){
+  var spritePositions = this.context.spriteController.sprite_positions,
+  		palettes = this.context.spriteController.palettes,
+  		battleCoords = this.battleCoords;
+
+  for (var s=0; s<this.party.length; s++){
+  	if (!this.party[s]) continue;
+  	
+  	var sprite = this.party[s],
+  			spritePos = spritePositions[sprite.position];
+
+	  for (var b=0; b<6; b++){
+	    var x_offset = (b & 1) << 3,
+	        y_offset = (b >> 1) << 3; 
+
+	    var mirror = sprite.mirror;
+
+	    for (var y=0; y<8; y++){
+	      for (var x=0; x<8; x++){
+	        var color_index = sprite.gfx[spritePos[b]][x + (y << 3)],
+	            color = palettes[sprite.palette][color_index];
+	        
+	        if (color[3] === 0) continue
+	        
+	        var data_x = (mirror === 0 ? x + x_offset : 15 - (x + x_offset)) + battleCoords[s].x,
+	           	data_y = y + y_offset + battleCoords[s].y,
+	        		data_offset = ((data_x) + ((data_y) * 256)) * 4;
+
+	        utils.drawPixel(data, color, data_offset)
+	      }
+	    }
+	  }
 	}
 }
 

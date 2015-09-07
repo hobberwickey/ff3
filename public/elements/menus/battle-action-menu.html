@@ -26,12 +26,12 @@
       left: { type: Number, value: 1 },
       party: { type: Array, value: function(){ return [] }, notify: true },
       battle: { type: Object, value: function(){ return {} }, notify: true },
-      context: { type: Object },
-      chr: { type: Object }
+      chr: { type: Object },
+      parent: { type: Object }
     },
 
     attached: function(){
-    	var pointer = this.context.misc.getIcon("pointer");
+    	var pointer = this.parent.context.misc.getIcon("pointer");
     		pointer.classList.add("pointer");
 
     	var list = Polymer.dom(this.root).querySelector(".list");
@@ -50,6 +50,11 @@
     onUp: function(){
     	var list = Polymer.dom(this.root).querySelector(".list")
     	list.selectPrevious();
+    },
+
+    onA: function(){
+      var list = Polymer.dom(this.root).querySelector(".list")
+      this.parent[this.chr.commands[list.selected]](this.chr);
     },
 
     behaviors: [MenuBase]

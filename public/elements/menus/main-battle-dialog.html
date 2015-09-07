@@ -3,6 +3,7 @@
 
 <link rel='import' href='menu-base.html'>
 <link rel='import' href='battle-action-menu.html'>
+<link rel='import' href='battle-actions.html'>
 
 <dom-module id='main-battle-dialog'>
   <style>
@@ -146,7 +147,7 @@
 
       var sub = Polymer.dom(this.root).querySelector(".sub-menus"),
           menu = document.createElement( 'battle-action-menu' );
-          menu.context = this.context;
+          menu.parent = this;
           menu.chr = this.readyQueue[this.readyIndex];
 
       sub.appendChild(menu);
@@ -223,6 +224,6 @@
       }.bind(this), 300);
     },
 
-    behaviors: [MenuBase]
+    behaviors: [MenuBase, BattleActions]
   })
 </script>
