@@ -1,7 +1,30 @@
 <script>
   var BattleActions = {
     Fight: function(chr){
-      chr.position = 10;
+      var self = this;
+
+      this.selectTarget({self: true, monsters: true }, 'monsters', function(){
+      	chr.position = 10;
+
+      	self.context.once(60, function(){
+      		self.actionQueue.push(function(){
+      			self.actionRunning = true;
+
+      			var c = chr.coords,
+      				o = {x: c.x, y: c.y },
+      				d = {x: c.x - 10, y: c.y},
+      				p1 = {x: c.x, y: c.y - 5},
+      				p2 = {x: c.x - 10, y: c.y - 5};
+
+      			self.context.utils.moveBezier(c, d, p1, p2, 100);
+      			self.context.once(60, function(){ 
+      				self.context.utils.moveBezier(c, o, p2, p1, 100, function(){ self.actionRunning = false } )
+      			});
+      		})
+      	})
+
+      	self.endTurn(chr);
+      })
     }
   }
 </script>

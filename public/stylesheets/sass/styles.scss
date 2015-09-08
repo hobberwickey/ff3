@@ -82,6 +82,24 @@ battle-action-menu canvas.pointer {
 	position: absolute;
 }
 
+battle-action-menu.inactive canvas.pointer {
+	display: none;
+}
+
+#menu /deep/ battle-selection-menu .content{
+	background-color: transparent;
+	background-image: none;
+	border: none;
+}
+
+battle-selection-menu canvas.pointer {
+	position: absolute;
+}
+
+battle-selection-menu canvas.reversed {
+	transform: scale(-1, 1)
+}
+
 a {
 	text-decoration: none;
 	color: #333788;

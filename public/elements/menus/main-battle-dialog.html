@@ -3,6 +3,7 @@
 
 <link rel='import' href='menu-base.html'>
 <link rel='import' href='battle-action-menu.html'>
+<link rel='import' href='battle-selection-menu.html'>
 <link rel='import' href='battle-actions.html'>
 
 <dom-module id='main-battle-dialog'>
@@ -135,15 +136,14 @@
 
     ready: function(){
       this.addEventListener("battle-character-ready", function(e){
-        this.readyQueue.push( e.detail.chr );
-        if (!this.actionMenuOpened) this.openActionMenu(); 
+        
       }.bind(this), false)
 
       this.setupControls();
     },
 
     openActionMenu: function(){
-      if (this.actionMenuOpened) return;
+      if (this.actionMenuOpened || this.readyQueue.length === 0) return;
 
       var sub = Polymer.dom(this.root).querySelector(".sub-menus"),
           menu = document.createElement( 'battle-action-menu' );
@@ -157,14 +157,36 @@
       this.actionMenuOpened = true;
     },
 
+    selectTarget: function(targeting, group, callback){
+      var select = document.createElement("battle-selection-menu");
+          select.parent = this;
+          select.monsters = this.battle.monsters;
+          select.party = this.party;
+          select.targeting = targeting;
+          select.group = group;
+
+          select.onA = callback;
+
+      document.querySelector("#menu").appendChild(select);
+      this.subMenus.push(select);
+    },
+
     closeSubMenu: function(){
       var old = this.subMenus.pop();
       old.parentNode.removeChild(old);
       this.actionMenuOpened = this.subMenus.length !== 0;
+      if (this.actionMenuOpened){
+        this.subMenus[this.subMenus.length - 1].active = true;
+      }
     },
 
     incrementReadyIndex: function(){
       this.readyIndex = this.readyIndex + 1 >= this.readyQueue.length ? 0 : this.readyIndex + 1; 
+    },
+
+    characterReady: function(chr){
+      this.readyQueue.push( chr );
+      if (!this.actionMenuOpened) this.openActionMenu(); 
     },
 
     setupControls: function(){
@@ -215,13 +237,17 @@
       window.addEventListener("y-end", this.y, false)
     },
 
+    endTurn: function(chr){
+      chr.ready = 0;
+      this.readyQueue.splice(this.readyQueue.indexOf(chr), 1);
+      this.closeSubMenu();
+      this.nextCharacter();
+    },
+
     nextCharacter: function(){
       this.closeSubMenu();
       this.incrementReadyIndex();
-
-      setTimeout(function(){
-        this.openActionMenu();
-      }.bind(this), 300);
+      this.context.once(20, function(){ this.openActionMenu() }.bind(this));
     },
 
     behaviors: [MenuBase, BattleActions]

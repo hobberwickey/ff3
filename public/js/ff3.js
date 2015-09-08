@@ -273,3 +273,7 @@ FF3.prototype.every = function(frameskip, fn, immediate){
 
   return key;
 }
+
+FF3.prototype.once = function(delay, fn, callback){
+  this.iterate(delay, 0, fn, callback, false);
+}

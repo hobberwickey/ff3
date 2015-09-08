@@ -192,7 +192,7 @@ Utils.prototype.decompress = function(offset, max){
   return output
 }
 
-Utils.prototype.moveBezier = function(current, destination, control_point_1, control_point_2, duration){
+Utils.prototype.moveBezier = function(current, destination, control_point_1, control_point_2, duration, callback){
   bezier = function(t, p0, p1, p2, p3){
     var cX = 3 * (p1.x - p0.x),
         bX = 3 * (p2.x - p1.x) - cX,
@@ -225,9 +225,7 @@ Utils.prototype.moveBezier = function(current, destination, control_point_1, con
     current.x = points[cntr].x | 0;
     current.y = points[cntr].y | 0;
     cntr += 1;
-  }, function(){
-    console.log(current)
-  }, false);
+  }, callback, false);
 }
 
 Utils.prototype.assemble_4bit = function(tile_offset, hFlip, vFlip, bytes){

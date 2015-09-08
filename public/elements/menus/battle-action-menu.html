@@ -26,35 +26,34 @@
       left: { type: Number, value: 1 },
       party: { type: Array, value: function(){ return [] }, notify: true },
       battle: { type: Object, value: function(){ return {} }, notify: true },
-      chr: { type: Object },
-      parent: { type: Object }
+      chr: { type: Object, value: function(){ return {} } },
+      parent: { type: Object, value: function(){ return {} } }
     },
 
     attached: function(){
     	var pointer = this.parent.context.misc.getIcon("pointer");
-    		pointer.classList.add("pointer");
+    		  pointer.classList.add("pointer");
 
     	var list = Polymer.dom(this.root).querySelector(".list");
-    		list.addEventListener("iron-select", function(e){
-    			
-    			list.selectedItem.insertBefore(pointer, list.selectedItem.firstChild);
-    		}.bind(this), false)
-    		list.select(0);
+      		list.addEventListener("iron-select", function(e){	
+      			list.selectedItem.insertBefore(pointer, list.selectedItem.firstChild);
+      		}.bind(this), false)
+    		  list.select(0);
     },
 
     onDown: function(){
     	var list = Polymer.dom(this.root).querySelector(".list")
-    	list.selectNext();
+    	    list.selectNext();
     },
 
     onUp: function(){
     	var list = Polymer.dom(this.root).querySelector(".list")
-    	list.selectPrevious();
+    	    list.selectPrevious();
     },
 
     onA: function(){
       var list = Polymer.dom(this.root).querySelector(".list")
-      this.parent[this.chr.commands[list.selected]](this.chr);
+          this.parent[this.chr.commands[list.selected]](this.chr);
     },
 
     behaviors: [MenuBase]

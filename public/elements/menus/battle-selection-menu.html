@@ -1,0 +1,155 @@
+<link rel='import' href='../../components/polymer/polymer.html'>
+<link rel='import' href='../../components/iron-selector/iron-selector.html'>
+
+<link rel='import' href='menu-base.html'>
+
+<dom-module id='battle-selection-menu'>
+  <template>
+  	<div class='content action-menu-content'>
+      <iron-selector class='list monster-list' hidden>
+      	<template is="dom-repeat" items="[[ monsters ]]">
+      		<div>{{ item.index }}</div>
+      	</template>
+      </iron-selector>
+
+      <iron-selector class='list party-list' hidden>
+        <template is="dom-repeat" items="[[ party ]]">
+          <div>{{ item.index }}</div>
+        </template>
+      </iron-selector>
+    </div>
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "battle-selection-menu",
+
+    properties: {
+      height: { type: Number, value: 18 },
+      width: { type: Number, value: 30 },
+      top: { type: Number, value: 0 },
+      left: { type: Number, value: 0 },
+      targeting: { type: Object, value: function(){ return {} }},
+      parent: { type: Object, value: function(){ return {} }},
+      monsters: { type: Array, value: function(){ return [] }},
+      party: { type: Array, value: function(){ return [] }},
+      group: { type: String, value: "monsters" }
+    },
+
+    pointer: null,
+    flashing: null,
+
+    attached: function(){
+      this.pointer = this.parent.context.misc.getIcon("pointer");
+      this.pointer.classList.add("pointer");
+      Polymer.dom(this.root).querySelector(".content").appendChild(this.pointer);
+      
+
+      var m_list = Polymer.dom(this.root).querySelector(".monster-list");
+          m_list.addEventListener("iron-select", function(e){ 
+            this.pointer.classList.add("reversed");
+            var monster = this.monsters[m_list.selected];
+
+            this.pointer.style.left = (monster.coords.x + (monster.gfx.max.x << 3)) + "px";
+            this.pointer.style.top = (monster.coords.y + ((monster.gfx.max.y << 3) >> 1)) + "px"; 
+          }.bind(this), false);
+
+      var p_list = Polymer.dom(this.root).querySelector(".party-list");
+          p_list.addEventListener("iron-select", function(e){ 
+            this.pointer.classList.remove("reversed");
+            var offset = this.party[p_list.selected].coords;
+
+            this.pointer.style.left = (offset.x - 32) + "px";
+            this.pointer.style.top = (offset.y) + "px"; 
+          }.bind(this), false);
+
+      if (this.group === 'monsters'){
+        m_list.select(0);
+      } else {
+        p_list.select(0);
+      }
+    },
+
+    selectAllMonsters: function(){
+
+    },
+
+    selectAllParty: function(){
+
+    },
+
+    selectEveryone: function(){
+
+    },
+
+    onSelect: function(){
+      //select all
+    },
+
+    onB: function(){
+      this.parent.closeSubMenu();
+    },
+
+    onUp: function(){
+      if (this.group === "party"){
+        Polymer.dom(this.root).querySelector('.party-list').selectPrevious();
+      } else {
+        var list = Polymer.dom(this.root).querySelector(".monster-list"),
+            current = this.monsters[list.selected],
+            next = this.monsters.filter(function(m){ return m.coords.x < current.coords.x + 20 && m.coords.x > current.coords.x - 20 && m.coords.y < current.coords.y }),
+            index = next.length === 0 ? this.monsters.indexOf(current) : this.monsters.indexOf(next[0]);
+        
+        list.select(index);
+      }
+    },
+
+    onDown: function(){
+      if (this.group === "party"){
+        Polymer.dom(this.root).querySelector('.party-list').selectNext();
+      } else {
+        var list = Polymer.dom(this.root).querySelector(".monster-list"),
+            current = this.monsters[list.selected],
+            next = this.monsters.filter(function(m){ return m.coords.x < current.coords.x + 20 && m.coords.x > current.coords.x - 20 && m.coords.y > current.coords.y }),
+            index = next.length === 0 ? this.monsters.indexOf(current) : this.monsters.indexOf(next[0]);
+        
+        list.select(index);
+      }
+    },
+
+    onLeft: function(){
+      var list = Polymer.dom(this.root).querySelector(".monster-list")
+      
+      if (this.group === "party"){
+        var next = this.monsters.sort(function(a, b){ return a.coords.x < b.coords.x });
+        
+        this.group = 'monsters';
+        Polymer.dom(this.root).querySelector(".party-list").select(-1);
+        list.select(this.monsters.indexOf(next[0]));
+      } else {
+        var current = this.monsters[list.selected],
+            next = this.monsters.filter(function(m){ return m.coords.y < current.coords.y + 30 && m.coords.y > current.coords.y - 30 && m.coords.x < current.coords.x });
+
+        if (next.length !== 0) list.select(this.monsters.indexOf(next[0]));
+      }
+    },
+
+    onRight: function(){
+      if (this.group !== "party"){
+        var list = Polymer.dom(this.root).querySelector(".monster-list"),
+            current = this.monsters[list.selected],
+            next = this.monsters.filter(function(m){ return m.coords.y < current.coords.y + 20 && m.coords.y > current.coords.y - 20 && m.coords.x > current.coords.x });
+        
+        if (next.length === 0){
+          this.group = 'party';
+          list.select(-1);
+          Polymer.dom(this.root).querySelector(".party-list").select(0);
+        } else {
+          list.select(this.monsters.indexOf(next[0]));
+        }
+      }
+    },
+
+    behaviors: [MenuBase]
+  })
+</script>
