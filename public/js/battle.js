@@ -264,7 +264,7 @@ Battle.prototype.drawSprites = function(data){
 Battle.prototype.runActionLoop = function(){
   var self = this;
 
-  this.context.every(60, function(){
+  this.context.every(120, function(){
     if (self.menu.actionRunning || self.menu.actionQueue.length === 0) return;
     self.menu.actionQueue.pop()();
   }, false);

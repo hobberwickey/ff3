@@ -56,6 +56,20 @@ Effects.prototype.stopRipple = function(){
   }
 }
 
+Effects.prototype.shakeObject = function(obj, intensity, duration){
+  var self = this,
+      frames = (duration / 1000) * 60,
+      dir = false,
+      o = { x: obj.coords.x, y: obj.coords.y };
+
+
+  this.context.iterate(1, frames, function(){
+    obj.coords.x = dir ? o.x - intensity : o.x + intensity;
+    dir = !dir;
+  }, function(){
+    obj.coords.x = o.x;
+  }, false)
+}
 
 Effects.prototype.linearTransition = function(from, to, delta){
   return (to - from) * delta + from;

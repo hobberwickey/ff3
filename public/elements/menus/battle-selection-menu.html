@@ -71,6 +71,13 @@
       }
     },
 
+    getTarget: function(){
+      var selector = this.group === 'monsters' ? ".monster-list" : ".party-list",
+          list = Polymer.dom(this.root).querySelector(selector);
+          
+      return this.group === 'monsters' ? this.monsters[list.selected] : this.party[list.selected];
+    },
+
     selectAllMonsters: function(){
 
     },

@@ -3,7 +3,7 @@
     Fight: function(chr){
       var self = this;
 
-      this.selectTarget({self: true, monsters: true }, 'monsters', function(){
+      this.selectTarget({self: true, monsters: true }, 'monsters', function(target){
       	chr.position = 10;
 
       	self.context.once(60, function(){
@@ -16,10 +16,66 @@
       				p1 = {x: c.x, y: c.y - 5},
       				p2 = {x: c.x - 10, y: c.y - 5};
 
-      			self.context.utils.moveBezier(c, d, p1, p2, 100);
-      			self.context.once(60, function(){ 
-      				self.context.utils.moveBezier(c, o, p2, p1, 100, function(){ self.actionRunning = false } )
+      			self.context.utils.moveBezier(c, d, p1, p2, 100, function(){
+      				//shake monster
+      				self.context.effects.shakeObject(target, 1, 300);
       			});
+
+      			self.context.once(60, function(){ 
+      				//move back positions
+      				self.context.once(1, function(){ chr.mirror = 1 });
+      				self.context.once(4, function(){ chr.position = 7 });
+      				self.context.once(8, function(){ chr.mirror = 0 });
+
+      				self.context.utils.moveBezier(c, o, c, o, 100, function(){ 
+      					self.actionRunning = false
+      				})
+      			});
+
+      			//move forward positions
+      			self.context.once(1, function(){ chr.position = 13 });
+      			self.context.once(6, function(){ chr.position = 8 });
+      		})
+      	})
+
+      	self.endTurn(chr);
+      })
+    },
+
+    Steal: function(chr){
+    	var self = this;
+
+    	this.selectTarget({self: true, monsters: true }, 'monsters', function(target){
+      	chr.position = 10;
+
+      	self.context.once(60, function(){
+      		self.actionQueue.push(function(){
+      			self.actionRunning = true;
+
+      			var c = chr.coords,
+      				o = {x: c.x, y: c.y },
+      				d = {x: target.coords.x + ((target.gfx.max.x  / 2) << 3), y: target.coords.y + (target.gfx.max.y << 3) - 16 },
+      				p1 = {x: c.x - 20, y: c.y - 20},
+      				p2 = {x: d.x + 20, y: d.y - 20};
+
+      			self.context.utils.moveBezier(c, d, p1, p2, 300, function(){
+      				chr.position = 9;
+      			});
+
+      			self.context.once(60, function(){ 
+      				self.context.utils.moveBezier(c, o, p2, p1, 300, function(){ 
+      					self.actionRunning = false
+      					chr.position = 7;
+      					chr.mirror = 0;
+      				})
+
+      				chr.position = 14;
+      				chr.mirror = 1;
+      			});
+
+      			//move forward positions
+      			chr.position = 9;
+      			self.context.once(3, function(){ chr.position = 14 })
       		})
       	})
 

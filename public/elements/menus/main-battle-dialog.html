@@ -165,8 +165,9 @@
           select.targeting = targeting;
           select.group = group;
 
-          select.onA = callback;
-
+          select.onA = function(){
+            callback(select.getTarget());
+          }
       document.querySelector("#menu").appendChild(select);
       this.subMenus.push(select);
     },
