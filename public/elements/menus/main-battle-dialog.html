@@ -118,12 +118,12 @@
       battle: { type: Object, value: function(){ return {} }, notify: true },
       context: { type: Object },
       readyQueue: { type: Array, value: function(){ return [] }, notify: true },
-      actionQueue: { type: Array, value: function(){ return [] }, notify: true }
+      actionQueue: { type: Array, value: function(){ return [] }, notify: true },
+      subMenus: { type: Array, value: function(){ return [] }}
     },
 
     
     actionMenuOpened: false,
-    subMenus: [],
     readyIndex: 0,
       
     down: null,
@@ -226,7 +226,14 @@
         }
       }.bind(this);
 
-      this.y = function(){
+      this.b = function(){
+        var len = this.subMenus.length;
+        if (len && this.subMenus[len - 1].onB !== void(0)){
+          this.subMenus[len - 1].onB();
+        }
+      }.bind(this);
+
+      this.x = function(){
         if (this.subMenus.length === 1) this.nextCharacter();
       }.bind(this);
 
@@ -235,7 +242,18 @@
       window.addEventListener('left-start', this.left, false)
       window.addEventListener('right-start', this.right, false)
       window.addEventListener('a-end', this.a, false)
-      window.addEventListener("y-end", this.y, false)
+      window.addEventListener("b-end", this.b, false)
+      window.addEventListener("x-end", this.x, false)
+    },
+
+    cleanup: function(){
+      window.removeEventListener("down-start", this.down);
+      window.removeEventListener("up-start", this.up);
+      window.removeEventListener("left-start", this.left);
+      window.removeEventListener("right-start", this.right);
+      window.removeEventListener("a-end", this.a);
+      window.removeEventListener("b-end", this.b);
+      window.removeEventListener("x-end", this.x);
     },
 
     endTurn: function(chr){

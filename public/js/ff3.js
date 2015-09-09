@@ -22,6 +22,7 @@ var FF3 = function(rom){
   this.actions = {};
   this.actionStack = [];
   this.map = null;
+  this.battle = null;
 
   this.wobLoaded = false;
   this.worLoaded = false;
@@ -82,10 +83,10 @@ FF3.prototype.loadMap = function(index, coords, showName, facing){
 }
 
 FF3.prototype.openBattle = function(bg, monster_set){
+  if (this.battle !== null) this.closeBattle();
+
   this.clearScreen();
   this.pauseActions();
-
-  var old = this.drawScreen;
 
   var party = (function(){ 
     var p = [], party = this.ram.parties[this.ram.selectedParty];
@@ -96,14 +97,35 @@ FF3.prototype.openBattle = function(bg, monster_set){
   }.bind(this))();
 
   this.battle = new Battle(this, bg, monster_set, party);
+  
+  var self = this;
+  this.battle.onClose = (function(old){ 
+    return function(){ self.drawScreen = old } 
+  })(this.drawScreen);
 
   this.drawScreen = function(data){ this.battle.draw(data) };
+  //this.closeBattle(old);
+}
 
-  var self = this;
-  window.addEventListener("battle-complete", function(e){
-    self.resumeActions();
-    self.drawScreen = old;
-  }, false)
+FF3.prototype.closeBattle = function(){
+  this.resumeActions();
+  //this.drawScreen = old;
+  
+  for (var i=0; i<this.battle.party.length; i++){
+    this.battle.party[i].coords = this.battle.originals[i].coords;
+    this.battle.party[i].postition = this.battle.originals[i].position;
+  }
+
+  for (var i=0; i<this.battle.menu.subMenus.length; i++){
+    this.battle.menu.subMenus[i].parentNode.removeChild(this.battle.menu.subMenus[i]);
+  }
+
+  this.battle.menu.parentNode.removeChild(this.battle.menu);
+  this.battle.menu.cleanup();
+  this.battle.onClose();
+  this.battle = null;
+
+  window.dispatchEvent( new Event("battle-complete"));
 }
 
 FF3.prototype.loadWorldMap = function(map, coords){
@@ -129,7 +151,7 @@ FF3.prototype.pause = function(opacity, duration, callback){
 }
 
 FF3.prototype.pauseActions = function(){
-  console.log("PAUSING ACTIONS")
+  // console.log("PAUSING ACTIONS")
   var a = {};
   for (var x in this.actions){
     a[x] = this.actions[x];
@@ -141,6 +163,11 @@ FF3.prototype.pauseActions = function(){
 
 FF3.prototype.resumeActions = function(){
   var a = this.actionStack.pop();
+  
+  for (var x in this.actions){
+    delete this.actions[x];
+  }
+
   for (var x in a){
     this.actions[x] = a[x];
   }

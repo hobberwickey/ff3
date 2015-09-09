@@ -22,6 +22,23 @@
     <li><strong>Start: </strong>Enter</li>
     <li><strong>Select: </strong>Shift</li>
   </ul> 
+
+  <p>
+    <div>
+      <input id='battle-bg' type='text'>
+      <label for='battle-bg'>Battle Background</label>
+    </div>
+    <br>
+    <div>
+      <input id='battle-set' type='text'>
+      <label for='battle-set'>Monster Set</label>
+    </div>
+    <br>
+    <div>
+      <input type="button" value='Open Battle' id='open-battle'>
+      <input type="button" value='Close Battle' id='close-battle'>
+    </div>
+  </p>
 </div>
 
 <canvas id='wob' width='4096' height='4096' hidden></canvas>
@@ -108,5 +125,15 @@
       e.target.style.display = "none";
     }
   }, false);
-  
+
+  document.querySelector("#open-battle").addEventListener("click", function(){
+    var bg = document.querySelector("#battle-bg").value,
+        set = document.querySelector("#battle-set").value;
+
+    ff3.openBattle(bg, set);
+  }, false);
+
+  document.querySelector("#close-battle").addEventListener("click", function(){
+    ff3.closeBattle();
+  }, false);
 </script>

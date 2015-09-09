@@ -18,6 +18,8 @@ var Battle = function(context, bg_index, monster_set, party, menu){
     this.ripple = true;
   }
 
+  //this.onClose = function(){}
+
   //this.getBattleType(); //Normal, pinicer, back, etc...
   this.saveOriginalAndSetCurrent(); //sprite positions, maybe other stuff
   this.createMenu();
@@ -38,6 +40,7 @@ Battle.prototype.saveOriginalAndSetCurrent = function(){
     }
 
     this.party[i].position = 7;
+    this.party[i].ready = (Math.random() * 15) | 0;
     //this.party[i].mirror = (this.battleType === "normal" || (this.battleType === 'side' && i < 2)) | 0;
   }
 }
