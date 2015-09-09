@@ -112,4 +112,4 @@ class Application < Sinatra::Base
 end
 
 Dir[File.dirname(__FILE__) + "/config/*.rb"].each { |file| require file }
-Dir[File.dirname(__FILE__) + "/lib/*.rb"].each { |file| require file }
+#Dir[File.dirname(__FILE__) + "/lib/*.rb"].each { |file| require file }
