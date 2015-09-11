@@ -1,0 +1,118 @@
+<link rel='import' href='../../components/polymer/polymer.html'>
+<link rel='import' href='../../components/iron-selector/iron-selector.html'>
+
+<link rel='import' href='menu-base.html'>
+
+<dom-module id='battle-magic-menu'>
+  <template>
+    <div class='content action-menu-content'>
+      <iron-selector class='list'>
+        
+      </iron-selector>
+      <div class='stats'>
+        
+      </div>
+    </div>
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "battle-magic-menu",
+    
+    properties: {
+      height: { type: Number, value: 8 },
+      width: { type: Number, value: 30 },
+      top: { type: Number, value: 0 },
+      left: { type: Number, value: 0 },
+      party: { type: Array, value: function(){ return [] }, notify: true },
+      battle: { type: Object, value: function(){ return {} }, notify: true },
+      chr: { type: Object, value: function(){ return {} } },
+      parent: { type: Object, value: function(){ return {} } },
+      magic: { type: Array, value: function(){ return [] }},
+    },
+
+    attached: function(){
+      var pointer = this.parent.context.misc.getIcon("pointer");
+          pointer.classList.add("pointer");
+
+      var list = Polymer.dom(this.root).querySelector(".list");
+          list.addEventListener("iron-select", function(e){ 
+            this.scrollList();
+            
+            list.selectedItem.insertBefore(pointer, list.selectedItem.firstChild);
+            pointer.style.marginTop = "-" + list.scrollTop + "px";
+          }.bind(this), false)
+          
+      this.getMagic();
+    },
+
+    getMagic: function(){
+      var list = Polymer.dom(this.root).querySelector(".list");
+
+      for (var i=0; i<54; i++){
+        var ctx = document.createElement("canvas").getContext("2d");
+            ctx.canvas.width = 56;
+            ctx.canvas.height = 8;
+        
+        var wrapper = document.createElement("div");
+            wrapper.id = Tables.battleText(this.parent.context.rom, 0x26F767 + i * 7, 7)
+            wrapper.classList.add("canvas-wrapper")
+        
+        for (var j=0; j<7; j++){
+          var letter = this.parent.context.rom[0x26F767 + j + (i * 7)] - 128;
+          ctx.drawImage(this.parent.context.misc.fixedFont, 0, letter << 4, 8, 8, j << 3, 0, 8, 8);
+        }
+
+        wrapper.appendChild(ctx.canvas)
+        list.appendChild(wrapper);
+      }
+
+      list.select(0);
+    },
+
+    scrollList: function(){
+      var list = Polymer.dom(this.root).querySelector(".list"),
+          height = list.querySelector(".canvas-wrapper").offsetHeight,
+          index = Math.ceil( (list.selected - 7) / 2 );
+
+      list.scrollTop = (index * height);
+    },
+
+    onA: function(){
+      //The business...
+    },
+
+    onRight: function(){
+      var list = Polymer.dom(this.root).querySelector(".list");
+      if (list.selected < list.items.length - 1) list.selectNext();
+    },
+
+    onLeft: function(){
+      var list = Polymer.dom(this.root).querySelector(".list");
+      if (list.selected > 0) list.selectPrevious();
+    },
+
+    onDown: function(){
+      var list = Polymer.dom(this.root).querySelector(".list");
+
+      if (list.selected > list.items.length - 3) return;
+      list.select(list.selected + 2);
+
+      console.log(list.selected, list.items.length)
+    },
+
+    onUp: function(){
+      var list = Polymer.dom(this.root).querySelector(".list");
+
+      if (list.selected < 2) return;
+      list.select(list.selected - 2);
+    },
+
+    onB: function(){
+      this.parent.closeSubMenu();
+    },
+
+    behaviors: [MenuBase]
+  })
+</script>

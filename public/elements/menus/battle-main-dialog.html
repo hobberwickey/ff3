@@ -4,9 +4,11 @@
 <link rel='import' href='menu-base.html'>
 <link rel='import' href='battle-action-menu.html'>
 <link rel='import' href='battle-selection-menu.html'>
+<link rel='import' href='battle-magic-menu.html'>
+<link rel='import' href='battle-item-menu.html'>
 <link rel='import' href='battle-actions.html'>
 
-<dom-module id='main-battle-dialog'>
+<dom-module id='battle-main-dialog'>
   <style>
     .content {
       display: flex;
@@ -109,7 +111,7 @@
 
 <script>
   Polymer({
-    is: "main-battle-dialog",
+    is: "battle-main-dialog",
     
     properties: {
       height: { type: Number, value: 8 },

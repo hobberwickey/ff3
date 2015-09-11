@@ -40,7 +40,7 @@ Battle.prototype.saveOriginalAndSetCurrent = function(){
     }
 
     this.party[i].position = 7;
-    this.party[i].ready = (Math.random() * 15) | 0;
+    this.party[i].ready = (Math.random() * 50) | 0;
     //this.party[i].mirror = (this.battleType === "normal" || (this.battleType === 'side' && i < 2)) | 0;
   }
 }
@@ -50,7 +50,7 @@ Battle.prototype.createMenu = function(){
       wrapper.innerHTML = "";
       wrapper.style.opacity = 1;
 
-  var menu = document.createElement("main-battle-dialog");
+  var menu = document.createElement("battle-main-dialog");
       menu.context = this.context;
       menu.battle = this;
       menu.party = this.party;

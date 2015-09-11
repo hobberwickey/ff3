@@ -1,0 +1,57 @@
+battle-action-menu .content {
+  padding: 0px 10px 0px 15px;
+}
+
+battle-action-menu canvas.pointer, battle-magic-menu canvas.pointer {
+  margin-left: -17px;
+  position: absolute;
+}
+
+battle-action-menu.inactive canvas.pointer {
+  display: none;
+}
+
+#menu /deep/ battle-selection-menu .content{
+  background-color: transparent;
+  background-image: none;
+  border: none;
+}
+
+battle-selection-menu canvas.pointer {
+  position: absolute;
+}
+
+battle-selection-menu canvas.reversed {
+  transform: scale(-1, 1)
+}
+
+battle-magic-menu {
+  .list {
+    display: flex;
+    flex-wrap: wrap;
+
+    width: 152px;
+    border-right: groove 3px #ccc;
+    padding: 2px 12px;
+    overflow: hidden;
+    box-sizing: border-box;
+    height: 100%;
+
+    .canvas-wrapper {
+      width: 0; 
+      min-width: 50%; 
+      display: inline-flex;
+    
+      canvas {
+        padding: 3px 2px;
+      }
+    }
+  }
+
+  .stats {
+    width: 80px;
+    display: inline-flex;
+    float: right;
+  }
+}
+

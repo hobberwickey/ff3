@@ -81,6 +81,34 @@
 
       	self.endTurn(chr);
       })
+    },
+
+    Magic: function(chr){
+      var sub = Polymer.dom(this.root).querySelector(".sub-menus"),
+          menu = document.createElement( 'battle-magic-menu' );
+          menu.parent = this;
+          menu.chr = chr;
+
+      sub.appendChild(menu);
+      this.subMenus.push(menu);
+    },  
+
+    Item: function(chr){
+      var sub = Polymer.dom(this.root).querySelector(".sub-menus"),
+          menu = document.createElement( 'battle-item-menu' );
+          menu.parent = this;
+          menu.chr = chr;
+
+      sub.appendChild(menu);
+      this.subMenus.push(menu);
+    },
+
+    CastMagic: function(){
+
+    },
+
+    UseItem: function(){
+
     }
   }
 </script>
