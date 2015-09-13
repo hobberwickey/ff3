@@ -103,8 +103,31 @@
       this.subMenus.push(menu);
     },
 
-    CastMagic: function(){
+    CastMagic: function(chr, magic){
+      var self = this;
 
+      var effects = this.context.utils.getMagicData(magic);
+
+      self.selectTarget({self: true, monsters: true }, 'monsters', function(target){
+        var plane = document.createElement("battle-magic-overlay");
+            plane.parent = this;
+
+        document.querySelector("#menu").appendChild(plane);
+
+        // for (var i=0; i<effects[0].tiles.length; i++){
+        //   plane.drawTile(effects[0].tiles[i], effects[0].palette, i << 4, (i >> 4) << 4)
+        // }
+
+        // plane.ctx.putImageData(plane.imageData, 0, 0)
+
+        var cntr = 0;
+        self.context.iterate(30, effects[0].frames.length - 1, function(){
+          plane.drawFrame(effects[0].frames[cntr], effects[0].palette, effects[0].data[4], target.coords.x, target.coords.y);
+          cntr++;
+        }, function(){
+          plane.parentNode.removeChild(plane);
+        }, false);
+      })
     },
 
     UseItem: function(){

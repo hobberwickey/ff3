@@ -40,7 +40,7 @@ Battle.prototype.saveOriginalAndSetCurrent = function(){
     }
 
     this.party[i].position = 7;
-    this.party[i].ready = (Math.random() * 50) | 0;
+    this.party[i].ready = 90 //(Math.random() * 50) | 0;
     //this.party[i].mirror = (this.battleType === "normal" || (this.battleType === 'side' && i < 2)) | 0;
   }
 }

@@ -70,6 +70,15 @@ Utils.prototype.getValue = function(offset, bytes){
   return val;
 }
 
+Utils.prototype.getBytes = function(offset, len){
+  var bytes = new Uint8ClampedArray(len);
+  for (var i=0; i<len; i++){
+    bytes[i] = this.context.rom[offset + i];
+  }
+
+  return bytes;
+}
+
 
 //TODO: move this to map utils
 Utils.prototype.loadEntrances = function(map_objects){
@@ -307,4 +316,134 @@ Utils.prototype.assemble_3bit = function(tile_offset, hFlip, vFlip, bytes){
   }
 
   return tile;
+}
+
+/* Doesn't belong here */
+Utils.prototype.getMagicData = function(index){
+  var spell_data = this.getBytes(0x1081B2 + (index * 14), 14);
+  
+  console.log(spell_data);
+  var effects = [
+        {
+          data: this.getBytes(0x14D200 + ((spell_data[0] + (spell_data[1] << 8)) * 6), 6),
+          palette: this.buildPalette( 0x126200 + (spell_data[6] << 4), 8),
+          tiles: [],
+          assembly: [],
+          frames: []
+        },
+
+        {
+          data: this.getBytes(0x14D200 + ((spell_data[2] + (spell_data[3] << 8)) * 6), 6),
+          palette: this.buildPalette( 0x126200 + (spell_data[7] << 4), 8),
+          tiles: [],
+          assembly: [],
+          frames: []
+        },
+
+        {
+          effect: spell_data[4] + (spell_data[5] << 8),
+          palette: spell_data[8],
+          tiles: [],
+          assembly: []
+        }
+      ];
+
+  var self = this;
+  function build3BitTiles(effect){
+    var pointers = self.getBytes( (effect.data[1] << 6) + 0x120200, 255),
+        raw_tiles = [],
+        tiles = [];
+    
+    for (var i=0; i<256; i+=2){
+      var offset = 0x130200 + ((pointers[i] + ((pointers[i + 1] & 0x3f) << 8)) * 24),
+          vFlip = (pointers[i + 1] & 0x80) === 0x80,
+          hFlip = (pointers[i + 1] & 0x40) === 0x40,
+          tile = self.assemble_3bit(offset, hFlip, vFlip);
+
+      console.log(i >> 1, offset);
+      raw_tiles.push(tile);
+    } 
+
+    for (var i=0; i<32; i++){
+      var jump = (i >> 3) << 5,
+          index = (i & 7) << 1,
+          big_tile = new Uint8ClampedArray(256);
+
+      for (var j=0; j<4; j++){
+        var tile_index = index + jump + (j & 1) + ((j >> 1) << 4);
+            tile = raw_tiles[tile_index];
+
+        for (var k=0; k<64; k++){
+          var x = (k & 7) + ((j & 1) << 3),
+              y = (k >> 3) + ((j >> 1) << 3);
+
+          big_tile[x + (y << 4)] = tile[k];
+        }
+      }
+
+      tiles.push(big_tile);
+    }
+
+    return tiles;
+  }
+
+  function getPattern(effect){
+    var frames = effect.data[0] & 0x3f,
+        pattern_pointer = effect.data[2] + (effect.data[3] << 8);
+      
+    var pointers = self.getBytes(0x14E13C + (pattern_pointer * 2), (frames << 1) + 2);
+    
+    var patterns = [];
+    for (var i=0; i<pointers.length - 2; i+=2){
+      var current = pointers[i] + (pointers[i + 1] << 8),
+          next = pointers[i + 2] + (pointers[i + 3] << 8),
+          len = (next - current) >> 1;
+      
+      patterns.push( self.getBytes( 0x110200 + (pointers[i] + (pointers[i + 1] << 8)), len << 1 ) )
+    }
+
+    return patterns;
+  }
+
+  function toFrames(effect){
+    var frames = [],
+        len = effect.data[0] & 0x3f,
+        width = effect.data[4],
+        height = effect.data[5];
+
+    for (var i=0; i<len; i++){
+      var frame = new Uint8ClampedArray( (width * height) << 8 ),
+          pattern = effect.assembly[i];
+
+      for (var j=0; j<pattern.length; j+=2){
+        var x_offset = ((pattern[j] & 0xf0) >> 4) << 4,
+            y_offset = (pattern[j] & 0x0f) << 4,
+            tile = effect.tiles[ pattern[j + 1] & 63 ],
+            hFlip = (pattern[j + 1] & 64) === 64,
+            vFlip = (pattern[j + 1] & 128) === 128; 
+        
+        for (var k=0; k<256; k++){
+          var x = x_offset + ( hFlip ? 15 - (k & 15) : (k & 15) ),
+              y = y_offset + ( vFlip ? 15 - (k >> 4) : (k >> 4) );
+
+          frame[x + (y * (width << 4))] = tile[k];
+        }
+      }
+
+      frames.push(frame);
+    }
+
+    return frames;
+  }
+
+  effects[0].tiles = build3BitTiles(effects[0]);
+  effects[0].assembly = getPattern(effects[0]);
+  effects[0].frames = toFrames(effects[0]);
+
+  // effects[1].tiles = build3BitTiles(effects[1]);
+  // effects[1].assembly = getPattern(effects[1]);
+  // effects[1].frames = toFrames(effects[1]);
+  //effects[1].tiles = build3BitTiles(effects[1].effect);
+
+  return effects;
 }

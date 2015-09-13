@@ -1,0 +1,78 @@
+<!-- 
+    Provides a canvas overlay to draw spells on
+-->
+<link rel='import' href='../../components/polymer/polymer.html'>
+<link rel='import' href='menu-base.html'>
+
+<dom-module id='battle-magic-overlay'>
+  <template>
+    <div class='content'>
+      <canvas id='screen' width='240' height='144'></canvas>
+    </div>
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "battle-magic-overlay",
+
+    properties: {
+      height: { type: Number, value: 18 },
+      width: { type: Number, value: 30 },
+      top: { type: Number, value: 0 },
+      left: { type: Number, value: 0 },
+      parent: { type: Object, value: function(){ return {} }},
+      ctx: { type: Object, value: function(){ return null }},
+      imageData: { type: Object, value: function(){ return null }}
+    },
+
+    data: null,
+
+    attached: function(){
+      this.ctx = Polymer.dom(this.root).querySelector("#screen").getContext('2d');
+
+      this.imageData = this.ctx.getImageData(0, 0, 240, 144);
+      this.data = this.imageData.data;
+    },
+
+    drawTile: function(tile, palette, x_offset, y_offset){
+      var rowLen = 240 << 2;
+
+      for (var x=0; x<16; x++){
+        for (var y=0; y<16; y++){
+          var offset = (x_offset << 2) + (x << 2) + ((y_offset + y) * rowLen),
+              color = palette[tile[x + (y << 4)]];
+
+          this.data[offset]     = color[0];
+          this.data[offset + 1] = color[1];
+          this.data[offset + 2] = color[2];
+          this.data[offset + 3] = color[3];
+        }
+      }
+    },
+
+    drawFrame: function(frame, palette, width, x_offset, y_offset){
+      
+      var rowLen = 240 << 2;
+
+      for (var i=0; i<this.data.length; i++) this.data[i] = 0;
+
+      for (var i=0; i<frame.length; i++){
+        var x = i % (width << 4),
+            y = (i / (width << 4)) | 0,
+            color = palette[frame[i]];
+
+        var offset = ((x + x_offset) << 2) + ((y + y_offset) * rowLen);
+        
+        this.data[offset]     = color[0];
+        this.data[offset + 1] = color[1];
+        this.data[offset + 2] = color[2];
+        this.data[offset + 3] = color[3];
+      }
+
+      this.ctx.putImageData(this.imageData, 0, 0);
+    },
+
+    behaviors: [MenuBase]
+  })
+</script>

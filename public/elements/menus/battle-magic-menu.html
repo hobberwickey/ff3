@@ -80,7 +80,7 @@
     },
 
     onA: function(){
-      //The business...
+      this.parent.CastMagic(this.chr, Polymer.dom(this.root).querySelector(".list").selected)
     },
 
     onRight: function(){
@@ -98,8 +98,6 @@
 
       if (list.selected > list.items.length - 3) return;
       list.select(list.selected + 2);
-
-      console.log(list.selected, list.items.length)
     },
 
     onUp: function(){
