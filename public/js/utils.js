@@ -320,16 +320,18 @@ Utils.prototype.assemble_3bit = function(tile_offset, hFlip, vFlip, bytes){
 
 /* Doesn't belong here */
 Utils.prototype.getMagicData = function(index){
+  var self = this;
+
   var spell_data = this.getBytes(0x1081B2 + (index * 14), 14);
   
-  console.log(spell_data);
   var effects = [
         {
           data: this.getBytes(0x14D200 + ((spell_data[0] + (spell_data[1] << 8)) * 6), 6),
           palette: this.buildPalette( 0x126200 + (spell_data[6] << 4), 8),
           tiles: [],
           assembly: [],
-          frames: []
+          frames: [],
+          code: getCode( spell_data[0] + (spell_data[1] << 8) )
         },
 
         {
@@ -337,7 +339,7 @@ Utils.prototype.getMagicData = function(index){
           palette: this.buildPalette( 0x126200 + (spell_data[7] << 4), 8),
           tiles: [],
           assembly: [],
-          frames: []
+          frames: []        
         },
 
         {
@@ -348,7 +350,6 @@ Utils.prototype.getMagicData = function(index){
         }
       ];
 
-  var self = this;
   function build3BitTiles(effect){
     var pointers = self.getBytes( (effect.data[1] << 6) + 0x120200, 255),
         raw_tiles = [],
@@ -360,7 +361,6 @@ Utils.prototype.getMagicData = function(index){
           hFlip = (pointers[i + 1] & 0x40) === 0x40,
           tile = self.assemble_3bit(offset, hFlip, vFlip);
 
-      console.log(i >> 1, offset);
       raw_tiles.push(tile);
     } 
 
@@ -436,6 +436,23 @@ Utils.prototype.getMagicData = function(index){
     return frames;
   }
 
+  function getCode(index){
+
+    var pointer = self.getValue(0x11ECD8 + (index * 2), 2),
+        offset = 0x100200 + pointer;
+
+    return offset;
+    
+    // var code = []
+
+    // while (self.context.rom[offset] !== 0xff){
+    //   code.push(self.context.rom[offset])
+    //   offset++;
+    // }
+
+    // return code;
+  }
+
   effects[0].tiles = build3BitTiles(effects[0]);
   effects[0].assembly = getPattern(effects[0]);
   effects[0].frames = toFrames(effects[0]);
@@ -443,7 +460,10 @@ Utils.prototype.getMagicData = function(index){
   // effects[1].tiles = build3BitTiles(effects[1]);
   // effects[1].assembly = getPattern(effects[1]);
   // effects[1].frames = toFrames(effects[1]);
-  //effects[1].tiles = build3BitTiles(effects[1].effect);
 
-  return effects;
+  return {
+    effects: effects,
+    data: spell_data,
+    index: index
+  }
 }

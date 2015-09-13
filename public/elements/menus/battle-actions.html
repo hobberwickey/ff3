@@ -106,32 +106,151 @@
     CastMagic: function(chr, magic){
       var self = this;
 
-      var effects = this.context.utils.getMagicData(magic);
+      var spell = this.context.utils.getMagicData(magic);
 
       self.selectTarget({self: true, monsters: true }, 'monsters', function(target){
-        var plane = document.createElement("battle-magic-overlay");
-            plane.parent = this;
-
-        document.querySelector("#menu").appendChild(plane);
-
-        // for (var i=0; i<effects[0].tiles.length; i++){
-        //   plane.drawTile(effects[0].tiles[i], effects[0].palette, i << 4, (i >> 4) << 4)
+        self.ExecuteMagic(spell, target)
+        
+        // for (var i=0; i<effects[1].tiles.length; i++){
+        //   plane.drawTile(effects[1].tiles[i], effects[1].palette, i << 4, (i >> 4) << 4)
         // }
 
         // plane.ctx.putImageData(plane.imageData, 0, 0)
 
-        var cntr = 0;
-        self.context.iterate(30, effects[0].frames.length - 1, function(){
-          plane.drawFrame(effects[0].frames[cntr], effects[0].palette, effects[0].data[4], target.coords.x, target.coords.y);
-          cntr++;
-        }, function(){
-          plane.parentNode.removeChild(plane);
-        }, false);
+        // var cntr = 0;
+        // self.context.iterate(30, effects[1].frames.length - 1, function(){
+        //   plane.drawFrame(effects[1].frames[cntr], effects[1].palette, effects[1].data[4], target.coords.x, target.coords.y);
+        //   cntr++;
+        // }, function(){
+        //   plane.parentNode.removeChild(plane);
+        // }, false);
       })
     },
 
     UseItem: function(){
 
+    },
+
+    ExecuteMagic: function(spell, target, rom){
+      var self = this,
+          rom = rom || this.context.rom,
+          speed = 0;
+
+      var subsprites = [3, 1, 1, 1];
+
+      var subcommands = {
+        "3b": function(){ console.log("sub 3b", "replace monster palette with effect's palette")},
+        "3c": function(){ console.log("sub 3b", "clear target mask (opposite of 3b")}
+      }
+
+      function create_plane(){
+        var plane = document.createElement("battle-magic-overlay");
+            plane.parent = this;
+
+        document.querySelector("#menu").appendChild(plane);
+
+        return plane;
+      }
+
+      var commands = {
+        "0": function(offset, thread){
+          var e = thread.effect;
+
+          self.context.once(speed, function(){
+            thread.plane.drawFrame(e.frames[thread.frame], e.palette, e.data[4], thread.coords.x, thread.coords.y);
+            thread.frame = thread.frame === (e.data[0] & 0x3f) - 1 ? 0 : thread.frame + 1;
+          }, function(){
+            execute(offset + 1, thread);
+          })
+        },
+        "80": function(offset, thread){ 
+          subcommands[rom[offset + 1].toString(16)]();
+
+          execute(offset + 2, thread);
+        },
+        "83": function(offset, thread){ 
+          var distance = rom[offset + 1] & 0x1f,
+              direction = (rom[offset + 1] & 0xe0) >> 5;
+
+          thread.start_coords.x -= distance;
+          thread.coords.x = thread.start_coords.x;
+
+          execute(offset + 2, thread);
+        },
+        "8b": function(offset, thread){
+          thread.loop = {
+            offset: offset + 2,
+            total_iterations: rom[offset + 1],
+            completed_iterations: 0
+          }
+
+          execute(offset + 2, thread);
+        },
+        '8c': function(offset, thread){
+          if (thread.loop.completed_iterations < thread.loop.total_iterations){
+            
+            thread.loop.completed_iterations += 1;
+            execute(thread.loop.offset, thread);
+          } else {
+            thread.loop = null;
+            execute(offset + 1, thread);
+          }
+        },
+        "90": function(offset, thread){ 
+          execute(offset + 2, thread)
+        },
+        "d1": function(offset, thread){ 
+          execute(offset + 2, thread);
+        },
+        "c9": function(offset, thread){ 
+          execute(offset + 2, thread);
+        },
+        "eb": function(offset, thread){ 
+          var len = subsprites[ spell.index ];
+  
+          //TODO Not sure if this is wise
+          thread.plane.parentNode.removeChild(thread.plane)          
+          self.context.iterate(speed, len - 1, function(){
+            var t = {
+              id: (Math.random() * 10000) | 0,
+              effect: thread.effect,
+              frame: 0,
+              loop: null,
+              start_coords: thread.coords,
+              coords: {x: thread.coords.x, y: thread.coords.y },
+              plane: create_plane()
+            }
+
+            execute( rom[offset + 1] + (rom[offset + 2] << 8) + 0x100200, t );
+          }, function(){
+
+          }, false);
+        },
+        "ff": function(offset, thread){
+          thread.plane.parentNode.removeChild(thread.plane);
+          
+        }
+      }
+
+
+      function execute(offset, thread){
+        var action = rom[offset].toString(16);
+
+        if (commands[action] !== void(0)){
+          console.log('known', action);
+          commands[action](offset, thread);
+        } else {
+          console.log("Unknown", action);
+        }
+      }
+
+      var offset = spell.effects[0].code,
+          coords = {x: target.coords.x, y: target.coords.y},
+          thread = { effect: spell.effects[0], frame: 0, loop: null, coords: coords, plane: create_plane(), id: (Math.random() * 10000) | 0 };
+
+      speed = 4//rom[offset] + (rom[offset + 1] << 8);
+
+      execute(offset + 2, thread);
     }
   }
 </script>
