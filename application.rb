@@ -33,6 +33,10 @@ class Application < Sinatra::Base
     erb :index
   end
 
+  get "/spell-dump" do
+    erb :"tests/spell-dump"
+  end
+
   get "/map/:map" do
     @map_info = MapInfo.new :map_index => params[:map].to_i
     @map = Map.new :map_info => @map_info, :character => params[:character].to_i

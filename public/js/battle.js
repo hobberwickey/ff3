@@ -141,7 +141,7 @@ Battle.prototype.draw = function(data){
   this.drawBG(data);
   this.drawMonsters(data, this.monsters, this.monster_offsets);
   this.drawSprites(data);
-  //this.drawAttack(data);
+  this.drawAttack(data);
 }
 
 Battle.prototype.drawBG = function(data, tiles){
@@ -262,6 +262,12 @@ Battle.prototype.drawSprites = function(data){
       }
     }
   }
+}
+
+Battle.prototype.drawAttack = function(){
+  if (this.menu === null) return 
+
+  this.menu.drawPlanes();
 }
 
 Battle.prototype.runActionLoop = function(){

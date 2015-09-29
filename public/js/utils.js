@@ -201,22 +201,22 @@ Utils.prototype.decompress = function(offset, max){
   return output
 }
 
+Utils.prototype.bezier = function(t, p0, p1, p2, p3){
+  var cX = 3 * (p1.x - p0.x),
+      bX = 3 * (p2.x - p1.x) - cX,
+      aX = p3.x - p0.x - cX - bX;
+
+  var cY = 3 * (p1.y - p0.y),
+      bY = 3 * (p2.y - p1.y) - cY,
+      aY = p3.y - p0.y - cY - bY;
+
+  var x = (aX * Math.pow(t, 3)) + (bX * Math.pow(t, 2)) + (cX * t) + p0.x;
+  var y = (aY * Math.pow(t, 3)) + (bY * Math.pow(t, 2)) + (cY * t) + p0.y;
+
+  return {x: x, y: y};
+}
+
 Utils.prototype.moveBezier = function(current, destination, control_point_1, control_point_2, duration, callback){
-  bezier = function(t, p0, p1, p2, p3){
-    var cX = 3 * (p1.x - p0.x),
-        bX = 3 * (p2.x - p1.x) - cX,
-        aX = p3.x - p0.x - cX - bX;
-
-    var cY = 3 * (p1.y - p0.y),
-        bY = 3 * (p2.y - p1.y) - cY,
-        aY = p3.y - p0.y - cY - bY;
-
-    var x = (aX * Math.pow(t, 3)) + (bX * Math.pow(t, 2)) + (cX * t) + p0.x;
-    var y = (aY * Math.pow(t, 3)) + (bY * Math.pow(t, 2)) + (cY * t) + p0.y;
-
-    return {x: x, y: y};
-  }
-
   var frames = ((duration / 1000) * 60) | 0,
       timing = 1 / frames,
       original = {x: current.x, y: current.y}
@@ -224,7 +224,7 @@ Utils.prototype.moveBezier = function(current, destination, control_point_1, con
   var points = [];
   for (var i=0;  i<=frames; i+=1){
     points.push( 
-      bezier(i * timing, original, control_point_1, control_point_2, destination)
+      this.bezier(i * timing, original, control_point_1, control_point_2, destination)
     )
   }
 
@@ -325,46 +325,71 @@ Utils.prototype.getMagicData = function(index){
   var spell_data = this.getBytes(0x1081B2 + (index * 14), 14);
   
   var effects = [
-        {
-          data: this.getBytes(0x14D200 + ((spell_data[0] + (spell_data[1] << 8)) * 6), 6),
-          palette: this.buildPalette( 0x126200 + (spell_data[6] << 4), 8),
-          tiles: [],
-          assembly: [],
-          frames: [],
-          code: getCode( spell_data[0] + (spell_data[1] << 8) )
-        },
+    { 
+      index: spell_data[0] + (spell_data[1] << 8),
+      data: this.getBytes(0x14D200 + ((spell_data[0] + ((spell_data[1] & 0x7f) << 8)) * 6), 6),
+      palette: this.buildPalette( 0x126200 + (spell_data[6] << 4), 8),
+      tiles: [],
+      assembly: [],
+      frames: [],
+      code: getCode( spell_data[0] + (spell_data[1] << 8) )
+    },
 
-        {
-          data: this.getBytes(0x14D200 + ((spell_data[2] + (spell_data[3] << 8)) * 6), 6),
-          palette: this.buildPalette( 0x126200 + (spell_data[7] << 4), 8),
-          tiles: [],
-          assembly: [],
-          frames: []        
-        },
+    {
+      index: spell_data[2] + (spell_data[3] << 8),
+      data: this.getBytes(0x14D200 + ((spell_data[2] + ((spell_data[3] & 0x7f) << 8)) * 6), 6),
+      palette: this.buildPalette( 0x126200 + (spell_data[7] << 4), 8),
+      tiles: [],
+      assembly: [],
+      frames: [],
+      code: getCode( spell_data[2] + ((spell_data[3] << 8) & 0x7f) )       
+    },
 
-        {
-          effect: spell_data[4] + (spell_data[5] << 8),
-          palette: spell_data[8],
-          tiles: [],
-          assembly: []
-        }
-      ];
+    {
+      index: spell_data[4] + (spell_data[5] << 8),
+      data: this.getBytes(0x14D200 + ((spell_data[4] + ((spell_data[5] & 0x7f) << 8)) * 6), 6),
+      palette: this.buildPalette( 0x126200 + (spell_data[8] << 4), 8),
+      tiles: [],
+      assembly: [],
+      frames: [],
+      code: getCode( spell_data[4] + ((spell_data[5] << 8) & 0x7f) )
+    }
+  ];
 
-  function build3BitTiles(effect){
-    var pointers = self.getBytes( (effect.data[1] << 6) + 0x120200, 255),
+  function buildTiles(effect, bits){
+    if (effect.index === 0xffff) return [];
+
+    console.log(effect.data[1].toString(16));
+    var index = bits === 3 ? effect.data[1] : effect.data[1] + 8;
+
+    var pointers = self.getBytes( (index << 6) + (bits === 3 ? 0x120200 : 0x12C000), 512),
         raw_tiles = [],
         tiles = [];
     
-    for (var i=0; i<256; i+=2){
-      var offset = 0x130200 + ((pointers[i] + ((pointers[i + 1] & 0x3f) << 8)) * 24),
+    if (bits === 3){
+      var bytes = 24,
+          base = 0x130200;
+    } else {
+      var bytes = 16,
+          base = 0x187200;
+    }
+
+    for (var i=0; i<512; i+=2){
+      var offset = base + ((pointers[i] + ((pointers[i + 1] & 0x3f) << 8)) * bytes),
           vFlip = (pointers[i + 1] & 0x80) === 0x80,
-          hFlip = (pointers[i + 1] & 0x40) === 0x40,
-          tile = self.assemble_3bit(offset, hFlip, vFlip);
+          hFlip = (pointers[i + 1] & 0x40) === 0x40;
+
+      //console.log(offset.toString(16));
+      if (bits === 3){
+        var tile = self.assemble_3bit(offset, hFlip, vFlip);
+      } else {
+        var tile = self.assemble_2bit(offset, hFlip, vFlip);
+      }
 
       raw_tiles.push(tile);
     } 
 
-    for (var i=0; i<32; i++){
+    for (var i=0; i<64; i++){
       var jump = (i >> 3) << 5,
           index = (i & 7) << 1,
           big_tile = new Uint8ClampedArray(256);
@@ -388,24 +413,53 @@ Utils.prototype.getMagicData = function(index){
   }
 
   function getPattern(effect){
+    if (effect.index === 0xffff) return [];
+
     var frames = effect.data[0] & 0x3f,
         pattern_pointer = effect.data[2] + (effect.data[3] << 8);
       
-    var pointers = self.getBytes(0x14E13C + (pattern_pointer * 2), (frames << 1) + 2);
+    var pointers = self.getBytes(0x14E13C + (pattern_pointer * 2), (frames << 1)),
+        width = effect.data[4],
+        height = effect.data[5];
     
     var patterns = [];
-    for (var i=0; i<pointers.length - 2; i+=2){
-      var current = pointers[i] + (pointers[i + 1] << 8),
-          next = pointers[i + 2] + (pointers[i + 3] << 8),
-          len = (next - current) >> 1;
-      
-      patterns.push( self.getBytes( 0x110200 + (pointers[i] + (pointers[i + 1] << 8)), len << 1 ) )
+    
+    function toPos(b){
+      var x = (b & 0xf0) >> 4,
+          y = (b & 0x0f);
+
+      return x + (y * width);
+    }
+
+    for (var i=0; i<pointers.length; i+=2){
+      var current = pointers[i] + (pointers[i + 1] << 8);
+
+      var byte1 = self.context.rom[ 0x110200 + current ],
+          byte2 = self.context.rom[ 0x110200 + current + 1],
+          pattern = [], cntr = 0, pos = 0;
+
+      do {
+        pattern.push(byte1);
+        pattern.push(byte2);
+
+        pos = toPos(byte1);
+        cntr += 2;
+
+        byte1 = self.context.rom[ 0x110200 + current + cntr]
+        byte2 = self.context.rom[ 0x110200 + current + cntr + 1]
+
+      } while (toPos(byte1) > pos)
+
+      patterns.push(pattern);
+      //patterns.push( self.getBytes( 0x110200 + (pointers[i] + (pointers[i + 1] << 8)), len << 1 ) )
     }
 
     return patterns;
   }
 
   function toFrames(effect){
+    if (effect.index === 0xffff) return [];
+
     var frames = [],
         len = effect.data[0] & 0x3f,
         width = effect.data[4],
@@ -418,7 +472,7 @@ Utils.prototype.getMagicData = function(index){
       for (var j=0; j<pattern.length; j+=2){
         var x_offset = ((pattern[j] & 0xf0) >> 4) << 4,
             y_offset = (pattern[j] & 0x0f) << 4,
-            tile = effect.tiles[ pattern[j + 1] & 63 ],
+            tile = effect.tiles[ pattern[j + 1] & 31 ],
             hFlip = (pattern[j + 1] & 64) === 64,
             vFlip = (pattern[j + 1] & 128) === 128; 
         
@@ -437,29 +491,29 @@ Utils.prototype.getMagicData = function(index){
   }
 
   function getCode(index){
+    if (index === 0xffff) return 0x100200;
 
     var pointer = self.getValue(0x11ECD8 + (index * 2), 2),
         offset = 0x100200 + pointer;
 
     return offset;
-    
-    // var code = []
-
-    // while (self.context.rom[offset] !== 0xff){
-    //   code.push(self.context.rom[offset])
-    //   offset++;
-    // }
-
-    // return code;
   }
 
-  effects[0].tiles = build3BitTiles(effects[0]);
+  var use2Bit = [0x14, 0x09, 0x15, 0x3b, 0x00]
+
+  var bits = use2Bit.indexOf(effects[0].data[1]) === -1 ? 3 : 2;
+  effects[0].tiles = buildTiles(effects[0], bits);
   effects[0].assembly = getPattern(effects[0]);
   effects[0].frames = toFrames(effects[0]);
 
-  // effects[1].tiles = build3BitTiles(effects[1]);
-  // effects[1].assembly = getPattern(effects[1]);
-  // effects[1].frames = toFrames(effects[1]);
+  var bits = use2Bit.indexOf(effects[1].data[1]) === -1 ? 3 : 2;
+  effects[1].tiles = buildTiles(effects[1], bits);
+  effects[1].assembly = getPattern(effects[1]);
+  effects[1].frames = toFrames(effects[1]);
+
+  effects[2].tiles = buildTiles(effects[2], 2);
+  effects[2].assembly = getPattern(effects[2]);
+  effects[2].frames = toFrames(effects[2]);
 
   return {
     effects: effects,

@@ -38,6 +38,8 @@ var Controls = function(context){
   
   var self = this;
   window.addEventListener('keydown', function(e){
+    e.preventDefault();
+
     var button = self.buttons[e.keyCode];
     if (button !== void(0)){ 
       self.state[button] = true;
@@ -45,7 +47,13 @@ var Controls = function(context){
     }
   }, false)
 
+  window.addEventListener("keypress", function(e){
+    e.preventDefault();
+  }, false)
+
   window.addEventListener("keyup", function(e){
+    e.preventDefault();
+    
     var button = self.buttons[e.keyCode];
     if (button !== void(0)){ 
       self.state[button] = false;

@@ -1,15 +1,15 @@
-<div id='screen_wrapper' style='width: 240px; height: 208px; overflow: hidden; transform: scale3d(2, 2, 2); transform-origin: 0 0;'>
-	<canvas moz-opaque id='screen' width='256' height='256' style='background-color: #00f; transform: translate3d(-16px, -8px, 0px); transform-origin: 0 0;'></canvas>
+<div id='screen_wrapper' style='display: none; width: 240px; height: 208px; overflow: hidden; transform: scale3d(2, 2, 2); transform-origin: 0 0;'>
+  <canvas moz-opaque id='screen' width='256' height='256' style='background-color: #00f; transform: translate3d(-16px, -8px, 0px); transform-origin: 0 0;'></canvas>
   <div id='menu'></div>
 </div>
 
-<div id='test'>Loading</div>
+<div id='test' hidden>Loading</div>
 
 <div id='upload-rom'>
   <polyrhythm-form id='upload-form' options='{"submitText":null}'></polyrhythm-form>
 </div>
 
-<div id='info'>
+<div id='info' hidden>
   <h4>Controls</h4>
   <ul style='list-style-type: none; margin: 0; padding: 0;'>
     <li><strong>Up/Down/Left/Right: </strong>Directional Keys</li>
@@ -45,8 +45,8 @@
 <canvas id='wor' width='4096' height='4096' hidden></canvas>
 <canvas id='mode7' width='4096' height='4096' hidden></canvas>
 
-<div id='output' style='position: absolute; width: 100%; height: 100%; overflow: auto; left: 0; top: 100%; background-color: white; color: black;'>
-  
+<div id='output' style='position: absolute; width: 100%; height: 100%; overflow: auto; left: 0; top: 0; background-color: white; color: black;'>
+
 </div>
 
 <script src='/js/ff3.js'></script>
@@ -66,8 +66,10 @@
 
       live.onload = function(){ 
         ff3 = new FF3(live.result);
-        ff3.startGame();
+        // ff3.startGame();
         // ff3.map = new Map(75, ff3, [2, 28], 0);
+        ff3.openBattle(0, 283);
+        ff3.battle.menu.dumpSpellData(document.querySelector("#output"));
       }
 
       store.onload = function(){ 
@@ -84,11 +86,8 @@
       
       live.onload = function() {
           ff3 = new FF3(live.result);
-          <% if params[:map].blank? %>
-          ff3.startGame();
-          <% else %>
-          ff3.map = new Map(<%= params[:map] %>, ff3, [<%= params[:x] ||= 2 %>, <%= params[:y] ||= 30 %>], 0);
-          <% end %>
+          ff3.openBattle(0, 283);
+          ff3.battle.menu.dumpSpellData(document.querySelector("#output"));
       };
       live.readAsArrayBuffer(blob);
     }
@@ -100,6 +99,7 @@
   }, false)
 
   function resizeScreen(){
+    return;
     var viewport = document.querySelector('html'),
         height = viewport.offsetHeight, 
         width = viewport.offsetWidth,

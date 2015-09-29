@@ -3,11 +3,12 @@
 -->
 <link rel='import' href='../../components/polymer/polymer.html'>
 <link rel='import' href='menu-base.html'>
+<link rel='import' href='spell-effects.html'>
 
 <dom-module id='battle-magic-overlay'>
   <template>
     <div class='content'>
-      <canvas id='screen' width='240' height='144'></canvas>
+      <canvas id='screen' width='256' height='152' style='margin-left: -8px; margin-top: -8px;'></canvas>
     </div>
   </template>
 </dom-module>
@@ -23,7 +24,12 @@
       left: { type: Number, value: 0 },
       parent: { type: Object, value: function(){ return {} }},
       ctx: { type: Object, value: function(){ return null }},
-      imageData: { type: Object, value: function(){ return null }}
+      imageData: { type: Object, value: function(){ return null }},
+      circle: { type: Object, value: function(){ return {r: 0, x: 0, y: 0, max_r: 0} }},
+      mask: { type: Number, value: 0 },
+      threads: { type: Array, value: function(){ return [] }},
+      scroll: { type: Number, value: {x: 0, y: 0}},
+      opacity: { type: Number, value: 255 }
     },
 
     data: null,
@@ -31,48 +37,132 @@
     attached: function(){
       this.ctx = Polymer.dom(this.root).querySelector("#screen").getContext('2d');
 
-      this.imageData = this.ctx.getImageData(0, 0, 240, 144);
+      this.imageData = this.ctx.getImageData(0, 0, 256, 152);
       this.data = this.imageData.data;
     },
 
     drawTile: function(tile, palette, x_offset, y_offset){
-      var rowLen = 240 << 2;
+      var rowLen = 256 << 2;
+
+      var data = this.data;
 
       for (var x=0; x<16; x++){
         for (var y=0; y<16; y++){
           var offset = (x_offset << 2) + (x << 2) + ((y_offset + y) * rowLen),
               color = palette[tile[x + (y << 4)]];
 
-          this.data[offset]     = color[0];
-          this.data[offset + 1] = color[1];
-          this.data[offset + 2] = color[2];
-          this.data[offset + 3] = color[3];
+          data[offset]     = color[0];
+          data[offset + 1] = color[1];
+          data[offset + 2] = color[2];
+          data[offset + 3] = color[3];
         }
       }
     },
 
-    drawFrame: function(frame, palette, width, x_offset, y_offset){
+    drawFrame: function(frame, palette, width, x_offset, y_offset, hFlip, vFlip){
+      if (!frame || !frame.length) return
       
-      var rowLen = 240 << 2;
+      if (hFlip || vFlip) console.log(hFlip, vFlip)
 
-      for (var i=0; i<this.data.length; i++) this.data[i] = 0;
+      var rowLen = 256 << 2;
 
-      for (var i=0; i<frame.length; i++){
-        var x = i % (width << 4),
-            y = (i / (width << 4)) | 0,
+      var data = this.data,
+          len = frame.length;
+
+      function circle(radius, x, y, angle){
+        var zAngle = Math.PI / 6;
+
+        var shift = {
+          x: (radius) * ( Math.cos(zAngle) * Math.sin(angle) ),
+          y: (radius) * ( Math.sin(zAngle) * Math.cos(angle) )
+        }
+
+        return shift;
+      }
+
+      for (var i=0; i<len; i++){
+        if (frame[i] === 0) continue;
+
+        var x = (i % (width << 4)) + x_offset,
+            y = ((i / (width << 4)) | 0) + y_offset,
             color = palette[frame[i]];
 
-        var offset = ((x + x_offset) << 2) + ((y + y_offset) * rowLen);
+        if (x < 0 || x > 255 || y < 0 || y > 151) continue
+        if (!this.clipping[this.mask].call(this, x + x_offset, y + y_offset)) continue;
+
+        var offset = (x << 2) + (y * rowLen);
         
-        this.data[offset]     = color[0];
-        this.data[offset + 1] = color[1];
-        this.data[offset + 2] = color[2];
-        this.data[offset + 3] = color[3];
+        data[offset]     = color[0];
+        data[offset + 1] = color[1];
+        data[offset + 2] = color[2];
+        data[offset + 3] = this.opacity;
+      }
+    },
+
+    drawThreads: function(){
+      this.imageData = this.ctx.createImageData(256, 152);
+      this.data = this.imageData.data;
+
+      for (var i=0; i<this.threads.length; i++){
+        var thread = this.threads[i],
+            e = thread.effect;
+
+        var draw = thread.drawEffect === null ? this.drawFrame.bind(this) : this.effects[thread.drawEffect].bind(this);
+        
+        draw(
+          e.frames[thread.frame], 
+          e.palette, 
+          e.data[4], 
+          (thread.coords.x + thread.shift.x) | 0, 
+          (thread.coords.y + thread.shift.y) | 0, 
+          thread.hFlip, 
+          thread.vFlip,
+          thread
+        );
       }
 
       this.ctx.putImageData(this.imageData, 0, 0);
     },
 
-    behaviors: [MenuBase]
+    domeCos: Math.cos(Math.PI / 4),
+    domeSine: Math.sin(Math.PI / 4),
+    clipping: {
+      "0": function(x, y){ // nothing
+        return true
+      },
+      "1": function(x, y){ // circle
+        return Math.sqrt(Math.pow(x - this.circle.x, 2)  + Math.pow(y - this.circle.y, 2)) <= this.circle.r
+      },
+      "2": function(x, y){ // wave
+        return true
+      },
+      "3": function(x, y){ // pillar
+        return Math.abs(x - this.circle.x) < this.circle.r
+      }, 
+      "4": function(x, y){ // oval y
+        return true
+      },
+      "5": function(x, y){ // wavy in
+        return true
+      },
+      "6": function(x, y){ // oval x
+        return true
+      },
+      "7": function(x, y){ // dome
+        var cx = this.circle.x,
+            cy = this.circle.y,
+            r = this.circle.r;
+
+        var inCircle = Math.sqrt(Math.pow(x - cx, 2)  + Math.pow(y - cy, 2)) <= r,
+            inBigCircle = y < cy ? true : (Math.pow(x - cx, 2) / Math.pow(r, 2)) + (Math.pow(y - cy, 2) / Math.pow(r / 2, 2)) <= 1
+      
+        return inCircle && inBigCircle;
+      },
+      "8": function(x, y){ // wavy out
+        return true;
+      }
+    },
+
+    behaviors: [MenuBase, SpellEffects]
   })
 </script>

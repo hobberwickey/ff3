@@ -1,0 +1,51 @@
+<script>
+  var SpellEffects = {
+    effects: {
+      pearl: function(frame, palette, width, x_offset, y_offset, hFlip, vFlip, thread){
+        if (!frame || !frame.length) return
+        
+        if (hFlip || vFlip) console.log(hFlip, vFlip)
+
+        var rowLen = 256 << 2;
+
+        var data = this.data,
+            len = frame.length;
+
+        function circle(radius, x, y, angle){
+          var zAngle = Math.PI / 6;
+
+          var shift = {
+            x: (radius) * ( Math.cos(zAngle) * Math.sin(angle) ),
+            y: (radius) * ( Math.sin(zAngle) * Math.cos(angle) )
+          }
+
+          return shift;
+        }
+
+
+        for (var y=0; y<152; y++){
+          for (var x=0; x<256; x++){
+            var shift = circle(76, x, y, (Math.PI / 152) * y),
+                _x = Math.abs((x - shift.x) | 0),
+                _y = Math.abs(((y + shift.y) + this.scroll.y) | 0);
+
+            var index = x + (y << 8),
+                i = (_x + (_y << 8));
+            
+            color = palette[frame[i]];
+
+            if (x < 0 || x > 255 || y < 0 || y > 151) continue
+            //if (!this.clipping[this.mask].call(this, x + x_offset, y + y_offset)) continue;
+
+            var offset = (index << 2);
+            
+            data[offset]     = color[0];
+            data[offset + 1] = color[1];
+            data[offset + 2] = color[2];
+            data[offset + 3] = thread.opacity; //color[3];
+          }
+        }
+      }
+    }
+  }
+</script>

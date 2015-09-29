@@ -122,7 +122,8 @@
       context: { type: Object },
       readyQueue: { type: Array, value: function(){ return [] }, notify: true },
       actionQueue: { type: Array, value: function(){ return [] }, notify: true },
-      subMenus: { type: Array, value: function(){ return [] }}
+      subMenus: { type: Array, value: function(){ return [] }},
+      planes: { type: Array, value: function(){ return [] }}
     },
 
     
@@ -270,6 +271,19 @@
       this.closeSubMenu();
       this.incrementReadyIndex();
       this.context.once(20, function(){ this.openActionMenu() }.bind(this));
+    },
+
+    dumpSpellData: function(){
+      for (var i=0; i<56; i++){
+        var spell = this.context.utils.getMagicData(i);
+        this.ExecuteMagic(spell, this.battle.monsters[0], null, document.querySelector("#output"));
+      }
+    },
+
+    drawPlanes: function(){
+      for (var i=0; i<this.planes.length; i++){
+        this.planes[i].drawThreads();
+      }
     },
 
     behaviors: [MenuBase, BattleActions]

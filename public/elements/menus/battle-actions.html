@@ -109,21 +109,30 @@
       var spell = this.context.utils.getMagicData(magic);
 
       self.selectTarget({self: true, monsters: true }, 'monsters', function(target){
-        self.ExecuteMagic(spell, target)
+        self.ExecuteMagic(spell, chr, target, null, document.querySelector("#output"));
+         
+        // var effects = spell.effects,
+        //     plane = document.createElement("battle-magic-overlay");
         
+        // plane.parent = this;
+
+        // var old = document.querySelector("#menu").querySelector("battle-magic-overlay");
+        // if (!!old) document.querySelector("#menu").removeChild( old )
+        // document.querySelector("#menu").appendChild(plane);
+
+        // for (var i=0; i<effects[0].tiles.length; i++){
+        //   plane.drawTile(effects[0].tiles[i], effects[0].palette, ((i << 4) & 127) + 8, ((i >> 3) << 4) + 8)
+        // }
+
         // for (var i=0; i<effects[1].tiles.length; i++){
-        //   plane.drawTile(effects[1].tiles[i], effects[1].palette, i << 4, (i >> 4) << 4)
+        //   plane.drawTile(effects[1].tiles[i], effects[1].palette, ((i << 4) & 127) + 8, ((i >> 3) << 4) + 40)
+        // }
+
+        // for (var i=0; i<effects[2].tiles.length; i++){
+        //   plane.drawTile(effects[2].tiles[i], effects[2].palette, ((i << 4) & 127) + 8, ((i >> 3) << 4) + 72)
         // }
 
         // plane.ctx.putImageData(plane.imageData, 0, 0)
-
-        // var cntr = 0;
-        // self.context.iterate(30, effects[1].frames.length - 1, function(){
-        //   plane.drawFrame(effects[1].frames[cntr], effects[1].palette, effects[1].data[4], target.coords.x, target.coords.y);
-        //   cntr++;
-        // }, function(){
-        //   plane.parentNode.removeChild(plane);
-        // }, false);
       })
     },
 
@@ -131,126 +140,826 @@
 
     },
 
-    ExecuteMagic: function(spell, target, rom){
+    ExecuteMagic: function(spell, attacker, target, rom, output){
+      //return;
+
       var self = this,
-          rom = rom || this.context.rom,
-          speed = 0;
+          rom = rom || this.context.rom;
 
-      var subsprites = [3, 1, 1, 1];
-
+      
       var subcommands = {
+        "16": function(thread){ thread.zAngle = Math.PI / 6 },
+        "1e": function(thread){ thread.plane.scroll.y = (thread.plane.scroll.y + 1) & 15; console.log("Increment pearl scroll - untested")},
+        "1f": function(thread){ thread.drawEffect = "pearl"; thread.coords.x = 0; thread.coords.y = 0; console.log("set thread effect to pearl - untested") },
         "3b": function(){ console.log("sub 3b", "replace monster palette with effect's palette")},
         "3c": function(){ console.log("sub 3b", "clear target mask (opposite of 3b")}
       }
 
-      function create_plane(){
+      function create_plane(mask, paused){
         var plane = document.createElement("battle-magic-overlay");
-            plane.parent = this;
+            plane.mask = mask || 0;
+            plane.parent = self;
+            plane.paused = paused || false;
 
         document.querySelector("#menu").appendChild(plane);
 
         return plane;
       }
 
+      function draw(offset, thread, frame, hFlip, vFlip){
+        var e = thread.effect;
+
+        self.context.once(thread.speed, function(){
+          if (!!e && !!e.frames && e.frames[frame] !== void (0));
+          thread.plane.drawFrame(e.frames[frame], e.palette, e.data[4], (thread.coords.x + thread.shift.x) | 0, (thread.coords.y + thread.shift.y) | 0, hFlip, vFlip);
+          thread.frame = frame;
+        }, function(){
+          execute(offset + 1, thread);
+        })
+      }
+
+      function dump(offset, thread, action, bytes, message){
+        if (!!thread.output){
+          
+          var output = thread.output,
+              str = "0x" + offset.toString(16).toUpperCase() + " - " + action;
+          
+          for (var i=0; i<bytes; i++){
+            str += " " + rom[offset + (i + 1)].toString(16).toUpperCase();
+          }
+          str += ": " + message;
+
+          var div = document.createElement("div");
+              div.appendChild( document.createTextNode(str) );
+
+          output.appendChild(div);
+        }
+      }
+
+      function buildThread(effect, thread_index, plane, output){
+        var coords = {
+          x: target.coords.x - (effect.data[4] << 3), 
+          y: target.coords.y - (effect.data[5] << 3)
+        };
+
+        return {
+          effect: effect, 
+          frame: 0, 
+          frameAdvance: 0,
+          loop: null, 
+          coords: coords, 
+          shift: {x: 0, y: 0},
+          plane: plane, 
+          radius: 0,
+          angle: 0,
+          zAngle: Math.PI,
+          index: thread_index,
+          trajectory: {
+            slope: 0,
+            end: {x: 0, y: 0}
+          },
+          vFlip: false,
+          hFlip: false,
+          subroutines: [],
+          output: output,
+          speed: 1,
+          opacity: 255,
+          drawEffect: null
+        }
+      }
+
       var commands = {
-        "0": function(offset, thread){
-          var e = thread.effect;
-
-          self.context.once(speed, function(){
-            thread.plane.drawFrame(e.frames[thread.frame], e.palette, e.data[4], thread.coords.x, thread.coords.y);
-            thread.frame = thread.frame === (e.data[0] & 0x3f) - 1 ? 0 : thread.frame + 1;
-          }, function(){
-            execute(offset + 1, thread);
-          })
-        },
         "80": function(offset, thread){ 
-          subcommands[rom[offset + 1].toString(16)]();
-
+          dump(offset, thread, "80", 1, "Execute Subcommand");
+          if (subcommands[rom[offset + 1].toString(16)] !== void(0)){
+            subcommands[rom[offset + 1].toString(16)](thread);
+          } else {
+            //console.log("unknown subcommand", rom[offset + 1].toString(16))
+          }
           execute(offset + 2, thread);
+
+          return "80: Execute Subcommand - " + (rom[offset + 1].toString(16));
+        },
+        "81": function(offset, thread){
+          dump(offset, thread, "81", 2, "Unknown");
+          execute(offset + 3, thread)
+        },
+        "82": function(offset, thread){
+          dump(offset, thread, "82", 2, "Unknown");
+          execute(offset + 3, thread)
         },
         "83": function(offset, thread){ 
-          var distance = rom[offset + 1] & 0x1f,
+          dump(offset, thread, "83", 1, "Move Spell Sprite 0xE0 = direction, 0x1F = distance");
+          var distance = (rom[offset + 1] & 0x1f) + 1,
               direction = (rom[offset + 1] & 0xe0) >> 5;
 
-          thread.start_coords.x -= distance;
-          thread.coords.x = thread.start_coords.x;
+          directions = [
+            {x: -1, y: 1}, 
+            {x: 0, y: 1},
+            {x: 1, y: 1},
+            {x: -1, y: 0},
+            {x: 1, y: 0},
+            {x: -1, y: -1},
+            {x: 0, y: -1},
+            {x: 1, y: -1}
+          ]
+
+          //thread.start_coords.x -= distance + ;
+          thread.coords.x = thread.coords.x + (distance * directions[direction].x) //thread.start_coords.x;
+          thread.coords.y = thread.coords.y + (distance * directions[direction].y)
+
+          execute(offset + 2, thread);
+
+          return "83: Move Spell Base Location"
+        },
+        "84": function(offset, thread){
+          dump(offset, thread, "84", 1, "Unknown - possibly delay?");
+          execute(offset + 2, thread)
+        },
+        "85": function(offset, thread){
+          dump(offset, thread, "85", 1, "Move Thread to Attacker Position");
+          
+          thread.coords = {
+            x: attacker.coords.x - (thread.effect.data[4] << 3),
+            y: attacker.coords.y - (thread.effect.data[5] << 3)
+          }
+
+          execute(offset + 1, thread);
+        },
+        "86": function(offset, thread){
+          dump(offset, thread, "86", 1, "Unknown - Moves Caster, possibly 0xE0 = direction, 0x1F = distance");
+          execute(offset + 2, thread)
+        },
+        "87": function(offset, thread){
+          dump(offset, thread, "87", 1, "Unknown - Moves Target, possibly 0xE0 = direction, 0x1F = distance");
+          execute(offset + 2, thread)
+        },
+        "88": function(offset, thread){
+          dump(offset, thread, "88", 1, "Unknown - Moves Spell, possibly 0xE0 = direction, 0x1F = distance");
+          execute(offset + 2, thread)
+        },
+        "89": function(offset, thread){
+          dump(offset, thread, "89", 1, "Start Non Iterating Loop")
+          thread.loop = {
+            offset: offset + 2,
+            total_iterations: rom[offset + 1] - 1,
+            completed_iterations: 0
+          }
 
           execute(offset + 2, thread);
         },
+        "8a": function(offset, thread){
+          if (thread.loop !== null && thread.loop.completed_iterations < thread.loop.total_iterations){
+            dump(offset, thread, "8A", 0, "Increment Non-Iterating Loop: " + (thread.loop.completed_iterations + 1))
+            
+            thread.loop.completed_iterations += 1;
+            execute(thread.loop.offset, thread);
+          } else {
+            dump(offset, thread, "8A", 0, "Finished Non-Iterating Loop and Increment")
+
+            thread.loop = null;
+            execute(offset + 1, thread);
+          }
+        },
         "8b": function(offset, thread){
+          dump(offset, thread, "8B", 1, "Start Iterating Loop")
           thread.loop = {
             offset: offset + 2,
-            total_iterations: rom[offset + 1],
+            total_iterations: rom[offset + 1] - 1,
             completed_iterations: 0
           }
 
           execute(offset + 2, thread);
         },
         '8c': function(offset, thread){
-          if (thread.loop.completed_iterations < thread.loop.total_iterations){
+          if (thread.loop !== null && thread.loop.completed_iterations < thread.loop.total_iterations){
+            dump(offset, thread, "8C", 0, "Increment Iterating Loop and Increment Frame: "  + (thread.loop.completed_iterations + 1))
             
             thread.loop.completed_iterations += 1;
+            thread.frameAdvance = (thread.frameAdvance + 1) % 0x1f;
             execute(thread.loop.offset, thread);
           } else {
+            dump(offset, thread, "8C", 0, "Finished Iterating Loop and Increment")
+          
             thread.loop = null;
             execute(offset + 1, thread);
           }
+
+          return "End Iterating Loop";
         },
-        "90": function(offset, thread){ 
+        "8d": function(offset, thread){
+          dump(offset, thread, "83", 1, "Move Spell Sprite (Half Speed?) 0xE0 = direction, 0x1F = distance");
           execute(offset + 2, thread)
         },
-        "d1": function(offset, thread){ 
+        "8e": function(offset, thread){
+          dump(offset, thread, "8E", 1, "Unknown");
+          execute(offset + 2, thread)
+        },
+        "8f": function(offset, thread){
+          dump(offset, thread, "8F", 1, "Move Spell Sprite (Half Speed?) 0xE0 = direction, 0x1F = distance");
+          execute(offset + 2, thread)
+        },
+        "90": function(offset, thread){ 
+          dump(offset, thread, "90", 1, "Unknown");
+          execute(offset + 2, thread)
+
+          return "90: Not implemented"
+        },
+        "91": function(offset, thread){
+          dump(offset, thread, "91", 1, "Unknown");
+          execute(offset + 1, thread)
+        },
+        "92": function(offset, thread){
+          dump(offset, thread, "92", 2, "Follow trajectory 0xFF00 = speed, 0x00FF = number of bytes to jump back");
+          
+          thread.shift.x += rom[offset + 1] * Math.sin(thread.trajectory.slope);
+          thread.shift.y += rom[offset + 1] * Math.cos(thread.trajectory.slope);
+
+          //if (thread.index === 0) console.log(thread.shift.x, thread.coords.x, thread.shift.y, thread.coords.y)
+
+          if (Math.abs((thread.coords.x + thread.shift.x) - thread.trajectory.end.x) < 10 && Math.abs((thread.coords.y + thread.shift.y) - thread.trajectory.end.y) < 10){
+            execute(offset + 3, thread)
+          } else {
+            execute(offset - (rom[offset + 2] - 2), thread)
+          }
+        },
+        "93": function(offset, thread){
+          dump(offset, thread, "93", 1, "Unknown");
+          execute(offset + 2, thread)
+        },
+        "94": function(offset, thread){
+          dump(offset, thread, "94", 1, "Unknown");
+          execute(offset + 2, thread)
+        },
+        "95": function(offset, thread){
+          dump(offset, thread, "95", 0, "Unknown");
+          execute(offset + 1, thread)
+        },
+        "96": function(offset, thread){
+          dump(offset, thread, "96", 0, "Unknown");
+          execute(offset + 1, thread)
+        },
+        "97": function(offset, thread){
+          dump(offset, thread, "97", 1, "Unknown");
+          execute(offset + 2, thread)
+        },
+        "98": function(offset, thread){
+          dump(offset, thread, "8E", 2, "Unknown");
+          execute(offset + 3, thread)
+        },
+        "99": function(offset, thread){
+          dump(offset, thread, "99", 1, "Change Effect Palette");
+          execute(offset + 2, thread);
+        },
+        "9a": function(offset, thread){
+          dump(offset, thread, "9A", 0, "Unknown - Maybe Horizontal Mirror?");
+          execute(offset + 1, thread);
+        },
+        "9b": function(offset, thread){
+          dump(offset, thread, "9B", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "9c": function(offset, thread){
+          dump(offset, thread, "9C", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "9d": function(offset, thread){
+          dump(offset, thread, "9D", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "9e": function(offset, thread){
+          dump(offset, thread, "9E", 1, "Unknown");
+          execute(offset + 3, thread);
+        },
+        "9f": function(offset, thread){
+          dump(offset, thread, "9F", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "a0": function(offset, thread){
+          dump(offset, thread, "A0", 2, "Unknown");
+          execute(offset + 3, thread);
+        },
+        "a1": function(offset, thread){
+          dump(offset, thread, "A1", 0, "Unknown");
+          execute(offset + 1, thread);
+        },
+        "a2": function(offset, thread){
+          dump(offset, thread, "A2", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "a3": function(offset, thread){
+          dump(offset, thread, "A3", 2, "Unknown");
+          execute(offset + 3, thread);
+        },
+        "a4": function(offset, thread){
+          dump(offset, thread, "A4", 2, "Unknown - Serious effects");
+          execute(offset + 3, thread);
+        },
+        "a5": function(offset, thread){
+          dump(offset, thread, "A5", 7, "Set Circle");
+
+          thread.plane.circle.x = rom[offset + 1];
+          thread.plane.circle.y = rom[offset + 2];
+          thread.plane.circle.max_r = rom[offset + 6];
+
+          execute(offset + 8, thread);
+        },
+        "a6": function(offset, thread){
+          dump(offset, thread, "A6", 3, "Move Circle");
+          thread.plane.circle.x = thread.plane.circle.x + rom[offset + 1],
+          thread.plane.circle.y = thread.plane.circle.y + rom[offset + 2],
+          thread.plane.circle.r = (thread.plane.circle.r + rom[offset + 3]) & 255,
+
+          execute(offset + 4, thread);
+        },
+        "a7": function(offset, thread){
+          dump(offset, thread, "A7", 0, "Update Circle");
+          execute(offset + 1, thread);
+        },
+        "a8": function(offset, thread){
+          dump(offset, thread, "A8", 0, "Move circle to attacker position");
+          
+          thread.plane.circle.x = attacker.coords.x;
+          thread.plane.circle.y = attacker.coords.y;
+          
+          execute(offset + 1, thread);
+        },
+        "a9": function(offset, thread){
+          dump(offset, thread, "A9", 2, "Unknown");
+          execute(offset + 3, thread);
+        },
+        "aa": function(offset, thread){
+          dump(offset, thread, "AA", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "ab": function(offset, thread){
+          dump(offset, thread, "AB", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "ac": function(offset, thread){
+          dump(offset, thread, "AC", 2, "Unknown");
+          execute(offset + 3, thread);
+        },
+        "ad": function(offset, thread){
+          dump(offset, thread, "AD", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "ae": function(offset, thread){
+          dump(offset, thread, "AE", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "af": function(offset, thread){
+          dump(offset, thread, "AF", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "b0": function(offset, thread){
+          dump(offset, thread, "B0", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "b1": function(offset, thread){
+          dump(offset, thread, "B1", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "b2": function(offset, thread){
+          dump(offset, thread, "B2", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "b3": function(offset, thread){
+          dump(offset, thread, "B3", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "b4": function(offset, thread){
+          dump(offset, thread, "B4", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "b5": function(offset, thread){
+          dump(offset, thread, "B5", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "b6": function(offset, thread){
+          dump(offset, thread, "B6", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "b7": function(offset, thread){
+          dump(offset, thread, "B7", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "b8": function(offset, thread){
+          dump(offset, thread, "B8", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "b9": function(offset, thread){
+          dump(offset, thread, "B9", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "ba": function(offset, thread){
+          dump(offset, thread, "BA", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "bb": function(offset, thread){
+          dump(offset, thread, "BB", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "bc": function(offset, thread){
+          dump(offset, thread, "BC", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "bd": function(offset, thread){
+          dump(offset, thread, "BD", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "be": function(offset, thread){
+          dump(offset, thread, "BE", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "bf": function(offset, thread){
+          dump(offset, thread, "BF", 2, "Jump To Subroutine");
+          thread.subroutines.push(offset + 3);
+          execute(0x100200 + (rom[offset + 1] + (rom[offset + 2] << 8)), thread);
+        },
+        "c0": function(offset, thread){
+          dump(offset, thread, "C0", 0, "Return From Subroutine");
+          execute(thread.subroutines.pop(), thread);
+        },
+        "c1": function(offset, thread){
+          dump(offset, thread, "C1", 0, "Unknown - jumps ahead 2 frames, but only on the first iteration?");
+          execute(offset + 1, thread);
+        },
+        "c2": function(offset, thread){
+          dump(offset, thread, "C2", 1, "Unpause Effects");
+          var key = rom[offset + 1];
+
+          if ((key & 128) === 128) start_effect.call(self, 1);
+          if ((key & 64) === 64) start_effect.call(self, 2);
+          //if ((key && 32) === 32) this.sprites.paused = false;
+          
+          execute(offset + 2, thread);
+        },
+        "c3": function(offset, thread){
+          dump(offset, thread, "C3", 1, "Unknown");
+          execute(offset + 1, thread);
+        },
+        "c4": function(offset, thread){
+          dump(offset, thread, "C4", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "c5": function(offset, thread){
+          dump(offset, thread, "C5", 0, "Unknown - Could be very long");
+          execute(offset + 1, thread);
+        },
+        "c6": function(offset, thread){
+          dump(offset, thread, "C6", 0, "Unknown");
+          execute(offset + 1, thread);
+        },
+        "c7": function(offset, thread){
+          dump(offset, thread, "C7", 2, "Unknown - Caster Turns Away");
+          execute(offset + 3, thread);
+        },
+        "c8": function(offset, thread){
+          dump(offset, thread, "C8", 1, "Unknown");
           execute(offset + 2, thread);
         },
         "c9": function(offset, thread){ 
+          dump(offset, thread, "C9", 1, "Play Sound Effect");
           execute(offset + 2, thread);
         },
+        "ca": function(offset, thread){
+          dump(offset, thread, "CA", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "cb": function(offset, thread){
+          dump(offset, thread, "CB", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "cc": function(offset, thread){
+          dump(offset, thread, "CC", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "cd": function(offset, thread){
+          dump(offset, thread, "CD", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "ce": function(offset, thread){
+          dump(offset, thread, "CE", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "cf": function(offset, thread){
+          dump(offset, thread, "CF", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "d0": function(offset, thread){
+          dump(offset, thread, "D0", 1, "Unknown - Turns Target Transparent");
+          execute(offset + 2, thread);
+        },
+        "d1": function(offset, thread){ 
+          dump(offset, thread, "D1", 1, "Set thread transparency");
+          thread.opacity = 128;
+          execute(offset + 2, thread);          
+        },
+        "d2": function(offset, thread){
+          dump(offset, thread, "D2", 2, "Unknown");
+          execute(offset + 3, thread);
+        },
+        "d3": function(offset, thread){
+          dump(offset, thread, "D3", 0, "Unknown");
+          execute(offset + 1, thread);
+        },
+        "d4": function(offset, thread){
+          dump(offset, thread, "D4", 3, "Unknown");
+          execute(offset + 4, thread);
+        },
+        "d5": function(offset, thread){
+          dump(offset, thread, "D5", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "d6": function(offset, thread){
+          dump(offset, thread, "D6", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "d7": function(offset, thread){
+          dump(offset, thread, "D7", 2, "Unknown - Background Shifts?");
+          execute(offset + 3, thread);
+        },
+        "d8": function(offset, thread){
+          dump(offset, thread, "D8", 3, "Unknown");
+          execute(offset + 4, thread);
+        },
+        "d9": function(offset, thread){
+          dump(offset, thread, "D9", 1, "Unknown - Effects Caster's Palette");
+          execute(offset + 2, thread);
+        },
+        "da": function(offset, thread){
+          dump(offset, thread, "DA", 2, "Unknown - Effects Caster's Palette");
+          execute(offset + 3, thread);
+        },
+        "db": function(offset, thread){
+          dump(offset, thread, "DB", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "dc": function(offset, thread){
+          dump(offset, thread, "DC", 0, "Unknown");
+          execute(offset + 1, thread);
+        },
+        "dd": function(offset, thread){
+          dump(offset, thread, "DD", 4, "Unknown");
+          execute(offset + 5, thread);
+        },
+        "df": function(offset, thread){
+          dump(offset, thread, "DF", 0, "Unknown");
+          execute(offset + 1, thread);
+        },
+        "e0": function(offset, thread){
+          dump(offset, thread, "E0", 4, "Unknown");
+          execute(offset + 5, thread);
+        },
+        "e1": function(offset, thread){
+          dump(offset, thread, "E1", 1, "Unknown - Hides Caster");
+          execute(offset + 2, thread);
+        },
+        "e2": function(offset, thread){
+          dump(offset, thread, "E2", 0, "Unknown - Effects Caster's Palette");
+          execute(offset + 1, thread);
+        },
+        "e3": function(offset, thread){
+          dump(offset, thread, "E3", 0, "Unknown - Effects Caster's Palette");
+          execute(offset + 1, thread);
+        },
+        "e4": function(offset, thread){
+          dump(offset, thread, "E4", 0, "Unknown");
+          execute(offset + 1, thread);
+        },
+        "e5": function(offset, thread){
+          dump(offset, thread, "E5", 0, "Unknown");
+          execute(offset + 1, thread);
+        },
+        "e6": function(offset, thread){
+          dump(offset, thread, "E6", 0, "Unknown");
+          execute(offset + 1, thread)
+        },
+        "e7": function(offset, thread){
+          dump(offset, thread, "E7", 0, "Unknown");
+          execute(offset + 1, thread)
+        },
+        "e8": function(offset, thread){
+          dump(offset, thread, "E8", 2, "Cumulative add to spell radius (0xFF00) and angle (0x00FF)");
+          thread.radius = (thread.radius + rom[offset + 1]) & 255;
+          thread.angle = thread.angle + (rom[offset + 2] * 0.024639942381096416);
+
+          thread.shift.x =  ((thread.radius >> 1) * Math.sin(thread.angle))
+          thread.shift.y = ((thread.radius >> 1) * Math.cos(thread.angle))
+
+          execute(offset + 3, thread)
+        },
+        "e9": function(offset, thread){
+          dump(offset, thread, "E9", 2, "Unknown - Move Spell?");
+          execute(offset + 3, thread)
+        },
+        "ea": function(offset, thread){
+          dump(offset, thread, "EA", 1, "Unknown");
+          execute(offset + 2, thread)
+        },
         "eb": function(offset, thread){ 
-          var len = subsprites[ spell.index ];
-  
-          //TODO Not sure if this is wise
-          thread.plane.parentNode.removeChild(thread.plane)          
-          self.context.iterate(speed, len - 1, function(){
-            var t = {
-              id: (Math.random() * 10000) | 0,
-              effect: thread.effect,
-              frame: 0,
-              loop: null,
-              start_coords: thread.coords,
-              coords: {x: thread.coords.x, y: thread.coords.y },
-              plane: create_plane()
-            }
+          dump(offset, thread, "EB", 1, "Branch Based On Subsprite Index (Relative to 0x100200)");
+          execute( rom[offset + 1 + (thread.index << 1)] + (rom[offset + 2 + (thread.index << 1)] << 8) + 0x100200, thread );
+        },
+        "ec": function(offset, thread){
+          dump(offset, thread, "EC", 1, "Switch Commands To Effect Number");
+          thread.effect = spell.effects[rom[offset + 1]];
+          thread.coords = {
+            x: target.coords.x - (thread.effect.data[4] << 3), 
+            y: target.coords.y - (thread.effect.data[5] << 3)
+          };
+          thread.frame = 0;
 
-            execute( rom[offset + 1] + (rom[offset + 2] << 8) + 0x100200, t );
-          }, function(){
+          //TODO: reset coords
 
-          }, false);
+          execute(offset + 2, thread);
+        },
+        "ed": function(offset, thread){
+          dump(offset, thread, "ED", 2, "Unknown");
+          execute(offset + 3, thread);
+        },
+        "ef": function(offset, thread){
+          dump(offset, thread, "EF", 2, "Cumulative add to spell radius (0xFF00) and angle (0x00FF)");
+          thread.radius = (thread.radius + rom[offset + 1]) & 255;
+          thread.angle = thread.angle + (rom[offset + 2] * 0.024639942381096416);
+
+          thread.shift.x = (thread.radius >> 1) * ( Math.cos(thread.zAngle) * Math.sin(thread.angle) )///Math.sin(thread.angle))
+          thread.shift.y = (thread.radius >> 1) * ( Math.sin(thread.zAngle) * Math.cos(thread.angle) )//Math.cos(thread.angle))
+
+          execute(offset + 3, thread);
+        },
+        "f0": function(offset, thread){
+          dump(offset, thread, "F0", 0, "Unknown - Maybe not be 0 bytes");
+          execute(offset + 1, thread);
+        },
+        "f1": function(offset, thread){
+          dump(offset, thread, "F1", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "f2": function(offset, thread){
+          dump(offset, thread, "F2", 0, "Set trajectory from target to attacker");
+          thread.trajectory.slope = Math.atan2(attacker.coords.x - target.coords.x , attacker.coords.y - target.coords.y);
+          thread.trajectory.end = {x: attacker.coords.x, y: attacker.coords.y}
+            
+          //console.log(thread.trajectory, attacker.coords, target.coords)
+          execute(offset + 1, thread);
+        },
+        "f3": function(offset, thread){
+          dump(offset, thread, "F3", 0, "Unknown - Might not be zero bytes");
+          execute(offset + 1, thread);
+        },
+        "f4": function(offset, thread){
+          dump(offset, thread, "F4", 1, "Unknown");
+          execute(offset + 2, thread)
+        },
+        "f5": function(offset, thread){
+          dump(offset, thread, "F5", 0, "Unknown - Might not be zero bytes");
+          execute(offset + 1, thread);
+        },
+        "f6": function(offset, thread){
+          dump(offset, thread, "F6", 0, "Unknown");
+          execute(offset + 1, thread);
+        },
+        "f7": function(offset, thread){
+          dump(offset, thread, "F7", 1, "Unknown");
+          execute(offset + 2, thread)
+        },  
+        "f8": function(offset, thread){
+          dump(offset, thread, "F8", 0, "Unknown - Might not be zero bytes");
+          execute(offset + 1, thread);
+        },
+        "f9": function(offset, thread){
+          dump(offset, thread, "F9", 3, "Unknown");
+          execute(offset + 4, thread);
+        },
+        "fa": function(offset, thread){
+          dump(offset, thread, "FA", 2, "Jump To Offset (Relative to 0x100200)");
+          execute(0x100200 + rom[offset + 1] + (rom[offset + 2] << 8), thread)          
+        },
+        "fb": function(offset, thread){
+          dump(offset, thread, "FB", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "fc": function(offset, thread){
+          dump(offset, thread, "FC", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "fd": function(offset, thread){
+          dump(offset, thread, "FD", 1, "Unknown");
+          execute(offset + 2, thread);
+        },
+        "fe": function(offset, thread){
+          dump(offset, thread, "FE", 1, "Unknown");
+          execute(offset + 2, thread);
         },
         "ff": function(offset, thread){
-          thread.plane.parentNode.removeChild(thread.plane);
-          
+          dump(offset, thread, "FF", 0, "Complete Effect");
+          thread.plane.threads.splice(thread.plane.threads.indexOf(thread), 1)
+
+          if (thread.plane.threads.length === 0){
+            self.planes.splice(self.planes.indexOf(thread.plane), 1);
+            if (!!thread.plane.parentNode) thread.plane.parentNode.removeChild(thread.plane);          
+          }
         }
       }
 
 
       function execute(offset, thread){
-        var action = rom[offset].toString(16);
+        var action = rom[offset];
+        if (action === void(0)){
+          console.log(offset, thread);
+          return;
+        }
 
-        if (commands[action] !== void(0)){
-          console.log('known', action);
-          commands[action](offset, thread);
+        var key = action.toString(16);
+
+        if (action > 0x7f){
+          if (commands[key] !== void(0)){
+            //console.log('known', key);
+            commands[key](offset, thread);
+          } else {
+            var next = [];
+            for (var i=1; i<21; i++) next.push(rom[offset + i]);
+
+            if (thread.loop !== null){
+              thread.loop.completed_iterations = thread.loop.total_iterations;
+            }
+            thread.plane.parentNode.removeChild(thread.plane);
+          
+            //console.log("Unknown", key, next.map(function(n){ return n.toString(16) }));
+          }
         } else {
-          console.log("Unknown", action);
+          self.context.once(thread.speed, function(){
+            thread.vFlip = (action & 64) === 64;
+            thread.hFlip = (action & 32) === 32;
+            thread.frame = action === 0 ? (thread.frameAdvance & 0x1f) : (action & 0x1f);
+
+            dump(offset, thread, key, 0, "Drawing Frame " + thread.frame)
+            execute(offset + 1, thread);
+          }, function(){ })
         }
       }
 
-      var offset = spell.effects[0].code,
-          coords = {x: target.coords.x, y: target.coords.y},
-          thread = { effect: spell.effects[0], frame: 0, loop: null, coords: coords, plane: create_plane(), id: (Math.random() * 10000) | 0 };
+      if (!!output){
+        var wrapper = output, 
+            header = document.createElement("h3"); 
 
-      speed = 4//rom[offset] + (rom[offset + 1] << 8);
+        output = document.createElement("p");
+        header.appendChild( document.createTextNode("Code for spell " + spell.index.toString(16)));
+        output.appendChild(header);
+        
+        wrapper.innerHTML = "";
+        wrapper.appendChild(output);
+      }
 
-      execute(offset + 2, thread);
+      var speeds = { "4": 4, "2": 2, "0": 0, "512": 2 },
+          subsprites = {"c1": 3, "ba": 6, "e4": 3},
+          masks = {"e7": 7, "bb": 1},
+          delays = {"c1": 8, "ba": 4, "e4": 4},
+          paused = {"e5": true }
+
+      function start_effect(i){
+        var key = spell.effects[i].index.toString(16),
+            len = subsprites[ key ] || 1,
+            delay = delays[ key ] || 1,
+            plane = create_plane(masks[ key ], paused[ key ]);  
+
+        var self = this;
+
+        this.planes.push(plane);
+        for (var j=0; j<len; j++){
+          this.context.once(delay * j, function(index, key, plane, j){
+            if (!!output){
+              var thread_output = document.createElement("p");
+
+              var header = document.createElement('h4');
+                  header.appendChild( document.createTextNode("Effect index: " + key + ", Thread Number " + j))
+
+              thread_output.appendChild(header);
+              output.appendChild(thread_output);
+            } else {
+              thread_output = null;
+            }
+
+            var offset = spell.effects[index].code,
+                thread = buildThread(spell.effects[index], j, plane, thread_output),
+                speed = speeds[((rom[offset] + (rom[offset + 1] << 8)) >> 4).toString()];
+            
+            if (!speed) console.log("SPEED NOT FOUND", ((rom[offset] + (rom[offset + 1] << 8)) >> 4).toString())
+           
+            thread.speed = speed || 4;//((rom[offset] + (rom[offset + 1] << 8)) >> 4) & 63; //+ (rom[offset + 1] << 8);
+            
+            plane.threads.push(thread);
+            execute(offset + 2, thread);
+          }.bind(this, i, key, plane, j), function(){ }, false);
+        }
+      }
+
+      for (var i=spell.effects.length - 1; i>=0; i--){
+        if (spell.effects[i].index === 0xffff) continue;
+        if (!paused[spell.effects[i].index.toString(16)]) start_effect.call(this, i);
+      }
     }
   }
 </script>
