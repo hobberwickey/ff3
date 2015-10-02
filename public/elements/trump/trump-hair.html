@@ -238,18 +238,17 @@
         this.scale = img.height < img.width ? h / img.height : w / img.width;
         Polymer.dom(this.root).querySelectorAll("canvas").forEach(function(canvas){
           if (!canvas.classList.contains("hair")){
-            canvas.width = (img.width * this.scale) | 0;
-            canvas.height = (img.height * this.scale) | 0; 
+            canvas.width = (w * this.scale) | 0;
+            canvas.height = (h * this.scale) | 0; 
           }
         }.bind(this));
 
         this.image.drawImage(img, 0, 0, this.image.canvas.width, this.image.canvas.height)
 
-        console.log(img.width, this.hair.canvas.width)
         if (img.width > img.height){
-          var scale = this.hair.canvas.height / img.height;
+          var scale = this.hair.canvas.height / (h * 0.5);
         } else {
-          var scale = this.hair.canvas.width / img.width;
+          var scale = this.hair.canvas.width / (w * 0.5);
         }
 
         var coords = this.result.canvas.getBoundingClientRect();
