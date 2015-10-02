@@ -210,6 +210,9 @@
           var reader = new FileReader();
           reader.onloadend = function(){
             this.set("upload", reader.result)
+            this.position = { x: 0, y: 0, w: 1024, h: 720, a: 0, x_offset: 0, y_offset: 0 };
+            this.angleOffset = 0;
+            this.originalLength = 0;
             this.resize();
           }.bind(this)
 
