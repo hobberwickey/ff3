@@ -110,10 +110,10 @@ Battle.prototype.setupTimers = function(){
 
 Battle.prototype.setupBattleCoords = function(){
   //TODO: back, pinicer
-  this.party[0].coords = { x: 194, y: 70 };
-  this.party[1].coords = { x: 202, y: 88 };
-  this.party[2].coords = { x: 210, y: 106 };
-  this.party[3].coords = { x: 218, y: 124 };
+  if (this.party[0] !== null) this.party[0].coords = { x: 194, y: 70 };
+  if (this.party[1] !== null) this.party[1].coords = { x: 202, y: 88 };
+  if (this.party[2] !== null) this.party[2].coords = { x: 210, y: 106 };
+  if (this.party[3] !== null) this.party[3].coords = { x: 218, y: 124 };
 }
 
 Battle.prototype.getMonsters = function(){

@@ -4,19 +4,51 @@
 <dom-module id='trump-hair'>
   <style>
     :host {
-      width: 1024px;
+      width: 100%;
       background-color: white;
       margin: 0px auto;
       display: block;
       padding: 10px 10px 10px 30px;
+      box-sizing: border-box;
+    }
+
+    .main {
+      position: relative;
+      padding-left: 180px;
+      border-top: solid 1px;
+    }
+
+    .hairs {
+      margin-left: -180px;
+      padding: 0px 10px;
+      border-right: solid 1px;
+      width: 160px;
+      height: 100%;
+      min-height: 720px;
     }
 
     .stage {
       position: relative;
+      width: 1024px;
     }
 
-    #image, #hair {
+    #image {
       display: none;
+    }
+
+    .hair-selector .iron-selected {
+      border: solid 3px;
+      box-sizing: border-box;
+    }
+
+    .hairs, .stage {
+      display: inline-block;
+      vertical-align: top;
+    }
+
+    .hairs .hair {
+      max-width: 160px;
+      max-height: 116px;
     }
 
     #result {
@@ -114,17 +146,23 @@
       <paper-button disabled$="[[ hasUpload(upload) ]]"><a href='javascript:void(0)'>Share</a></paper-button>
     </div>    
 
-    <div class='stage'>
-      <canvas id='result' width="1024" height='720'></canvas>
-      <canvas id='image' width="1024" height='720'></canvas>
-      <canvas id='hair' width="1024" height='720'></canvas>
-
-      <div class='hair-wrapper' id='hair-wrapper'>
-        <div class='control rotate nw'></div>
-        <div class='control rotate ne'></div>
-        <div class='control rotate sw'></div>
-        <div class='control rotate se'></div>
-        <div class='control translate'></div>
+    <div class='main'>
+      <div class='hairs'>
+        <iron-selector class='hair-selector' selected="{{ selectedHair }}" on-iron-select="selectHair">
+          <canvas class='hair' width="1024" height='720'></canvas>
+        </iron-selector>
+      </div>
+      <div class='stage'>
+        <canvas id='result' width="1024" height='720'></canvas>
+        <canvas id='image' width="1024" height='720'></canvas>
+    
+        <div class='hair-wrapper' id='hair-wrapper'>
+          <div class='control rotate nw'></div>
+          <div class='control rotate ne'></div>
+          <div class='control rotate sw'></div>
+          <div class='control rotate se'></div>
+          <div class='control translate'></div>
+        </div>
       </div>
     </div>
   </template>
@@ -139,7 +177,8 @@
       position: { type: Object, value: { x: 0, y: 0, w: 1024, h: 720, a: 0, x_offset: 0, y_offset: 0 } },
       scale: { type: Number, value: 1 },
       angleOffset: { type: Number, value: 0},
-      originalLength: { type: Number, value: 0}
+      originalLength: { type: Number, value: 0},
+      selectedHair: { type: Number, value: 0}
     },
 
     hairImage: null,
@@ -148,10 +187,15 @@
     hair: null,
     active: false,
 
+    vScale: 1,
+    hScale: 1,
+    hairScale: 1,
+
     ready: function(){
       this.result = Polymer.dom(this.root).querySelector("#result").getContext('2d');
       this.image = Polymer.dom(this.root).querySelector("#image").getContext('2d');
-      this.hair = Polymer.dom(this.root).querySelector("#hair").getContext('2d');
+      //this.hair = Polymer.dom(this.root).querySelector(".hair-selector").selectedItem.getContext('2d');
+      this.selectHair();
 
       var uploader = Polymer.dom(this.root).querySelector("#file-upload");
       uploader.addEventListener("change", function(){
@@ -181,41 +225,34 @@
         var w = (Math.min(1024, Math.max(512, img.width))),
             h = (Math.min(1024, Math.max(512, img.height)));
 
-        this.scale = img.height > img.width ? h / img.height : w / img.width;
-          
+        this.scale = img.height < img.width ? h / img.height : w / img.width;
         Polymer.dom(this.root).querySelectorAll("canvas").forEach(function(canvas){
-          canvas.width = (img.width * this.scale) | 0;
-          canvas.height = (img.height * this.scale) | 0; 
+          if (!canvas.classList.contains("hair")){
+            canvas.width = (img.width * this.scale) | 0;
+            canvas.height = (img.height * this.scale) | 0; 
+          }
         }.bind(this));
 
         this.image.drawImage(img, 0, 0, this.image.canvas.width, this.image.canvas.height)
 
+        console.log(img.width, this.hair.canvas.width)
+        if (img.width > img.height){
+          this.hairScale = this.hair.canvas.height / img.height;
+        } else {
+          this.hairScale = this.hair.canvas.width / img.width;
+        }
+
         var coords = this.result.canvas.getBoundingClientRect();
         
-        this.position.w = this.result.canvas.width;
-        this.position.h = this.result.canvas.height;
-        
-        var data = this.calcAngle({x: coords.left, y: coords.top});
+        this.position.w = this.hair.canvas.width / this.hairScale;
+        this.position.h = this.hair.canvas.height / this.hairScale;
+        this.position.x = ((this.result.canvas.width - this.position.w) / 2);
+        this.position.y = ((this.result.canvas.height - this.position.h) / 2);
+        this.draw();
+
+        var data = this.calcAngle({x: coords.left + this.position.x, y: coords.top + this.position.y});
         this.angleOffset = this.position.a = data.angle;
-        this.originalLength = data.length;
-
-        this.hairImage = new Image();
-        this.hairImage.src = "/images/trump-hair.png" 
-
-        this.hairImage.onload = function(){
-          if (this.hairImage.width / this.result.canvas.width > this.hairImage.height / this.result.canvas.height){
-            var scale = this.result.canvas.width / this.hairImage.width;
-          } else {
-            var scale = this.result.canvas.height / this.hairImage.height;
-          }
-
-          var top = (this.result.canvas.height - (this.hairImage.height * scale)) / 2,
-              left = (this.result.canvas.width - (this.hairImage.width * scale)) / 2;
-
-          this.hair.drawImage(this.hairImage, 0, 0, this.hairImage.width, this.hairImage.height, left, top, this.hairImage.width * scale, this.hairImage.height * scale);
-          
-          this.draw();
-        }.bind(this)        
+        this.originalLength = data.length * this.hairScale;        
       }.bind(this);
 
       this.setupRotate();
@@ -302,8 +339,8 @@
             
             var dif = (data.length / this.originalLength);
 
-            this.position.w = this.result.canvas.width * dif; 
-            this.position.h = this.result.canvas.height * dif; 
+            this.position.w = this.hair.canvas.width * dif; 
+            this.position.h = this.hair.canvas.height * dif; 
             this.position.x = originalX + ((this.result.canvas.width - this.position.w) / 2);
             this.position.y = originalY + ((this.result.canvas.height - this.position.h) / 2);
             
@@ -341,6 +378,29 @@
       wrapper.style.height = this.position.h + "px";
 
       this.adjust();
+
+    },
+
+    selectHair: function(){
+      var selected = Polymer.dom(this.root).querySelector(".hair-selector").selectedItem;
+
+      this.hair = selected.getContext('2d');
+    
+      this.hairImage = new Image();
+      this.hairImage.src = "/images/trump-hair.png" 
+
+      this.hairImage.onload = function(){
+        if (this.hairImage.width / this.hair.canvas.width > this.hairImage.height / this.hair.canvas.height){
+          this.hairScale = this.hair.canvas.width / this.hairImage.width;
+        } else {
+          this.hairScale = this.hair.canvas.height / this.hairImage.height;
+        }
+
+        var top = (this.hair.canvas.height - (this.hairImage.height * this.hairScale)) / 2,
+            left = (this.hair.canvas.width - (this.hairImage.width * this.hairScale)) / 2;
+
+        this.hair.drawImage(this.hairImage, 0, 0, this.hairImage.width, this.hairImage.height, left, top, this.hairImage.width * this.hairScale, this.hairImage.height * this.hairScale);         
+      }.bind(this)
     }
   })
 </script>

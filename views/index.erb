@@ -24,7 +24,7 @@
   </ul> 
 
   <p>
-    <div>
+    <!-- <div>
       <input id='battle-bg' type='text'>
       <label for='battle-bg'>Battle Background</label>
     </div>
@@ -34,10 +34,10 @@
       <label for='battle-set'>Monster Set</label>
     </div>
     <br>
-    <div>
+    <div> -->
       <input type="button" value='Open Battle' id='open-battle'>
       <input type="button" value='Close Battle' id='close-battle'>
-    </div>
+    <!-- </div> -->
   </p>
 </div>
 
@@ -131,8 +131,8 @@
   }, false);
 
   document.querySelector("#open-battle").addEventListener("click", function(){
-    var bg = document.querySelector("#battle-bg").value,
-        set = document.querySelector("#battle-set").value;
+    var bg = (Math.random() * 54) | 0;//document.querySelector("#battle-bg").value,
+        set = (Math.random() * 400) | 0; //document.querySelector("#battle-set").value;
 
     ff3.openBattle(bg, set);
   }, false);
