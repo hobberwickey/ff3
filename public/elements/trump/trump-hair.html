@@ -148,8 +148,9 @@
 
     <div class='main'>
       <div class='hairs'>
-        <iron-selector class='hair-selector' selected="{{ selectedHair }}" on-iron-select="selectHair">
-          <canvas class='hair' width="1024" height='720'></canvas>
+        <iron-selector class='hair-selector' selected="{{ selectedHair }}">
+          <canvas class='hair' width="1024" height='720' data-url='/images/trump-hair-1.png'></canvas>
+          <canvas class='hair' width="1024" height='720' data-url='/images/trump-hair-2.png'></canvas>
         </iron-selector>
       </div>
       <div class='stage'>
@@ -178,7 +179,7 @@
       scale: { type: Number, value: 1 },
       angleOffset: { type: Number, value: 0},
       originalLength: { type: Number, value: 0},
-      selectedHair: { type: Number, value: 0}
+      selectedHair: { type: Number, value: 0, notify: true}
     },
 
     hairImage: null,
@@ -189,13 +190,19 @@
 
     vScale: 1,
     hScale: 1,
-    hairScale: 1,
 
     ready: function(){
       this.result = Polymer.dom(this.root).querySelector("#result").getContext('2d');
       this.image = Polymer.dom(this.root).querySelector("#image").getContext('2d');
       //this.hair = Polymer.dom(this.root).querySelector(".hair-selector").selectedItem.getContext('2d');
-      this.selectHair();
+      var items = Polymer.dom(this.root).querySelector(".hair-selector").items;
+      for (var i=items.length - 1; i>=0; i--){
+        this.selectHair(i)
+      }
+
+      Polymer.dom(this.root).querySelector(".hair-selector").addEventListener('iron-select', function(){
+        this.selectHair();
+      }.bind(this), false);
 
       var uploader = Polymer.dom(this.root).querySelector("#file-upload");
       uploader.addEventListener("change", function(){
@@ -237,22 +244,22 @@
 
         console.log(img.width, this.hair.canvas.width)
         if (img.width > img.height){
-          this.hairScale = this.hair.canvas.height / img.height;
+          var scale = this.hair.canvas.height / img.height;
         } else {
-          this.hairScale = this.hair.canvas.width / img.width;
+          var scale = this.hair.canvas.width / img.width;
         }
 
         var coords = this.result.canvas.getBoundingClientRect();
         
-        this.position.w = this.hair.canvas.width / this.hairScale;
-        this.position.h = this.hair.canvas.height / this.hairScale;
+        this.position.w = this.hair.canvas.width / scale;
+        this.position.h = this.hair.canvas.height / scale;
         this.position.x = ((this.result.canvas.width - this.position.w) / 2);
         this.position.y = ((this.result.canvas.height - this.position.h) / 2);
         this.draw();
 
         var data = this.calcAngle({x: coords.left + this.position.x, y: coords.top + this.position.y});
         this.angleOffset = this.position.a = data.angle;
-        this.originalLength = data.length * this.hairScale;        
+        this.originalLength = data.length * scale;        
       }.bind(this);
 
       this.setupRotate();
@@ -381,25 +388,33 @@
 
     },
 
-    selectHair: function(){
-      var selected = Polymer.dom(this.root).querySelector(".hair-selector").selectedItem;
+    selectHair: function(index){
+      index = index || Polymer.dom(this.root).querySelector(".hair-selector").selected
+      var selected = Polymer.dom(this.root).querySelector(".hair-selector").items[index];
 
       this.hair = selected.getContext('2d');
     
       this.hairImage = new Image();
-      this.hairImage.src = "/images/trump-hair.png" 
+      this.hairImage.src = selected.dataset.url 
 
-      this.hairImage.onload = function(){
-        if (this.hairImage.width / this.hair.canvas.width > this.hairImage.height / this.hair.canvas.height){
-          this.hairScale = this.hair.canvas.width / this.hairImage.width;
+      this.loadHair(this.hair, this.hairImage);
+
+      if (this.upload !== null) this.draw();
+    },
+
+    loadHair: function(hair, image){
+      image.onload = function(){
+        if (image.width / hair.canvas.width > image.height / hair.canvas.height){
+          scale = hair.canvas.width / image.width;
         } else {
-          this.hairScale = this.hair.canvas.height / this.hairImage.height;
+          scale = hair.canvas.height / image.height;
         }
 
-        var top = (this.hair.canvas.height - (this.hairImage.height * this.hairScale)) / 2,
-            left = (this.hair.canvas.width - (this.hairImage.width * this.hairScale)) / 2;
+        var top = (hair.canvas.height - (image.height * scale)) / 2,
+            left = (hair.canvas.width - (image.width * scale)) / 2;
 
-        this.hair.drawImage(this.hairImage, 0, 0, this.hairImage.width, this.hairImage.height, left, top, this.hairImage.width * this.hairScale, this.hairImage.height * this.hairScale);         
+        hair.drawImage(image, 0, 0, image.width, image.height, left, top, image.width * scale, image.height * scale);         
+        
       }.bind(this)
     }
   })
