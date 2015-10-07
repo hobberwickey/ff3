@@ -33,6 +33,10 @@ class Application < Sinatra::Base
     erb :index
   end
 
+  get "/new" do
+    erb :"tests/new-engine"
+  end
+
   get "/spell-dump" do
     erb :"tests/spell-dump"
   end

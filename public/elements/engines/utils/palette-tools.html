@@ -1,0 +1,22 @@
+<script>
+  PaletteTools = {
+    getPalette: function(offset, colors){
+      var palette = []
+  
+      colors = colors || 16;
+      for (var i=0; i<colors; i++){
+        var color = new Uint8ClampedArray(4)
+            bytes = this.getValue( offset + (i * 2), 2 );
+
+            color[0] = (bytes & 31) << 3;
+            color[1] = ((bytes & ( 31 << 5 )) >> 5) << 3; 
+            color[2] = ((bytes & ( 31 << 10 )) >> 10) << 3;
+            color[3] = i % 16 == 0 ? 0 : 255;
+
+        palette.push( color );
+      }
+
+      return palette
+    }
+  }
+</script>

@@ -37,9 +37,7 @@ battle-action-menu.inactive canvas.pointer {
 
 battle-magic-menu {
   .list {
-    display: flex;
-    flex-wrap: wrap;
-
+    display: inline-block;
     width: 152px;
     border-right: groove 3px #ccc;
     padding: 2px 12px;
@@ -50,7 +48,9 @@ battle-magic-menu {
     .canvas-wrapper {
       width: 0; 
       min-width: 50%; 
-      display: inline-flex;
+      display: block;
+      float: left;
+      height: 14px;
     
       canvas {
         padding: 3px 2px;

@@ -1,0 +1,84 @@
+<script>
+  TileBuilder = {
+    assemble_2bit: function(tile_offset, hFlip, vFlip, bytes){
+      var gfx = bytes || this.app.rom,
+          tile = [];
+
+      for (var y=0; y<8; y++){
+        var byte1 = gfx[tile_offset + (y * 2)],
+            byte2 = gfx[tile_offset + 1 + (y * 2)];
+        
+        var y_offset = vFlip ? 7 - y : y;
+
+        for (var x=0; x<8; x++){
+          var shift = 7 - x,
+              color = (byte1 & (1 << shift)) >> shift;
+              color += ((byte2 & (1 << shift)) >> shift) << 1;
+          
+          var x_offset = hFlip ? 7 - x : x;
+
+          color_index = x_offset + (y_offset * 8)
+          tile[color_index] = color
+        }
+      }
+
+      return tile;
+    },
+
+    assemble_3bit: function(tile_offset, hFlip, vFlip, bytes){
+      var gfx = bytes || this.app.rom,
+          tile = [];
+
+      for (var y=0; y<8; y++){
+        var byte1 = gfx[tile_offset + (y * 2)],
+            byte2 = gfx[tile_offset + 1 + (y * 2)],
+            byte3 = gfx[tile_offset + 16 + y];
+        
+        var y_offset = vFlip ? 7 - y : y;
+
+        for (var x=0; x<8; x++){
+          var shift = 7 - x,
+              color = (byte1 & (1 << shift)) >> shift;
+              color += ((byte2 & (1 << shift)) >> shift) << 1;
+              color += ((byte3 & (1 << shift)) >> shift) << 2;
+          
+          var x_offset = hFlip ? 7 - x : x;
+
+          color_index = x_offset + (y_offset * 8)
+          tile[color_index] = color
+        }
+      }
+
+      return tile;
+    },
+
+    assemble_4bit: function(tile_offset, hFlip, vFlip, bytes){
+      var gfx = bytes || this.app.rom,
+          tile = [];
+
+      for (var y=0; y<8; y++){
+        var byte1 = gfx[tile_offset + (y * 2)],
+            byte2 = gfx[tile_offset + 1 + (y * 2)],
+            byte3 = gfx[tile_offset + 16 + (y * 2)],
+            byte4 = gfx[tile_offset + 17 + (y * 2)];
+        
+        var y_offset = vFlip ? 7 - y : y;
+
+        for (var x=0; x<8; x++){
+          var shift = 7 - x,
+              color = (byte1 & (1 << shift)) >> shift;
+              color += ((byte2 & (1 << shift)) >> shift) << 1;
+              color += ((byte3 & (1 << shift)) >> shift) << 2;
+              color += ((byte4 & (1 << shift)) >> shift) << 3;
+          
+          var x_offset = hFlip ? 7 - x : x;
+
+          color_index = x_offset + (y_offset * 8)
+          tile[color_index] = color
+        }
+      }
+
+      return tile;
+    }
+  }
+</script>

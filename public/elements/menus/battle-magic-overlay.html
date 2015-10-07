@@ -23,7 +23,6 @@
       top: { type: Number, value: 0 },
       left: { type: Number, value: 0 },
       parent: { type: Object, value: function(){ return {} }},
-      ctx: { type: Object, value: function(){ return null }},
       imageData: { type: Object, value: function(){ return null }},
       circle: { type: Object, value: function(){ return {r: 0, x: 0, y: 0, max_r: 0} }},
       mask: { type: Number, value: 0 },
@@ -33,18 +32,22 @@
     },
 
     data: null,
+    otherCtx: null,
+    otherImageData: null,
+    otherData: null,
 
     attached: function(){
-      this.ctx = Polymer.dom(this.root).querySelector("#screen").getContext('2d');
+      this.otherCtx = Polymer.dom(this.root).querySelector("#screen").getContext('2d');
+      this.otherImageData = this.otherCtx.getImageData(0, 0, this.otherCtx.canvas.width, this.otherCtx.canvas.height);
+      this.otherData = this.otherImageData.data;
 
-      this.imageData = this.ctx.getImageData(0, 0, 256, 152);
       this.data = this.imageData.data;
     },
 
     drawTile: function(tile, palette, x_offset, y_offset){
       var rowLen = 256 << 2;
 
-      var data = this.data;
+      var data = this.otherData;
 
       for (var x=0; x<16; x++){
         for (var y=0; y<16; y++){
@@ -59,7 +62,7 @@
       }
     },
 
-    drawFrame: function(frame, palette, width, x_offset, y_offset, hFlip, vFlip){
+    drawFrame: function(frame, palette, width, x_offset, y_offset, hFlip, vFlip, thread){
       if (!frame || !frame.length) return
       
       if (hFlip || vFlip) console.log(hFlip, vFlip)
@@ -83,12 +86,11 @@
       for (var i=0; i<len; i++){
         if (frame[i] === 0) continue;
 
-        var x = (i % (width << 4)) + x_offset,
-            y = ((i / (width << 4)) | 0) + y_offset,
-            color = palette[frame[i]];
+        var x = ((i % (width << 4)) + x_offset) & 255,
+            y = (((i / (width << 4)) | 0) + y_offset) % 152,
+            color = palette[(frame[i] + thread.paletteShift) & 15];
 
-        if (x < 0 || x > 255 || y < 0 || y > 151) continue
-        if (!this.clipping[this.mask].call(this, x + x_offset, y + y_offset)) continue;
+        if (!this.clipping[this.mask].call(this, x, y)) continue;
 
         var offset = (x << 2) + (y * rowLen);
         
@@ -100,9 +102,6 @@
     },
 
     drawThreads: function(){
-      this.imageData = this.ctx.createImageData(256, 152);
-      this.data = this.imageData.data;
-
       for (var i=0; i<this.threads.length; i++){
         var thread = this.threads[i],
             e = thread.effect;
@@ -120,8 +119,6 @@
           thread
         );
       }
-
-      this.ctx.putImageData(this.imageData, 0, 0);
     },
 
     domeCos: Math.cos(Math.PI / 4),
@@ -131,7 +128,8 @@
         return true
       },
       "1": function(x, y){ // circle
-        return Math.sqrt(Math.pow(x - this.circle.x, 2)  + Math.pow(y - this.circle.y, 2)) <= this.circle.r
+        var inside = Math.sqrt(Math.pow(x - this.circle.x, 2)  + Math.pow(y - this.circle.y, 2)) <= this.circle.r
+        return inside
       },
       "2": function(x, y){ // wave
         return true

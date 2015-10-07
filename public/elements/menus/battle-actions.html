@@ -132,7 +132,7 @@
         //   plane.drawTile(effects[2].tiles[i], effects[2].palette, ((i << 4) & 127) + 8, ((i >> 3) << 4) + 72)
         // }
 
-        // plane.ctx.putImageData(plane.imageData, 0, 0)
+        // plane.otherCtx.putImageData(plane.otherImageData, 0, 0)
       })
     },
 
@@ -148,6 +148,7 @@
 
       
       var subcommands = {
+        "11": function(thread){ thread.coords.x = 128; thread.coords.y = 76; thread.angle = Math.random() * (Math.PI * 2); },
         "16": function(thread){ thread.zAngle = Math.PI / 6 },
         "1e": function(thread){ thread.plane.scroll.y = (thread.plane.scroll.y + 1) & 15; console.log("Increment pearl scroll - untested")},
         "1f": function(thread){ thread.drawEffect = "pearl"; thread.coords.x = 0; thread.coords.y = 0; console.log("set thread effect to pearl - untested") },
@@ -159,6 +160,7 @@
         var plane = document.createElement("battle-magic-overlay");
             plane.mask = mask || 0;
             plane.parent = self;
+            plane.imageData = self.context.ctxData;
             plane.paused = paused || false;
 
         document.querySelector("#menu").appendChild(plane);
@@ -206,6 +208,7 @@
           effect: effect, 
           frame: 0, 
           frameAdvance: 0,
+          paletteShift: 0,
           loop: null, 
           coords: coords, 
           shift: {x: 0, y: 0},
@@ -448,11 +451,27 @@
           execute(offset + 2, thread);
         },
         "a3": function(offset, thread){
-          dump(offset, thread, "A3", 2, "Unknown");
+          dump(offset, thread, "A4", 2, "Shift Color Palette Left - Not properly implemented");
+          
+          var shift = (rom[offset + 1] & 0xf0) >> 4,
+              num_colors = (rom[offset + 1] & 0x0f),
+              palette = (rom[offset + 2] & 0xf0) >> 4,
+              loop = (rom[offset + 2] & 0x0f);
+
+          thread.paletteShift = ((thread.paletteShift - loop) % (num_colors)) + shift;    
+
           execute(offset + 3, thread);
         },
         "a4": function(offset, thread){
-          dump(offset, thread, "A4", 2, "Unknown - Serious effects");
+          dump(offset, thread, "A4", 2, "Shift Color Palette Right - Not properly implemented");
+          
+          var shift = (rom[offset + 1] & 0xf0) >> 4,
+              num_colors = (rom[offset + 1] & 0x0f),
+              palette = (rom[offset + 2] & 0xf0) >> 4,
+              loop = (rom[offset + 2] & 0x0f);
+
+          thread.paletteShift = ((thread.paletteShift + loop) % (num_colors)) + shift;    
+
           execute(offset + 3, thread);
         },
         "a5": function(offset, thread){
@@ -600,7 +619,18 @@
           execute(offset + 1, thread);
         },
         "c4": function(offset, thread){
-          dump(offset, thread, "C4", 1, "Unknown");
+          dump(offset, thread, "C4", 1, "Move Effects to this effect's position (seems mostly to mean, move to 0,0");
+            
+          if ((rom[offset + 1] & 0x80) === 0x80){ 
+            if (!!self.planes[1]) self.planes[1].threads.map(function(item){ item.coords.x = 0; item.coords.y = 0});
+            if (!!self.planes[2]) self.planes[2].threads.map(function(item){ item.coords.x = 0; item.coords.y = 0});
+          } 
+
+          if ((rom[offset + 1] & 0x40) === 0x40){ 
+            if (!!self.planes[1]) self.planes[1].threads.map(function(item){ item.coords.x = 0; item.coords.y = 0});
+            if (!!self.planes[2]) self.planes[2].threads.map(function(item){ item.coords.x = 0; item.coords.y = 0});
+          }
+
           execute(offset + 2, thread);
         },
         "c5": function(offset, thread){
@@ -776,8 +806,12 @@
           execute(offset + 2, thread);
         },
         "ed": function(offset, thread){
-          dump(offset, thread, "ED", 2, "Unknown");
-          execute(offset + 3, thread);
+          dump(offset, thread, "ED", 0, "Unknown");
+          execute(offset + 1, thread);
+        },
+        "ee": function(offset, thread){
+          dump(offset, thread, "EE", 1, "Set target's priority - not implemented")
+          execute(offset + 2, thread);
         },
         "ef": function(offset, thread){
           dump(offset, thread, "EF", 2, "Cumulative add to spell radius (0xFF00) and angle (0x00FF)");
@@ -914,10 +948,10 @@
       }
 
       var speeds = { "4": 4, "2": 2, "0": 0, "512": 2 },
-          subsprites = {"c1": 3, "ba": 6, "e4": 3},
+          subsprites = {"c1": 3, "ba": 6, "e4": 3, "d0": 6, "c9": 3},
           masks = {"e7": 7, "bb": 1},
           delays = {"c1": 8, "ba": 4, "e4": 4},
-          paused = {"e5": true }
+          paused = {"e5": true, "bb": true }
 
       function start_effect(i){
         var key = spell.effects[i].index.toString(16),

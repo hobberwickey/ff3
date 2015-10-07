@@ -1,0 +1,31 @@
+{
+  "name": "paper-share-buttons",
+  "version": "0.5.1",
+  "homepage": "https://github.com/grvcoelho/social-share",
+  "authors": [
+    "Guilherme Rv Coelho <guilhermervcoelho@gmail.com>"
+  ],
+  "description": "Polymer social share buttons",
+  "main": "paper-share-buttons.html",
+  "keywords": [
+    "polymer",
+    "social",
+    "paper",
+    "share",
+    "share-button",
+    "web-components"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "paper-button": "PolymerElements/paper-button#^1.0.0",
+    "polymer": "Polymer/polymer#^1.0.0",
+    "font-roboto": "Polymer/font-roboto#~0.5.6"
+  }
+}

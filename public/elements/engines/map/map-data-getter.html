@@ -1,0 +1,240 @@
+<script>
+  //* requires data-access
+  //* requires data-compression
+  //* requires tile-builder
+  //* requires palette-tools
+
+  MapDataGetter = {
+    loadMapData: function(){
+      this.getSpecs();
+      this.palette = this.getPalette(0x2dc680 + ( this.specs.palette << 8 ), 256);
+      this.mapData = this.getMapData();
+      this.tileData = this.getTilesets();
+      this.physicalData = this.getTileProperties();
+    },
+
+    getSpecs: function(){
+      var rom = this.app.rom,
+          offset = 0x2d9100 + (this.index * 33);
+          formations = this.getValue(offset + 11, 3),
+          map_data = this.getValue(offset + 13, 3),
+          tilesets = this.getValue(offset + 7, 4);
+
+      this.specs = {   
+        palette: rom[offset + 25],
+        has_monsters: (rom[offset + 5] & 128) === 128,
+        monster_set: rom[0xf5801 + this.index],
+        battle_bg: rom[offset + 2] & 127,
+        song: rom[offset + 28],
+        layer_priorities: rom[offset + 32],
+        scroll_index: this.getScrollIndex(offset),
+        tile_properties: rom[offset + 4],
+        layer2_shift: [
+          rom[offset + 18] << 4,
+          rom[offset + 19] << 4
+        ],
+        layer3_shift: [
+          rom[offset + 20] << 4,
+          rom[offset + 21] << 4
+        ],
+        effects: {
+          layer3_ripple: (rom[offset + 1] & 0x04) === 0x04,
+          layer2_ripple: (rom[offset + 1] & 0x08) === 0x08,
+          layer1_ripple: (rom[offset + 1] & 0x10) === 0x10,
+          search_lights: (rom[offset + 1] & 0x20) === 0x20,
+          layer3_animation: (rom[offset + 25] & 0x1f),
+          layer3_animation: (rom[offset + 25] & 0xe0) >> 5
+        },
+        size: [
+          {
+            x: Math.pow(2, (rom[offset + 23] & (3 << 6)) >> 6) << 4,
+            y: Math.pow(2, (rom[offset + 23] & (3 << 4)) >> 4) << 4
+          },
+          {
+            x: Math.pow(2, (rom[offset + 23] & (3 << 2)) >> 2) << 4,
+            y: Math.pow(2, (rom[offset + 23] & (3 << 0)) >> 0) << 4
+          },
+          {
+            x: Math.pow(2, (rom[offset + 24] & (3 << 6)) >> 6) << 4,
+            y: Math.pow(2, (rom[offset + 24] & (3 << 4)) >> 4) << 4
+          } 
+        ],
+        viewable_size: {
+          x: rom[offset + 30],
+          y: rom[offset + 31]
+        },
+        tilesets: [
+          (tilesets & 0x7f),
+          (tilesets & (0x7f << 7)) >> 7,
+          (tilesets & (0x7f << 14)) >> 14,
+          (tilesets & (0x7f << 21)) >> 21,
+          (rom[offset + 27] & 31), //animated tiles
+          (tilesets & 0x3f0) >> 4 //layer 3 tiles
+        ],
+        formations: [
+          (formations & 0x1fc) >> 2,
+          (formations & 0xfe00) >> 9,
+          (this.getValue(offset + 10, 2) & (63 << 4)) >> 4
+        ],
+        map_data: [
+          (map_data & 0x3ff),
+          (map_data & (0x3ff << 10)) >> 10,
+          (map_data & (0x3ff << 20)) >> 20,
+        ]
+      }
+    },
+
+    assembleTileset: function(formation, tilesets, layer){
+      var pnt1 = this.getValue(0x1fbc00 + (formation * 3), 3),
+          data = this.decompress(pnt1 + 0x1e0200);
+
+      var animated_data_pointer = this.getValue(0x93d5 + (tilesets[4] * 2), 2),
+          animated_pointers = this.getAnimatedPointers(animated_data_pointer);
+      
+      var tile_data_offsets = this.getTileDataOffsets(tilesets, animated_pointers);
+
+      // var tiles = { r: [], p: [] }
+      var tiles = [];
+      for (var i=0; i<256; i++){
+        // var tile_r = [],
+        //     tile_p = [];
+
+        var tile = [];//new Uint8ClampedArray(256);
+        for (var j=0; j<4; j++){
+          var chunk = data[i + (j << 8)],
+              info = data[i + (j << 8) + 1024];
+
+          var x_offset = (j & 1) === 0 ? 0 : 8,
+              y_offset = (j >> 1) === 0 ? 0 : 8;
+
+          // this.assemble_chunk(tile_r, tile_p, chunk, info, tile_data_offsets, x_offset, y_offset);
+          this.assemble_chunk(tile, chunk, info, tile_data_offsets, x_offset, y_offset, layer, i);
+        }
+
+        tiles.push(tile)
+        // tiles.r.push(tile_r);
+        // tiles.p.push(tile_p);
+      }
+
+      return tiles;
+    },
+
+    getAnimatedPointers: function(animated_data_pointer){
+      var pointers = [];
+
+      for (var j=0; j<4; j++){
+        var frames = [];
+
+        for (var i=0; i<32; i++){
+          var offset = this.getValue(0x9401 + (animated_data_pointer) + (i * 10) + (j * 2), 2);
+          for (var k=0; k<4; k++){
+            frames.push( offset + 0x260200 + (k * 32) );
+          }
+        }
+        pointers.push(frames);
+      }
+
+      return pointers;
+    },
+
+    getTileDataOffsets: function(tilesets, animated_pointers){
+      var tile_data_offsets = [
+        this.getValue(0x1fdc00 + (3 * tilesets[0]), 3, 0x1fdd00),
+        this.getValue(0x1fdc00 + (3 * tilesets[1]), 3, 0x1fdd00),
+        this.getValue(0x1fdc00 + (3 * tilesets[2]), 3, 0x1fdd00),
+        this.getValue(0x1fdc00 + (3 * tilesets[3]), 3, 0x1fdd00),
+        animated_pointers
+      ]
+
+      return tile_data_offsets;
+    },
+
+    // assemble_chunk: function(tile_r, tile_p, chunk, info, tile_data_offsets, x_offset, y_offset){
+    assemble_chunk: function(tile, chunk, info, tile_data_offsets, x_offset, y_offset, layer, index){
+      if ((info & 3) === 0){
+        var tileset = 0,
+            t_index = chunk;
+      } else {
+        if (chunk > 127){
+          var t_index = chunk - 128,
+              tileset = (info & 3) === 1 ? 2 : 4;
+        } else {
+          var t_index = chunk,
+              tileset = (info & 3) === 2 ? 3 : info & 3;
+        }
+      }
+
+      if (tileset == 4){
+        var tile_offset = tile_data_offsets[4][0][t_index];
+        this.animation.tiles[layer][index] = 1;
+      } else {
+        var tile_offset = (t_index * 32) + tile_data_offsets[tileset]
+      }
+
+      var priority = (info & 32) >> 5,
+          pal = (info & 28) >> 2,
+          h_flip = (info & 64) === 64,
+          v_flip = (info & 128) === 128;
+
+      var frames = tileset == 4 ? 4 : 1;
+
+      for (var a=0; a<frames; a++){         
+        var tile_offset = tileset == 4 ? tile_data_offsets[4][a][t_index] : tile_offset,
+            t = this.assemble_4bit(tile_offset, h_flip, v_flip);
+
+        for (var y=0; y<8; y++){
+          for (var x=0; x<8; x++){      
+            var color_index = (x + x_offset) + ((y + y_offset) * 16) + (a * 256),
+                color = t[x + (y * 8)] + (pal << 4);
+            
+            tile[color_index] = priority === 1 ? color * -1 : color;
+          }
+        }
+      }
+    },
+
+    getScrollIndex: function(offset){
+      switch (this.app.rom[offset + 22]){
+        case 0:
+          return [0, 0]
+          break
+        case 4:
+        case 2:
+          return [1, 0]
+          break
+        default:
+          return [0, 0]
+      }
+    },
+
+    getTilesets: function(){
+      var tilesets = [
+        this.assembleTileset(this.specs.formations[0], this.specs.tilesets, 0),
+        this.assembleTileset(this.specs.formations[1], this.specs.tilesets, 1)
+      ];
+
+      return tilesets
+    },
+
+    getMapData: function(){
+      return [
+        this.decompress(this.getValue( 0x19cf90 + (this.specs.map_data[0] * 3), 3, 0x19d3b0 )),  
+        this.decompress(this.getValue( 0x19cf90 + (this.specs.map_data[1] * 3), 3, 0x19d3b0 )),  
+        this.decompress(this.getValue( 0x19cf90 + (this.specs.map_data[2] * 3), 3, 0x19d3b0 ))  
+      ]
+    },
+
+    getTileProperties: function(){
+      var props = [];
+
+      var pntr = this.getValue(0x19cf10 + (this.specs.tile_properties * 2), 2, 0x19aa00);
+          data = this.decompress(pntr);
+
+      for (var i=0; i<data.length / 2; i++){
+        props.push( [ data[i], data[i + 256] ] );
+      }    
+
+      return props;
+    }
+  }
+</script>

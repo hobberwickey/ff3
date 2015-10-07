@@ -1,0 +1,24 @@
+{
+  "name": "paper-share-buttons",
+  "version": "0.1.0",
+  "description": "Polymer social share buttons",
+  "main": "gulpfile.js",
+  "scripts": {
+    "start": "gulp"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/grvcoelho/social-share.git"
+  },
+  "author": "Guilherme Rv Coelho <guilhermervcoelho@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/grvcoelho/social-share/issues"
+  },
+  "homepage": "https://github.com/grvcoelho/social-share",
+  "devDependencies": {
+    "browser-sync": "^2.7.6",
+    "gulp": "^3.9.0",
+    "gulp-plumber": "^1.0.1"
+  }
+}

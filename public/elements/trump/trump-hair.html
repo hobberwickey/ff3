@@ -1,5 +1,8 @@
 <link rel='import' href='../../components/polymer/polymer.html'>
 <link rel='import' href='../../components/paper-button/paper-button.html'>
+<link rel='import' href='../../components/paper-share-buttons/paper-share-facebook.html'>
+<link rel='import' href='../../components/paper-share-buttons/paper-share-google.html'>
+<link rel='import' href='../../components/paper-share-buttons/paper-share-twitter.html'>
 
 <dom-module id='trump-hair'>
   <style>
@@ -72,11 +75,32 @@
       height: 60px;
     }
 
-    #controls paper-button {
-      background-color: #ff2;
+    #controls .button-wrapper {
       flex: 1;
       margin: 10px;
+      position: relative;
+    }
+
+    #controls paper-button {
+      background-color: #ff2;
+      width: 100%;
       box-sizing: border-box;
+    }
+
+    #controls .share-buttons {
+      position: absolute;
+      left: 0px;
+      bottom 0px;
+      width: 100%;
+      z-index: 1;
+      background-color: white;
+      margin: 5px;
+      display: flex;
+    }
+
+    #controls .share-buttons .share-button {
+      flex: 1;
+      margin: 0px 5px;
     }
 
     #controls #file-upload {
@@ -139,11 +163,21 @@
   <template>
     <!-- <div id='test'>Test</div> -->
     <div id='controls'>
-      <paper-button>
-        <a href='javascript:void(0)'>Upload An Image</a>
-        <input type='file' id='file-upload' />
-      </paper-button>
-      <paper-button disabled$="[[ hasUpload(upload) ]]"><a href='javascript:void(0)'>Share</a></paper-button>
+      <div class='button-wrapper'>
+        <paper-button>
+          <a href='javascript:void(0)'>Upload An Image</a>
+          <input type='file' id='file-upload' />
+        </paper-button>
+      </div>
+      <div class='button-wrapper'>
+        <paper-button id='share-button' disabled$="[[ hasUpload(upload) ]]"><a href='javascript:void(0)'>Save and Share</a></paper-button>
+        <div class='share-buttons'>
+          <paper-share-facebook class='share-button' raised>Facebook</paper-share-facebook>
+          <paper-share-google class='share-button'raised >Google</paper-share-google>
+          <paper-share-twitter class='share-button'raised>Twitter</paper-share-twitter>
+        </div>
+      </div>
+
     </div>    
 
     <div class='main'>
@@ -187,6 +221,7 @@
     image: null,
     hair: null,
     active: false,
+    share: null,
 
     vScale: 1,
     hScale: 1,
@@ -221,6 +256,9 @@
           this.set("upload",  null);
         }
       }.bind(this), false);  
+
+      var shareButton = Polymer.dom(this.root).querySelector("#share-button");
+
     },
 
     hasUpload: function(upload){
@@ -418,6 +456,14 @@
         hair.drawImage(image, 0, 0, image.width, image.height, left, top, image.width * scale, image.height * scale);         
         
       }.bind(this)
+    },
+
+    save: function(){
+
+    },
+
+    openShare: function(){
+
     }
   })
 </script>

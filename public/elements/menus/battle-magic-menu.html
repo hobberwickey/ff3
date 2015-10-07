@@ -50,22 +50,29 @@
     getMagic: function(){
       var list = Polymer.dom(this.root).querySelector(".list");
 
+      var offset = 0x26F767;
+
       for (var i=0; i<256; i++){
+        var len = i < 54 ? 7 : (i < 81 ? 8 : 10);
+        
         var ctx = document.createElement("canvas").getContext("2d");
-            ctx.canvas.width = 56;
+            ctx.canvas.width = len * 8;
             ctx.canvas.height = 8;
         
         var wrapper = document.createElement("div");
-            wrapper.id = Tables.battleText(this.parent.context.rom, 0x26F767 + i * 7, 7)
+            wrapper.id = Tables.battleText(this.parent.context.rom, offset, len)
             wrapper.classList.add("canvas-wrapper")
         
-        for (var j=0; j<7; j++){
-          var letter = this.parent.context.rom[0x26F767 + j + (i * 7)] - 128;
+
+        for (var j=0; j<len; j++){
+          var letter = this.parent.context.rom[offset + j] - 128;
           ctx.drawImage(this.parent.context.misc.fixedFont, 0, letter << 4, 8, 8, j << 3, 0, 8, 8);
         }
 
         wrapper.appendChild(ctx.canvas)
         list.appendChild(wrapper);
+
+        offset += len;
       }
 
       list.select(0);

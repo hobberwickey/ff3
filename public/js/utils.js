@@ -198,7 +198,10 @@ Utils.prototype.decompress = function(offset, max){
     }
   }
 
-  return output
+  var buffer = new Uint8ClampedArray(output.length);
+      buffer.set(output);
+  
+  return buffer;
 }
 
 Utils.prototype.bezier = function(t, p0, p1, p2, p3){
@@ -328,7 +331,7 @@ Utils.prototype.getMagicData = function(index){
     { 
       index: spell_data[0] + (spell_data[1] << 8),
       data: this.getBytes(0x14D200 + ((spell_data[0] + ((spell_data[1] & 0x7f) << 8)) * 6), 6),
-      palette: this.buildPalette( 0x126200 + (spell_data[6] << 4), 8),
+      palette: this.buildPalette( 0x126200 + (spell_data[6] << 4)),
       tiles: [],
       assembly: [],
       frames: [],
@@ -338,7 +341,7 @@ Utils.prototype.getMagicData = function(index){
     {
       index: spell_data[2] + (spell_data[3] << 8),
       data: this.getBytes(0x14D200 + ((spell_data[2] + ((spell_data[3] & 0x7f) << 8)) * 6), 6),
-      palette: this.buildPalette( 0x126200 + (spell_data[7] << 4), 8),
+      palette: this.buildPalette( 0x126200 + (spell_data[7] << 4)),
       tiles: [],
       assembly: [],
       frames: [],
@@ -348,7 +351,7 @@ Utils.prototype.getMagicData = function(index){
     {
       index: spell_data[4] + (spell_data[5] << 8),
       data: this.getBytes(0x14D200 + ((spell_data[4] + ((spell_data[5] & 0x7f) << 8)) * 6), 6),
-      palette: this.buildPalette( 0x126200 + (spell_data[8] << 4), 8),
+      palette: this.buildPalette( 0x126200 + (spell_data[8] << 4)),
       tiles: [],
       assembly: [],
       frames: [],
@@ -359,7 +362,6 @@ Utils.prototype.getMagicData = function(index){
   function buildTiles(effect, bits){
     if (effect.index === 0xffff) return [];
 
-    console.log(effect.data[1].toString(16));
     var index = bits === 3 ? effect.data[1] : effect.data[1] + 8;
 
     var pointers = self.getBytes( (index << 6) + (bits === 3 ? 0x120200 : 0x12C000), 512),
@@ -415,6 +417,7 @@ Utils.prototype.getMagicData = function(index){
   function getPattern(effect){
     if (effect.index === 0xffff) return [];
 
+    console.log("EFFECT INDEX", (effect.index & 0x7fff).toString(16), "TILESET INDEX", effect.data[1].toString(16))
     var frames = effect.data[0] & 0x3f,
         pattern_pointer = effect.data[2] + (effect.data[3] << 8);
       
@@ -499,7 +502,7 @@ Utils.prototype.getMagicData = function(index){
     return offset;
   }
 
-  var use2Bit = [0x14, 0x09, 0x15, 0x3b, 0x00]
+  var use2Bit = [0x14, 0x09, 0x15, 0x3b, 0x00, 0x2b, 0x57, 0x44, 0x2e, 0x5c, 0x2c]
 
   var bits = use2Bit.indexOf(effects[0].data[1]) === -1 ? 3 : 2;
   effects[0].tiles = buildTiles(effects[0], bits);

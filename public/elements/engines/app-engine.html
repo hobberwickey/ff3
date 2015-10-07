@@ -1,0 +1,168 @@
+<link rel='import' href='../../../components/polymer/polymer.html'>
+
+<link rel='import' href='./screen/screen-engine.html'>
+<link rel='import' href='./map/map-engine.html'>
+
+<dom-module id='app-engine'>
+  <template>
+    <screen-engine paused="{{ paused }}"></screen-engine>
+  </template>
+</dom-module>
+
+<script>
+  (function(){
+    var queue = {},
+        app_timing = [ window.performance.now(), 0, 0, 0];
+
+    Polymer({
+      is: "app-engine",
+      
+      properties: {
+        paused: { type: Boolean, value: false },
+        screen: { type: Object },
+        rom: { type: Object },
+        map: { type: Object },
+        battle: { type: Object },
+        sprites: { type: Object },
+        state: { type: Object, value: function(){ return {} }}
+      },
+
+      ready: function(){
+        this.screen = Polymer.dom(this.root).querySelector("screen-engine");
+        this.map = document.createElement("map-engine");
+        this.map.app = this;
+
+        window.addEventListener('keyup', function(e){
+          if (e.keyCode === 13){
+            this.paused = true;
+          }
+
+          if (e.keyCode === 37){
+            this.map.position.view.x -= 16;
+          }
+
+          if (e.keyCode === 38){
+            this.map.position.view.y -= 16;
+          }
+
+          if (e.keyCode === 39){
+            this.map.position.view.x += 16;
+          }
+
+          if (e.keyCode === 40){
+            this.map.position.view.y += 16;
+          }
+        }.bind(this), false)
+      },
+
+      loadMap: function(index){
+        this.map.set("index", index)
+      },
+
+      boot: function(){
+        this.loadMap(75);
+        this.loop()
+      },
+
+      loop: function(){
+        var ctx = this.screen.ctx,
+            dataObj = this.screen.imageData,
+            data = this.screen.data,
+            timing = app_timing,
+            self = this;
+
+        this.test = document.querySelector("#test");
+
+        var draw = function(timestamp){
+          ctx.putImageData(dataObj, 0, 0)
+          if (!self.paused){ 
+            window.requestAnimationFrame(draw);
+          }
+        }
+
+        var fps = 1000 / 60;
+
+        var logic = function(){
+          var timestamp = window.performance.now();
+          if (self.paused){ 
+            clearInterval(timer);
+            return;
+          }
+
+          self.checkActions();
+          self.screen.draw();
+          
+          timing[1] = (timestamp - timing[0]) >> 4;
+          timing[3] = timing[1] - timing[2];
+          timing[2] = timing[1];
+
+          self.test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "
+          // self.test.innerHTML = self.map.state.character.coords.x + " " + self.map.state.character.coords.y
+        }
+
+        var timer = setInterval(logic, fps);
+        draw();
+      },
+
+      checkActions: function(){
+        var self = this,
+            a = queue,
+            t = app_timing;
+
+        for (var x in a){
+          var action = a[x];
+
+          action.framesSoFar += t[3]
+          
+          while (action.every <= action.framesSoFar){
+            action.fn();
+            action.framesSoFar = action.framesSoFar - action.every;
+            action.iterations += 1;
+
+            if (action.repeat !== void(0) && action.iterations > action.repeat ){
+              if (action.callback !== void(0)) action.callback();
+              delete a[x];
+              break;            
+            }
+          }
+        }
+      },
+
+      iterate: function (frameskip, repeat, fn, callback, immediate){
+        var key = "_" + Math.random();
+        queue[key] = {
+          framesSoFar: 0,
+          every: frameskip,
+          fn: fn,
+          iterations: 0,
+          repeat: repeat,
+          callback: callback
+        }
+
+        if (immediate) fn()
+
+        return key;
+      },
+
+      every: function(frameskip, fn, immediate){
+        var key = "_" + Math.random();
+        queue[key] = {
+          framesSoFar: 0,
+          every: frameskip,
+          fn: fn,
+          iterations: 0,
+          stopAfter: void(0),
+          callback: void(0)
+        }
+
+        if (immediate) fn()
+
+        return key;
+      },
+
+      once: function(delay, fn, callback){
+        this.iterate(delay, 0, fn, callback, false);
+      }
+    })
+  })();
+</script>

@@ -1,0 +1,154 @@
+<link rel='import' href='../utils/data-access.html'>
+<link rel='import' href='../utils/data-compression.html'>
+<link rel='import' href='../utils/tile-builder.html'>
+<link rel='import' href='../utils/palette-tools.html'>
+
+<link rel='import' href='map-data-getter.html'>
+<link rel='import' href='map-controls.html'>
+
+
+<dom-module id='map-engine'>
+  <template>
+    <canvas width='256' height='256'></canvas>
+  </template>
+</dom-module>
+
+<script>
+  (function(){
+    // Private vars
+
+    Polymer({
+      is: "map-engine",
+      
+      properties: {
+        app: { type: Object },
+        index: { type: Number, notify: true },
+        specs: { type: Object, value: function(){ return {} }},
+        palette: { type: Array, value: function(){ return [] }},
+        tileData: { type: Array, value: function(){ return [] } },
+        mapData: { type: Array, value: function(){ return [] } },
+        physicalData: { type: Object, value: function(){ return {} }},
+        position: { type: Object, value: function(){ return {} }},
+        animation: { type: Object, value: function(){ return {} }}
+      },
+
+      ready: function(){
+        this.addEventListener("index-changed", function(){
+          this.setAnimation();
+          this.loadMapData();  
+          this.setPosition();
+          this.app.screen.layers.push(this.draw.bind(this));
+          this.app.every(this.animation.tile_speed, function(){
+            this.animation.tile_frame = (this.animation.tile_frame + 1) & 3;
+          }.bind(this), null);
+        }.bind(this), false)
+
+
+      },
+
+      setAnimation: function(){
+        this.animation = {
+          tile_frame: 0,
+          tile_speed: 4,
+          layer3_speed: 2,
+          tiles: [new Uint8ClampedArray(256), new Uint8ClampedArray(256)]
+        }
+      },
+
+      setPosition: function(){
+        this.position = {
+          view: { x: 0, y: 0 },
+          layer_1: { x: 0, y: 0 },
+          layer_2: { x: 0, y: 0 },
+          layer_3: { x: 0, y: 0 }
+        }
+      },
+
+      draw: function(data){
+        
+        var self = this,
+            pos = this.position,
+            size = this.specs.size,
+            mapData = this.mapData,
+            tileData = this.tileData,
+            palette = this.palette,
+            getTile = self.getTile,
+            mixColors = self.mixColors,
+            setPixel = self.setPixel,
+            animatedTileOffset = self.animation.tile_frame << 8,
+            animated_tiles_1 = self.animation.tiles[0],
+            animated_tiles_2 = self.animation.tiles[1];
+
+        for (var i=0; i<0x10000; i++){
+          var base_x = (i & 255) + pos.view.x,
+              base_y = (i >> 8) + pos.view.y;
+
+          var x1 = base_x + pos.layer_1.x,
+              x2 = base_x + pos.layer_2.x,
+              x3 = base_x + pos.layer_3.x;
+
+          var y1 = base_y + pos.layer_1.y,
+              y2 = base_y + pos.layer_2.y,
+              y3 = base_y + pos.layer_3.y;
+
+          var tile_index_1 = getTile(mapData[0], size[0], x1, y1),
+              tile_index_2 = getTile(mapData[1], size[1], x2, y2);
+
+          var tile1 = tileData[0][tile_index_1],
+              tile2 = tileData[1][tile_index_2];
+
+          var animated_offset_1 = animated_tiles_1[tile_index_1] * animatedTileOffset,
+              animated_offset_2 = animated_tiles_2[tile_index_2] * animatedTileOffset;
+
+          var clr_index_1 = tile1[(x1 & 15) + ((y1 & 15) << 4) + animated_offset_1],
+              clr_index_2 = tile2[(x2 & 15) + ((y2 & 15) << 4) + animated_offset_2];
+
+          var pri_1 = (clr_index_1 < 0) | 0,
+              pri_2 = (clr_index_2 < 0) | 0;
+
+          var color = mixColors(
+            palette[Math.abs( clr_index_1 )],
+            palette[Math.abs( clr_index_2 )],
+            null,
+            pri_1,
+            pri_2
+          )
+
+          setPixel(data, i << 2, color)
+        }
+      },
+
+      getTile: function(map, size, x, y){
+        var map_x = (x >> 4) & (size.x - 1),
+            map_y = (y >> 4) & (size.y - 1);
+
+        return map[map_x + (map_y * size.x)];
+      },
+
+      mixColors: function(clr1, clr2, clr3, pri_1, pri_2){
+        if (clr1[3] * pri_1 === 0 && clr2[3] * pri_2 === 0){
+          if (clr1[3] === 0){
+            return clr2;
+          } else {
+            return clr1;
+          }
+        } else {
+          if (clr1[3] * pri_1 === 0){
+            return clr2;
+          } else {
+            return clr1;
+          } 
+        }
+      },
+
+      setPixel: function(data, offset, color){
+        data[offset] = color[0];
+        data[offset + 1] = color[1];
+        data[offset + 2] = color[2];
+        data[offset + 3] = color[3];
+      },
+
+      behaviors: [ MapDataGetter, DataCompression, MapControls, DataAccess, TileBuilder, PaletteTools ]
+    })
+  })();
+</script>

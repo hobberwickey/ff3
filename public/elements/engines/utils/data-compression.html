@@ -1,0 +1,61 @@
+<script>
+  //* requires data-access
+
+  DataCompression = {
+    decompress: function(offset, max){
+      max = max || 8192;
+
+      var len = this.getValue(offset, 2),
+          output = [],
+          cntr = 0,
+          pos = offset + 2,
+          win = 0;
+
+      while(pos - offset < len){
+        var flag_byte = this.app.rom[pos];
+            pos += 1;
+
+        for (var i=0; i<8; i++) {
+          if ( (( flag_byte & (1 << i)) >> i ) === 1 ){
+            if (pos - offset >= len) break;
+
+            output[cntr] = this.app.rom[pos];
+
+            cntr += 1;
+            pos += 1;
+            win += 1;
+          } else {
+            if ( pos - offset >= len ) break;
+
+            var info = this.getValue(pos, 2),
+                bytes_to_fetch = ((info & (31 << 11)) >> 11) + 3;
+                fetch_offset = (info & 2047) - 2014;
+            
+            while (fetch_offset + 2048 < win) {
+              fetch_offset += 2048;
+            }
+
+            for (var j=0; j<bytes_to_fetch; j++) {
+              if ( win > max ) break;
+              output[cntr] = fetch_offset + j < 0 ? 0 : output[fetch_offset + j];
+
+              cntr += 1;
+              win += 1;
+            }
+
+            pos += 2;
+          }
+        }
+      }
+
+      var buffer = new Uint8ClampedArray(output.length);
+          buffer.set(output);
+  
+      return buffer;
+    },
+
+    compress: function(){
+      console.log("Compression Not Implemented");
+    }
+  }
+</script>

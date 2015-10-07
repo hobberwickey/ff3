@@ -1,0 +1,85 @@
+<div id='screen_wrapper' style='width: 240px; height: 208px; overflow: hidden; transform: scale3d(2, 2, 2); transform-origin: 0 0;'>
+  <app-engine style='background-color: #00f; transform: translate3d(-16px, -8px, 0px); transform-origin: 0 0;'></app-engine>
+</div>
+
+<div id='test'>Loading</div>
+
+<div id='upload-rom'>
+  <polyrhythm-form id='upload-form' options='{"submitText":null}'></polyrhythm-form>
+</div>
+
+<div id='output' style='position: absolute; width: 100%; height: 100%; overflow: auto; left: 0; top: 100%; background-color: white; color: black;'>
+  
+</div>
+
+<script src='/js/ff3.js'></script>
+<script>
+  //var ff3 = new FF3();
+  var ff3 = null;
+
+  window.addEventListener("WebComponentsReady", function(){
+    var form = document.querySelector('#upload-form'),
+        app = document.querySelector("app-engine");
+
+    form.structure = [{ key: "rom", type: "file", label: "Upload a valid FF3/6 ROM" }];
+    form.async(function(){
+      form.querySelector(".rom input").addEventListener("change", function(e){
+        var file = e.target.files[0],
+            live = new FileReader(),
+            store = new FileReader();
+
+        live.onload = function(){ 
+          app.rom = new Uint8ClampedArray( live.result );
+          app.boot();
+        }
+
+        store.onload = function(){ 
+          window.localStorage.rom = store.result 
+        }
+        
+        live.readAsArrayBuffer(file)
+        store.readAsDataURL(file);
+      }, false);
+    });
+
+    if (!!window.localStorage.rom){
+      var blob = dataURLtoBlob(window.localStorage.rom),
+          live = new FileReader();
+      
+      live.onload = function() {
+          app.rom = new Uint8ClampedArray( live.result )
+          app.boot();
+      };
+      live.readAsArrayBuffer(blob);
+    }
+    
+  }, false);
+
+  window.addEventListener("resize", function(){
+    resizeScreen();
+  }, false)
+
+  function resizeScreen(){
+    var viewport = document.querySelector('html'),
+        height = viewport.offsetHeight, 
+        width = viewport.offsetWidth,
+        hScale = width / 240,
+        vScale = height / 208,
+        scale = vScale > hScale ? hScale : vScale,
+        leftShift = (((width / scale) / 2) - (120)),
+        transformation = "scale3d(" + scale + "," + scale + "," + scale + ")" + " translateX(" + leftShift + "px)";
+
+    document.querySelector("#screen_wrapper").style.transform = transformation;
+  }
+
+  function dataURLtoBlob(dataurl) {
+      var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+          bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+      while(n--){
+          u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new Blob([u8arr], {type:mime});
+  }
+
+  resizeScreen();
+</script>

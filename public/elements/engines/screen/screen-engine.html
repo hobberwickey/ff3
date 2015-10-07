@@ -1,0 +1,43 @@
+<dom-module id='screen-engine'>
+  <template>
+    <canvas width='256' height='256'></canvas>
+  </template>
+</dom-module>
+
+<script>
+  (function(){
+    // Private vars
+
+    Polymer({
+      is: "screen-engine",
+      
+      properties: {
+        paused: { type: Boolean },
+        app: { type: Object },
+        ctx: { type: Object },
+        canvas: { type: Object },
+        imageData: { type: Object },
+        data: { type: Object },
+        layers: { type: Object, value: (function(){ return [] }) },
+        mask: { type: Object, value: (function(){ return {} })}
+      },
+
+      ready: function(){
+        this.ctx = Polymer.dom(this.root).querySelector("canvas").getContext("2d");
+        this.canvas = this.ctx.canvas;
+        this.imageData = this.ctx.getImageData(0, 0, 256, 256);
+        this.data = this.imageData.data;
+      },
+
+      draw: function(){
+        var layers = this.layers,
+            len = this.layers.length,
+            data = this.data;
+
+        for (var i=0; i<len; i++){
+          layers[i](data);
+        }
+      }
+    })
+  })();
+</script>
