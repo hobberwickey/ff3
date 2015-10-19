@@ -210,7 +210,7 @@ Map.prototype.moveRandom = function(sprite, recurse){
 
 Map.prototype.runMap = function(data){
   this.drawMap(data);
-  //this.drawSprites(data);
+  this.drawSprites(data);
 }
 
 Map.prototype.drawSprites = function(data){

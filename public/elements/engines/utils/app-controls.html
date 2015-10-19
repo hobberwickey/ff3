@@ -1,0 +1,60 @@
+<script>
+  var AppControls = {
+    buttonStates: {
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+      start: false,
+      select: false,
+      a: false,
+      b: false,
+      x: false,
+      y: false,
+      l: false,
+      r: false
+    },
+
+    buttons: {
+      13: "start",
+      16: "select",
+      37: "left",
+      38: "up",
+      39: "right",
+      40: "down",
+      68: "a",
+      83: "x",
+      67: "b",
+      88: "y",
+      87: "l",
+      69: "r"
+    },
+
+    initControls: function(){
+      var self = this;
+      window.addEventListener('keydown', function(e){
+        e.preventDefault();
+
+        var button = self.buttons[e.keyCode];
+        if (button !== void(0)){ 
+          self.buttonStates[button] = true;
+          window.dispatchEvent(new Event(button + "-start"));
+        }
+      }, false)
+
+      window.addEventListener("keypress", function(e){
+        e.preventDefault();
+      }, false)
+
+      window.addEventListener("keyup", function(e){
+        e.preventDefault();
+        
+        var button = self.buttons[e.keyCode];
+        if (button !== void(0)){ 
+          self.buttonStates[button] = false;
+          window.dispatchEvent(new Event(button + "-end"))
+        }
+      }, false)
+    }
+  }
+</script>

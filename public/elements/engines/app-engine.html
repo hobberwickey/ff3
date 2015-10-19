@@ -2,6 +2,8 @@
 
 <link rel='import' href='./screen/screen-engine.html'>
 <link rel='import' href='./map/map-engine.html'>
+<link rel='import' href='./sprite/sprite-engine.html'>
+<link rel='import' href='./utils/app-controls.html'>
 
 <dom-module id='app-engine'>
   <template>
@@ -32,27 +34,14 @@
         this.map = document.createElement("map-engine");
         this.map.app = this;
 
-        window.addEventListener('keyup', function(e){
-          if (e.keyCode === 13){
-            this.paused = true;
-          }
+        this.sprites = document.createElement("sprite-engine");
+        this.sprites.app = this;
 
-          if (e.keyCode === 37){
-            this.map.position.view.x -= 16;
-          }
-
-          if (e.keyCode === 38){
-            this.map.position.view.y -= 16;
-          }
-
-          if (e.keyCode === 39){
-            this.map.position.view.x += 16;
-          }
-
-          if (e.keyCode === 40){
-            this.map.position.view.y += 16;
-          }
-        }.bind(this), false)
+        this.initControls();
+        
+        window.addEventListener("start-start", function(){
+          this.paused = true;
+        }.bind(this), false);
       },
 
       loadMap: function(index){
@@ -60,6 +49,8 @@
       },
 
       boot: function(){
+        this.sprites.initialize();
+
         this.loadMap(75);
         this.loop()
       },
@@ -162,7 +153,9 @@
 
       once: function(delay, fn, callback){
         this.iterate(delay, 0, fn, callback, false);
-      }
+      },
+
+      behaviors: [AppControls]
     })
   })();
 </script>

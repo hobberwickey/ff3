@@ -1,0 +1,89 @@
+<link rel='import' href='../utils/data-access.html'>
+<link rel='import' href='../utils/palette-tools.html'>
+<link rel='import' href='map-sprite.html'>
+
+
+<dom-module id='sprite-engine'>
+  
+</dom-module>
+
+<script>
+  (function(){
+    // Private vars
+
+    Polymer({
+      is: "sprite-engine",
+      
+      properties: {
+        app: { type: Object },
+        characterSprites: { type: Array, value: function(){ return [] }},
+        palettes: { type: Array, value: function(){ return [] }},
+        spriteList: { type: Array, value: function(){ return [] }},
+        spriteMap: { type: Object, value: function(){ return new Uint8ClampedArray(0x10000) }}
+      },
+
+      initialize: function(){
+        this.getCharacterSprites();
+        this.getPalettes();
+      },
+
+      getCharacterSprites: function(){
+        for (var i=0; i<0x10; i++){
+          var sprite = document.createElement("map-sprite");
+              sprite.app = this.app;
+              sprite.initialize();
+
+          this.characterSprites.push(sprite)
+        }
+      },
+
+      getPalettes: function(){
+        for (var i=0; i<32; i++){
+          this.palettes.push(
+            this.getPalette(0x268200 + (i << 5))
+          )
+        }
+      },
+
+      getMapSprites: function(map){
+        this.spriteList = [];
+        for (var i=0; i<0x10; i++) this.spriteList.push(this.characterSprites[i]);
+        
+
+        //this.spriteList = JSON.parse( JSON.stringify( this.characterSprites ) );
+      },
+
+      getBattleSprites: function(battle){
+
+      },
+
+      drawSprites: function(data){
+        var sprite = this.characterSprites[0],
+            map = this.app.map,
+            x_offset = sprite.coords.x - map.position.view.x,
+            y_offset = sprite.coords.y - map.position.view.y;
+
+        var gfx = sprite.gfx[sprite.position],
+            palette = this.palettes[sprite.palette],
+            len = gfx.length;
+
+        for (var i=0; i<len; i++){
+          var x = (i & 15),
+              y = (i >> 4);
+
+          var index = ((x_offset + x) << 2) + (((y_offset + y) << 8) << 2),
+              color = palette[gfx[i]];
+
+          if (color[3] !== 0){
+            data[index] = color[0];
+            data[index + 1] = color[1];
+            data[index + 2] = color[2];
+            data[index + 3] = color[3];
+          }
+        }
+      },
+
+      behaviors: [DataAccess, PaletteTools]
+    })
+  })();
+</script>

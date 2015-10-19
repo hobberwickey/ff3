@@ -1,5 +1,68 @@
 <script>
   MapControls = {
-    
+    moving: false,
+    hasControl: true,
+
+    initMapControls: function(){
+      var self = this,
+          app = this.app,
+          buttons = app.buttonStates;
+
+      this.app.every(30, function(){
+        if (buttons.left){
+          self.moveLeft();
+          return;
+        } else if (buttons.up){
+          self.moveUp();
+          return;
+        } else if (buttons.right){
+          self.moveRight();
+          return;
+        } else if (buttons.down){
+          self.moveDown();
+          return;
+        }
+      }, function(){})
+    },
+
+    moveLeft: function(){
+      var sprites = this.app.sprites.characterSprites,
+          able = this.canMoveLeft(sprites[0]);
+
+      if (able){
+        this.position.view.x -= 16;
+        sprites[0].walkLeft();
+      }
+    },
+
+    moveRight: function(){
+      var sprites = this.app.sprites.characterSprites,
+          able = this.canMoveRight(sprites[0]);
+
+      if (able){
+        this.position.view.x += 16;
+        sprites[0].walkRight();
+      }
+    },
+
+    moveUp: function(){
+      var sprites = this.app.sprites.characterSprites,
+          able = this.canMoveUp(sprites[0]);
+
+      if (able){
+        this.position.view.y -= 16;
+        sprites[0].walkUp();
+      }
+    },
+
+    moveDown: function(){
+      var sprites = this.app.sprites.characterSprites,
+          able = this.canMoveDown(sprites[0]);
+
+      if (able){
+        this.position.view.y += 16;
+        sprites[0].walkDown();
+      }
+    }
   }
 </script>

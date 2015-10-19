@@ -1,0 +1,88 @@
+<link rel='import' href='../utils/data-access.html'>
+<link rel='import' href='../utils/tile-builder.html'>
+<link rel='import' href='../utils/palette-tools.html'>
+
+<dom-module id='map-sprite'>
+  
+</dom-module>
+
+<script>
+  (function(){
+    // Private vars
+
+    Polymer({
+      is: "map-sprite",
+      
+      properties: {
+        app: { type: Object },
+        positions: { type: Array, value: function(){ return [] }},
+        gfx: { type: Array, value: function(){ return [] }},
+        coords: { type: Object, value: function(){ return {x: 8 << 4, y: 8 << 4} }},
+        //TEMP
+        position: { type: Number, value: 5 },
+        palette: { type: Number, value: 0 }
+      },
+
+      initialize: function(){
+        this.getAssembly();
+        this.getGfx();
+      },
+
+      getGfx: function(){
+        var bank_pointer = (this.app.rom[0xd43c + (this.gfx_set << 1)] - 192) << 16,
+            gfx_pointer = this.getValue(0xd2f2 + (this.gfx_set << 1), 2) + bank_pointer + 512;
+
+        for (var i=0; i<this.positions.length; i++){
+          var position = this.positions[i],
+              gfx = new Uint8ClampedArray(384);      
+
+          for (var j=0; j<6; j++){
+            var x_offset = (j & 1) << 3,
+                y_offset = (j >> 1) << 3,
+                tile_index = this.positions[i][j],
+                tile_gfx = this.assemble_4bit(gfx_pointer + (tile_index * 32), false, false)
+
+            for (var k=0; k<64; k++){
+              var x = (k & 7),
+                  y = (k >> 3),
+                  index = (x + x_offset) + ((y + y_offset) << 4);
+
+              gfx[index] = tile_gfx[k];
+            }
+          }
+        
+          this.gfx.push(gfx)
+        }
+      },
+
+      //TODO: this shouldn't be done for every sprite
+      getAssembly: function(){
+        for (var i=0; i<58; i++){
+          var pos = [];
+          for (var j=0; j<6; j++){
+            pos.push( this.getValue(0xd03a + (j * 2) + (i * 12), 2) >> 5 )  
+          }
+          this.positions.push( pos )
+        }
+      },
+
+      walkLeft: function(){
+        this.coords.x -= 16;
+      },
+
+      walkUp: function(){
+        this.coords.y -= 16;
+      },
+
+      walkRight: function(){
+        this.coords.x += 16;
+      },
+
+      walkDown: function(){
+        this.coords.y += 16;
+      },
+
+      behaviors: [DataAccess, TileBuilder, PaletteTools]
+    })
+  })();
+</script>

@@ -1,0 +1,19 @@
+<dom-module id='state-engine'>
+  
+</dom-module>
+
+<script>
+  Polymer({
+    is: "state-engine",
+
+    properties: {
+      app: { type: Object },
+      party: { type: Array, value: function(){ return [0, 1, 2, 3] }},
+      characters: { type: Array, value: function(){ return [] }}
+    },
+
+    changeParty: function(new_party){
+
+    }
+  });
+</script>
