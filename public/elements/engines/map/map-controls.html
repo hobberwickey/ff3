@@ -8,7 +8,7 @@
           app = this.app,
           buttons = app.buttonStates;
 
-      this.app.every(10, function(){
+      this.app.every(1, function(){
         if (buttons.left){
           self.moveLeft();
           return;
@@ -30,7 +30,7 @@
           able = this.canMoveLeft(sprites[0]);
 
       if (able){
-        this.position.view.x -= 16;
+        //this.position.view.x -= 16;
         sprites[0].walkLeft();
       }
     },
@@ -40,7 +40,7 @@
           able = this.canMoveRight(sprites[0]);
 
       if (able){
-        this.position.view.x += 16;
+        //this.position.view.x += 16;
         sprites[0].walkRight();
       }
     },
@@ -50,7 +50,7 @@
           able = this.canMoveUp(sprites[0]);
 
       if (able){
-        this.position.view.y -= 16;
+        //this.position.view.y -= 16;
         sprites[0].walkUp();
       }
     },
@@ -60,7 +60,7 @@
           able = this.canMoveDown(sprites[0]);
 
       if (able){
-        this.position.view.y += 16;
+        //this.position.view.y += 16;
         sprites[0].walkDown();
       }
     }

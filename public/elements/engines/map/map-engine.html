@@ -110,7 +110,7 @@
 
           var pri_1 = (clr_index_1 < 0) | 0,
               pri_2 = (clr_index_2 < 0) | 0;
-        try {
+
           var color = mixColors(
             palette[Math.abs( clr_index_1 )],
             palette[Math.abs( clr_index_2 )],
@@ -119,9 +119,7 @@
             pri_2,
             i, priorityMap
           )
-        } catch(e) {
-          console.log(tile1, tile2)
-        }
+          
           setPixel(data, i << 2, color)
         }
       },

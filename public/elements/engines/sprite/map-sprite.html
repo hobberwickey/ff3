@@ -19,6 +19,8 @@
         gfx: { type: Array, value: function(){ return [] }},
         coords: { type: Object, value: function(){ return {x: 8 << 4, y: 8 << 4} }},
         //TEMP
+        speed: { type: Number, value: 200 },
+        moving: { type: Boolean, value: false },
         position: { type: Number, value: 5 },
         zIndex: { type: Number, value: 0 },
         palette: { type: Number, value: 0 }
@@ -68,19 +70,57 @@
       },
 
       walkLeft: function(){
-        this.coords.x -= 16;
+        if (!this.moving) this.scroll([0,0,0,1])
       },
 
       walkUp: function(){
-        this.coords.y -= 16;
+        if (!this.moving) this.scroll([1,0,0,0])
       },
 
       walkRight: function(){
-        this.coords.x += 16;
+        if (!this.moving) this.scroll([0,1,0,0])
       },
 
       walkDown: function(){
-        this.coords.y += 16;
+        if (!this.moving) this.scroll([0,0,1,0])
+      },
+
+      scroll: function(directions){
+        var speed = this.speed;
+
+        var self = this,
+            frames = ((speed / 1000) * 60) | 0,
+            dif = 16 / frames,
+            coords = this.coords,
+            original = { x: coords.x, y: coords.y };
+
+        this.moving = true;
+        this.app.iterate(1, frames - 2, function(){
+          for (var i=0; i<4; i++){
+            var change = (i === 0 || i === 3) ? -dif * directions[i] : dif * directions[i],
+                direction = (i & 1) === 0 ? "y" : "x";
+          
+            original[direction] += change;
+            coords[direction] = Math.round(original[direction]);
+          }
+        }, function(){
+          self.moving = false;
+          // if (obj.isCharacter){
+          //   var party = self.context.ram.parties[self.context.ram.selectedParty];
+            
+          //   for (var i=0; i<4; i++){
+          //     if (party[i] === null) continue;
+          //     var chr = self.context.characters[party[i]].sprite;
+
+          //     if (!chr.visible){
+          //       chr.coords.x = coords.x;
+          //       chr.coords.y = coords.y;
+          //     }
+          //   }
+          // }
+
+          // if (callback !== void(0)) callback();
+        }, true)
       },
 
       behaviors: [DataAccess, TileBuilder, PaletteTools]

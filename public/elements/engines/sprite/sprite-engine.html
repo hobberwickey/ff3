@@ -137,22 +137,7 @@
           }        
         }
 
-        this.app.test.innerHTML = "Sprite Priority: " + sprite.zIndex + ", Top Prop: " + bottomProp.topDrawPriority + ", Bottom Prop: " + bottomProp.bottomDrawPriority + ", Bridge: " + bottomProp.bridge;
-        //bottom half
-        // for (var i=256; i<len; i++){
-        //   var x = (i & 15),
-        //       y = (i >> 4);
-
-        //   var index = ((x_offset + x) << 2) + (((y_offset + y) << 8) << 2),
-        //       color = palette[gfx[i]];
-
-        //   if (color[3] !== 0){
-        //     data[index] = color[0];
-        //     data[index + 1] = color[1];
-        //     data[index + 2] = color[2];
-        //     data[index + 3] = color[3];
-        //   }
-        // }
+        //this.app.test.innerHTML = "Sprite Priority: " + sprite.zIndex + ", Top Prop: " + bottomProp.topDrawPriority + ", Bottom Prop: " + bottomProp.bottomDrawPriority + ", Bridge: " + bottomProp.bridge; 
       },
 
       behaviors: [DataAccess, PaletteTools]
