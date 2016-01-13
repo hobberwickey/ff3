@@ -60,27 +60,99 @@
       drawSprites: function(data){
         var sprite = this.characterSprites[0],
             map = this.app.map,
-            x_offset = sprite.coords.x - map.position.view.x,
-            y_offset = sprite.coords.y - map.position.view.y;
+            priorityMap = map.priorityMap,
+            physicalMap = map.physicalMap,
+            sprite_x = sprite.coords.x,
+            sprite_y = sprite.coords.y,
+            x_offset = sprite_x - map.position.view.x,
+            y_offset = sprite_y - map.position.view.y - 16;
 
         var gfx = sprite.gfx[sprite.position],
             palette = this.palettes[sprite.palette],
-            len = gfx.length;
+            len = gfx.length
 
-        for (var i=0; i<len; i++){
+        //top half
+        
+        for (var i=0; i<256; i++){
           var x = (i & 15),
-              y = (i >> 4);
-
+              y = (i >> 4),
+              topProp = physicalMap[(sprite_x + x) >> 4][((y + sprite_y) >> 4) - 1],
+              bottomProp = physicalMap[(sprite_x + x) >> 4][((y + sprite_y) >> 4)];
+              
           var index = ((x_offset + x) << 2) + (((y_offset + y) << 8) << 2),
+              priority = priorityMap[index >> 2],
               color = palette[gfx[i]];
 
-          if (color[3] !== 0){
-            data[index] = color[0];
-            data[index + 1] = color[1];
-            data[index + 2] = color[2];
-            data[index + 3] = color[3];
-          }
+          if (sprite.zIndex === 0){
+            if (topProp.bridge !== 0 && !topProp.solid) continue;
+            if ( (priority !== 1 && priority !== 0) || bottomProp.topDrawPriority !== 0 ){
+              if (color[3] !== 0){
+                data[index] = color[0];
+                data[index + 1] = color[1];
+                data[index + 2] = color[2];
+                data[index + 3] = color[3];
+              }
+            }
+          } else {
+            if ( priority !== 1 || bottomProp.topDrawPriority !== 0 || bottomProp.bridge === 1 ){
+              if (color[3] !== 0){
+                data[index] = color[0];
+                data[index + 1] = color[1];
+                data[index + 2] = color[2];
+                data[index + 3] = color[3];
+              }
+            }
+          }        
         }
+
+        for (var i=0; i<128; i++){
+          var x = (i & 15),
+              y = (i >> 4),
+              topProp = physicalMap[(sprite_x + x) >> 4][((y + sprite_y) >> 4) - 1],
+              bottomProp = physicalMap[(sprite_x + x) >> 4][((y + sprite_y) >> 4)];
+              
+          var index = ((x_offset + x) << 2) + (((y_offset + y + 16) << 8) << 2),
+              priority = priorityMap[index >> 2],
+              color = palette[gfx[i + 256]];
+
+          if (sprite.zIndex === 0){
+            if (bottomProp.bridge !== 0) continue;
+            if ( (priority !== 1 && priority !== 0) || bottomProp.bottomDrawPriority !== 0 ){
+              if (color[3] !== 0){
+                data[index] = color[0];
+                data[index + 1] = color[1];
+                data[index + 2] = color[2];
+                data[index + 3] = color[3];
+              }
+            }
+          } else {
+            if ( (priority !== 1 && priority !== 0) || bottomProp.bottomDrawPriority !== 0 ){
+              if (color[3] !== 0){
+                data[index] = color[0];
+                data[index + 1] = color[1];
+                data[index + 2] = color[2];
+                data[index + 3] = color[3];
+              }
+            }
+          }        
+        }
+
+        this.app.test.innerHTML = "Sprite Priority: " + sprite.zIndex + ", Top Prop: " + bottomProp.topDrawPriority + ", Bottom Prop: " + bottomProp.bottomDrawPriority + ", Bridge: " + bottomProp.bridge;
+        //bottom half
+        // for (var i=256; i<len; i++){
+        //   var x = (i & 15),
+        //       y = (i >> 4);
+
+        //   var index = ((x_offset + x) << 2) + (((y_offset + y) << 8) << 2),
+        //       color = palette[gfx[i]];
+
+        //   if (color[3] !== 0){
+        //     data[index] = color[0];
+        //     data[index + 1] = color[1];
+        //     data[index + 2] = color[2];
+        //     data[index + 3] = color[3];
+        //   }
+        // }
       },
 
       behaviors: [DataAccess, PaletteTools]

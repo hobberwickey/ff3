@@ -45,6 +45,7 @@
       },
 
       loadMap: function(index){
+
         this.map.set("index", index)
       },
 
@@ -87,7 +88,7 @@
           timing[3] = timing[1] - timing[2];
           timing[2] = timing[1];
 
-          self.test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "
+          // self.test.innerHTML = ((window.performance.now() - timestamp) | 0) + " milliseconds to draw frame "
           // self.test.innerHTML = self.map.state.character.coords.x + " " + self.map.state.character.coords.y
         }
 

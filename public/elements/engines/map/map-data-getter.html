@@ -230,7 +230,7 @@
       var pntr = this.getValue(0x19cf10 + (this.specs.tile_properties * 2), 2, 0x19aa00);
           data = this.decompress(pntr);
 
-      for (var i=0; i<data.length / 2; i++){
+      for (var i=0; i<data.length >> 1; i++){
         props.push( [ data[i], data[i + 256] ] );
       }    
 

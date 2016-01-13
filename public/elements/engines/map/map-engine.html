@@ -30,7 +30,7 @@
         position: { type: Object, value: function(){ return {} }},
         animation: { type: Object, value: function(){ return {} }},
         priorityMap: { type: Object, value: function(){ return new Uint8ClampedArray(0x10000) }},
-        physicalMap: { type: Object, value: function(){ return new Uint8ClampedArray(0x10000) }}
+        physicalMap: { type: Object, value: function(){ return {} }}
       },
 
       
@@ -40,6 +40,7 @@
           this.loadMapData();  
           this.setPosition();
           this.initMapControls();
+          this.buildPhysicalMap();
 
           this.app.screen.layers.push(this.draw.bind(this));
           this.app.screen.layers.push(this.app.sprites.drawSprites.bind(this.app.sprites));
@@ -59,7 +60,7 @@
         }
       },
 
-      setPosition: function(){
+      setPosition: function(coords){
         this.position = {
           view: { x: 0, y: 0 },
           layer_1: { x: 0, y: 0 },
@@ -104,12 +105,12 @@
           var animated_offset_1 = animated_tiles_1[tile_index_1] * animatedTileOffset,
               animated_offset_2 = animated_tiles_2[tile_index_2] * animatedTileOffset;
 
-          var clr_index_1 = tile1[(x1 & 15) + ((y1 & 15) << 4) + animated_offset_1],
-              clr_index_2 = tile2[(x2 & 15) + ((y2 & 15) << 4) + animated_offset_2];
+          var clr_index_1 = tile1[(x1 & 15) + ((y1 & 15) << 4) + animated_offset_1] | 0,
+              clr_index_2 = tile2[(x2 & 15) + ((y2 & 15) << 4) + animated_offset_2] | 0;
 
           var pri_1 = (clr_index_1 < 0) | 0,
               pri_2 = (clr_index_2 < 0) | 0;
-
+        try {
           var color = mixColors(
             palette[Math.abs( clr_index_1 )],
             palette[Math.abs( clr_index_2 )],
@@ -118,7 +119,9 @@
             pri_2,
             i, priorityMap
           )
-
+        } catch(e) {
+          console.log(tile1, tile2)
+        }
           setPixel(data, i << 2, color)
         }
       },
