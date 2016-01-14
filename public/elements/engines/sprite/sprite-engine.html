@@ -64,8 +64,10 @@
             physicalMap = map.physicalMap,
             sprite_x = sprite.coords.x,
             sprite_y = sprite.coords.y,
-            x_offset = sprite_x - map.position.view.x,
-            y_offset = sprite_y - map.position.view.y - 16;
+            x_offset = sprite_x - map.coords.x,
+            y_offset = sprite_y - map.coords.y - 16;
+            mirrorTop = sprite.mirrorTop ? 16 : 0,
+            mirrorBottom = sprite.mirrorBottom ? 16 : 0;
 
         var gfx = sprite.gfx[sprite.position],
             palette = this.palettes[sprite.palette],
@@ -74,7 +76,7 @@
         //top half
         
         for (var i=0; i<256; i++){
-          var x = (i & 15),
+          var x = Math.abs(mirrorTop - (i & 15)),
               y = (i >> 4),
               topProp = physicalMap[(sprite_x + x) >> 4][((y + sprite_y) >> 4) - 1],
               bottomProp = physicalMap[(sprite_x + x) >> 4][((y + sprite_y) >> 4)];
@@ -106,7 +108,7 @@
         }
 
         for (var i=0; i<128; i++){
-          var x = (i & 15),
+          var x = Math.abs(mirrorBottom - (i & 15)),
               y = (i >> 4),
               topProp = physicalMap[(sprite_x + x) >> 4][((y + sprite_y) >> 4) - 1],
               bottomProp = physicalMap[(sprite_x + x) >> 4][((y + sprite_y) >> 4)];

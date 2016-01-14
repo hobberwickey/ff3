@@ -25,12 +25,16 @@
       }, function(){})
     },
 
+    shouldScroll: function(sprite, directions){
+      return true;
+    },
+
     moveLeft: function(){
       var sprites = this.app.sprites.characterSprites,
           able = this.canMoveLeft(sprites[0]);
 
-      if (able){
-        //this.position.view.x -= 16;
+      if (!sprites[0].moving && able){
+        if ( this.shouldScroll() ) this.app.map.scroll([0,0,0,1], sprites[0].speed)
         sprites[0].walkLeft();
       }
     },
@@ -39,8 +43,8 @@
       var sprites = this.app.sprites.characterSprites,
           able = this.canMoveRight(sprites[0]);
 
-      if (able){
-        //this.position.view.x += 16;
+      if (!sprites[0].moving && able){
+        if ( this.shouldScroll() ) this.app.map.scroll([0,1,0,0], sprites[0].speed)
         sprites[0].walkRight();
       }
     },
@@ -49,8 +53,8 @@
       var sprites = this.app.sprites.characterSprites,
           able = this.canMoveUp(sprites[0]);
 
-      if (able){
-        //this.position.view.y -= 16;
+      if (!sprites[0].moving && able){
+        if ( this.shouldScroll() ) this.app.map.scroll([1,0,0,0], sprites[0].speed)
         sprites[0].walkUp();
       }
     },
@@ -59,8 +63,8 @@
       var sprites = this.app.sprites.characterSprites,
           able = this.canMoveDown(sprites[0]);
 
-      if (able){
-        //this.position.view.y += 16;
+      if (!sprites[0].moving && able){
+        if ( this.shouldScroll() ) this.app.map.scroll([0,0,1,0], sprites[0].speed)
         sprites[0].walkDown();
       }
     }

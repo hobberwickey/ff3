@@ -1,6 +1,7 @@
 <link rel='import' href='../utils/data-access.html'>
 <link rel='import' href='../utils/tile-builder.html'>
 <link rel='import' href='../utils/palette-tools.html'>
+<link rel='import' href='../utils/movement-utils.html'>
 
 <dom-module id='map-sprite'>
   
@@ -19,6 +20,9 @@
         gfx: { type: Array, value: function(){ return [] }},
         coords: { type: Object, value: function(){ return {x: 8 << 4, y: 8 << 4} }},
         //TEMP
+        mirrorTop: { type: Boolean, value: false },
+        mirrorBottom: { type: Boolean, value: false },
+        step: { type: Boolean, value: false },
         speed: { type: Number, value: 200 },
         moving: { type: Boolean, value: false },
         position: { type: Number, value: 5 },
@@ -69,61 +73,117 @@
         }
       },
 
+      stepLeft: function(){
+        this.turnLeft();
+
+        var self = this;
+            frames = ((((self.speed / 1000) * 60) - 2 ) / 2) | 0;
+
+        self.app.iterate(frames, 1, function(){
+          if (self.position === 7){
+            self.position = self.step ? 6 : 8;
+            self.step = !self.step;
+          } else {
+            self.turnLeft();
+          }
+        }, function(){ }, false)   
+      },
+
+      stepRight: function(){
+        this.turnRight();
+
+        var self = this;
+            frames = ((((self.speed / 1000) * 60) - 2 ) / 2) | 0;
+
+        self.app.iterate(frames, 1, function(){
+          if (self.position === 7){
+            self.position = self.step ? 6 : 8;
+            self.step = !self.step;
+          } else {
+            self.turnRight();
+          }
+        }, function(){ }, false)   
+      },
+
+      stepUp: function(){
+        this.turnUp();
+
+        var self = this;
+            frames = ((((self.speed / 1000) * 60) - 2 ) / 2) | 0;
+
+        self.app.iterate(frames, 1, function(){
+          if (self.position === 4){
+            self.position = self.step ? 3 : 5;
+            self.step = !self.step;
+            self.mirrorBottom = self.step;
+          } else {
+            self.turnUp();
+          }
+        }, function(){ }, false)   
+      },
+
+      stepDown: function(){
+        this.turnDown();
+
+        var self = this;
+            frames = ((((self.speed / 1000) * 60) - 2 ) / 2) | 0;
+
+        self.app.iterate(frames, 1, function(){
+          if (self.position === 1){
+            self.position = self.step ? 0 : 2;
+            self.step = !self.step;
+            self.mirrorBottom = self.step;
+          } else {
+            self.turnDown();
+          }
+        }, function(){ }, false)   
+      },
+
+      turnLeft: function(){
+        this.position = 7;
+        this.mirrorTop = false;
+        this.mirrorBottom = false;
+      },
+
+      turnRight: function(){
+        this.position = 7;
+        this.mirrorTop = true;
+        this.mirrorBottom = true;
+      },
+
+      turnUp: function(){
+        this.position = 4;
+        this.mirrorTop = false;
+        this.mirrorBottom = false;
+      },
+
+      turnDown: function(){
+        this.position = 1;
+        this.mirrorTop = false;
+        this.mirrorBottom = false;
+      },
+
       walkLeft: function(){
-        if (!this.moving) this.scroll([0,0,0,1])
+        this.stepLeft();
+        this.scroll([0,0,0,1])
       },
 
       walkUp: function(){
-        if (!this.moving) this.scroll([1,0,0,0])
+        this.stepUp();
+        this.scroll([1,0,0,0])
       },
 
       walkRight: function(){
-        if (!this.moving) this.scroll([0,1,0,0])
+        this.stepRight();
+        this.scroll([0,1,0,0])
       },
 
       walkDown: function(){
-        if (!this.moving) this.scroll([0,0,1,0])
+        this.stepDown();
+        this.scroll([0,0,1,0])
       },
 
-      scroll: function(directions){
-        var speed = this.speed;
-
-        var self = this,
-            frames = ((speed / 1000) * 60) | 0,
-            dif = 16 / frames,
-            coords = this.coords,
-            original = { x: coords.x, y: coords.y };
-
-        this.moving = true;
-        this.app.iterate(1, frames - 2, function(){
-          for (var i=0; i<4; i++){
-            var change = (i === 0 || i === 3) ? -dif * directions[i] : dif * directions[i],
-                direction = (i & 1) === 0 ? "y" : "x";
-          
-            original[direction] += change;
-            coords[direction] = Math.round(original[direction]);
-          }
-        }, function(){
-          self.moving = false;
-          // if (obj.isCharacter){
-          //   var party = self.context.ram.parties[self.context.ram.selectedParty];
-            
-          //   for (var i=0; i<4; i++){
-          //     if (party[i] === null) continue;
-          //     var chr = self.context.characters[party[i]].sprite;
-
-          //     if (!chr.visible){
-          //       chr.coords.x = coords.x;
-          //       chr.coords.y = coords.y;
-          //     }
-          //   }
-          // }
-
-          // if (callback !== void(0)) callback();
-        }, true)
-      },
-
-      behaviors: [DataAccess, TileBuilder, PaletteTools]
+      behaviors: [DataAccess, TileBuilder, PaletteTools, MovementUtils]
     })
   })();
 </script>

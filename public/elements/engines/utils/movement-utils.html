@@ -1,0 +1,28 @@
+<script>
+  var MovementUtils = {
+    scroll: function(directions, speed, callback){
+      var speed = speed || this.speed;
+
+      var self = this,
+          frames = ((speed / 1000) * 60) | 0,
+          dif = 16 / frames,
+          coords = this.coords,
+          original = { x: coords.x, y: coords.y };
+      
+      this.moving = true;
+      this.app.iterate(1, frames - 2, function(){
+        for (var i=0; i<4; i++){
+          var change = (i === 0 || i === 3) ? -dif * directions[i] : dif * directions[i],
+              direction = (i & 1) === 0 ? "y" : "x";
+        
+          original[direction] += change;
+          coords[direction] = Math.round(original[direction]);
+        }
+      }, function(){
+        self.moving = false;
+
+        if (callback) callback();
+      }, true)
+    }
+  }
+</script>

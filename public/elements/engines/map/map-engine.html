@@ -2,6 +2,7 @@
 <link rel='import' href='../utils/data-compression.html'>
 <link rel='import' href='../utils/tile-builder.html'>
 <link rel='import' href='../utils/palette-tools.html'>
+<link rel='import' href='../utils/movement-utils.html'>
 
 <link rel='import' href='map-data-getter.html'>
 <link rel='import' href='map-controls.html'>
@@ -28,6 +29,7 @@
         mapData: { type: Array, value: function(){ return [] } },
         physicalData: { type: Object, value: function(){ return {} }},
         position: { type: Object, value: function(){ return {} }},
+        coords: { type: Object, value: function(){ return { x: 0, y: 0 } }},
         animation: { type: Object, value: function(){ return {} }},
         priorityMap: { type: Object, value: function(){ return new Uint8ClampedArray(0x10000) }},
         physicalMap: { type: Object, value: function(){ return {} }}
@@ -62,7 +64,6 @@
 
       setPosition: function(coords){
         this.position = {
-          view: { x: 0, y: 0 },
           layer_1: { x: 0, y: 0 },
           layer_2: { x: 0, y: 0 },
           layer_3: { x: 0, y: 0 }
@@ -72,6 +73,7 @@
       draw: function(data){
         var self = this,
             pos = this.position,
+            coords = this.coords,
             size = this.specs.size,
             mapData = this.mapData,
             tileData = this.tileData,
@@ -85,8 +87,8 @@
             priorityMap = self.priorityMap;
 
         for (var i=0; i<0x10000; i++){
-          var base_x = (i & 255) + pos.view.x,
-              base_y = (i >> 8) + pos.view.y;
+          var base_x = (i & 255) + coords.x,
+              base_y = (i >> 8) + coords.y;
 
           var x1 = base_x + pos.layer_1.x,
               x2 = base_x + pos.layer_2.x,
@@ -119,7 +121,7 @@
             pri_2,
             i, priorityMap
           )
-          
+
           setPixel(data, i << 2, color)
         }
       },
@@ -158,7 +160,7 @@
         data[offset + 3] = color[3];
       },
 
-      behaviors: [ MapDataGetter, DataCompression, MapControls, MapPhysics, DataAccess, TileBuilder, PaletteTools ]
+      behaviors: [ MapDataGetter, DataCompression, MapControls, MapPhysics, DataAccess, TileBuilder, PaletteTools, MovementUtils ]
     })
   })();
 </script>
